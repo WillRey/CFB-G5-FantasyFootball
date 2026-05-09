@@ -1,1 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>League Setup | CFB G5 Fantasy</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="players.html">Players</a>
+    <a href="draft.html">Draft</a>
+  </nav>
 
+  <div class="container">
+    <h1>League Setup</h1>
+    <p>Welcome, Athletic Director. Configure your league below.</p>
+
+    <div class="setup-form">
+
+      <div class="form-group">
+        <label>League Name</label>
+        <input type="text" id="league-name" placeholder="Enter league name..." />
+      </div>
+
+      <div class="form-group">
+        <label>Number of Teams</label>
+        <select id="team-count">
+          <option value="4">4 Teams</option>
+          <option value="6">6 Teams</option>
+          <option value="8" selected>8 Teams</option>
+          <option value="12">12 Teams</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Roster Format</label>
+        <div class="roster-options">
+          <div class="roster-card" id="card-1qb" onclick="selectRoster('1QB')">
+            <h3>1QB</h3>
+            <ul>
+              <li>1 QB</li>
+              <li>2 RB</li>
+              <li>2 WR</li>
+              <li>1 TE</li>
+              <li>1 Flex (RB/WR/TE)</li>
+              <li>1 K</li>
+              <li>1 D/ST</li>
+              <li>7 Bench</li>
+              <li>2 Medical Redshirt</li>
+            </ul>
+          </div>
+          <div class="roster-card" id="card-superflex" onclick="selectRoster('Superflex')">
+            <h3>Superflex</h3>
+            <ul>
+              <li>1 QB</li>
+              <li>2 RB</li>
+              <li>2 WR</li>
+              <li>1 TE</li>
+              <li>1 Flex (RB/WR/TE)</li>
+              <li>1 Superflex (QB/RB/WR/TE)</li>
+              <li>1 K</li>
+              <li>1 D/ST</li>
+              <li>7 Bench</li>
+              <li>2 Medical Redshirt</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Draft Date & Time</label>
+        <input type="datetime-local" id="draft-time" />
+      </div>
+
+      <div class="form-group">
+        <label>Draft Order</label>
+        <select id="draft-order" onchange="toggleManualOrder()">
+          <option value="random">Random (set 24hrs before draft)</option>
+          <option value="manual">Manual (set by Athletic Director)</option>
+        </select>
+      </div>
+
+      <div id="manual-order-section" style="display:none;">
+        <label>Team Names (one per line, in draft order)</label>
+        <div id="manual-order-inputs"></div>
+      </div>
+
+      <button onclick="saveLeague()">Create League</button>
+
+    </div>
+
+    <div id="confirm-message" style="display:none;">
+      <h2>League Created!</h2>
+      <p id="confirm-details"></p>
+      <a href="index.html">Go to League Home</a>
+    </div>
+
+  </div>
+
+  <script>
+    let selectedRoster = '1QB';
+
+    function selectRoster(format) {
+      selectedRoster = format;
+      document.getElementById('card-1qb').classList.remove('selected');
+      document.getElementById('card-superflex').classList.remove('selected');
+      document.getElementById(`card-${format.toLowerCase()}`).classList.add('selected');
+    }
+
+    // Default select 1QB
+    selectRoster('1QB');
+
+    function toggleManualOrder() {
+      const val = document.getElementById('draft-order').value;
+      const section = document.getElementById('manual-order-section');
+      const count = parseInt(document.getElementById('team-count').value);
+
+      if (val === 'manual') {
+        section.style.display = 'block';
+        buildManualInputs(count);
+      } else {
+        section.style.display = 'none';
+      }
+    }
+
+    function buildManualInputs(count) {
+      const container = document.getElementById('manual-order-inputs');
+      container.innerHTML = '';
+      for (let i = 1; i <= count; i++) {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = `Pick ${i} - Team Name`;
+        input.id = `team-${i}`;
+        container.appendChild(input);
+      }
+    }
+
+    document.getElementById('team-count').addEventListener('change', () => {
+      if (document.getElementById('draft-order').value === 'manual') {
+        buildManualInputs(parseInt(document.getElementById('team-count').value));
+      }
+    });
+
+    function saveLeague() {
+      const name = document.getElementById('league-name').value;
+      const teams = document.getElementById('team-count').value;
+      const draftTime = document.getElementById('draft-time').value;
+      const orderType = document.getElementById('draft-order').value;
+
+      if (!name || !draftTime) {
+        alert('Please fill out all fields before creating the league.');
+        return;
+      }
+
+      const leagueData = {
+        name,
+        teams,
+        roster: selectedRoster,
+        draftTime,
+        orderType
+      };
+
+      if (orderType === 'manual') {
+        const order = [];
+        for (let i = 1; i <= teams; i++) {
+          order.push(document.getElementById(`team-${i}`).value || `Team ${i}`);
+        }
+        leagueData.draftOrder = order;
+      }
+
+      localStorage.setItem('leagueData', JSON.stringify(leagueData));
+
+      document.getElementById('confirm-details').textContent =
+        `${name} | ${teams} Teams | ${selectedRoster} | Draft: ${new Date(draftTime).toLocaleString()}`;
+      document.getElementById('confirm-message').style.display = 'block';
+      document.querySelector('.setup-form').style.display = 'none';
+    }
+  </script>
+</body>
+</html>

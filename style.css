@@ -1,1 +1,171 @@
+.roster-options {
+  display: flex;
+  gap: 20px;
+  margin-top: 10px;
+}
 
+.roster-card {
+  border: 2px solid #ccc;
+  border-radius: 8px;
+  padding: 16px;
+  cursor: pointer;
+  width: 200px;
+}
+
+.roster-card h3 {
+  margin-top: 0;
+}
+
+.roster-card.selected {
+  border-color: #2a7ae2;
+  background-color: #eef4ff;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.setup-form label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+
+.setup-form input,
+.setup-form select {
+  padding: 8px;
+  font-size: 14px;
+  width: 300px;
+}
+
+.setup-form button {
+  padding: 10px 24px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+#manual-order-inputs input {
+  display: block;
+  margin-bottom: 8px;
+  width: 300px;
+  padding: 8px;
+}
+#draft-main {
+  display: flex;
+  gap: 24px;
+  margin-top: 20px;
+}
+
+#player-pool {
+  flex: 2;
+}
+
+#draft-order-panel {
+  flex: 1;
+  min-width: 180px;
+}
+
+#draft-status {
+  background: #f0f4ff;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+#timer-display {
+  font-size: 48px;
+  font-weight: bold;
+  color: #2a7ae2;
+}
+
+.pick-item {
+  padding: 6px 10px;
+  border-bottom: 1px solid #eee;
+  font-size: 14px;
+}
+
+.pick-item.current {
+  background: #2a7ae2;
+  color: white;
+  border-radius: 4px;
+}
+
+#team-rosters {
+  margin-top: 30px;
+}
+
+#roster-display {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+#draft-player-table {
+  width: 100%;
+  margin-top: 10px;
+}
+
+#draft-order-strip {
+  overflow-x: auto;
+  white-space: nowrap;
+  padding: 10px 0;
+  border-bottom: 2px solid #ccc;
+  margin-bottom: 20px;
+}
+
+#pick-list {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.pick-chip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 12px;
+  min-width: 80px;
+}
+
+.pick-chip.current {
+  background: #2a7ae2;
+  color: white;
+  border-color: #2a7ae2;
+}
+
+.pick-label {
+  font-weight: bold;
+}
+
+.pick-team {
+  font-size: 11px;
+}
+
+#my-roster-panel {
+  min-width: 220px;
+  flex: 1;
+}
+
+.roster-slot {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-bottom: 1px solid #eee;
+  font-size: 14px;
+}
+
+.roster-slot.empty .slot-player {
+  color: #aaa;
+}
+
+.roster-slot.filled .slot-player {
+  font-weight: bold;
+}
+
+.slot-label {
+  color: #666;
+  min-width: 90px;
+}

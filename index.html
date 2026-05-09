@@ -1,1 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Walk-On Fantasy Football</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="players.html">Players</a>
+    <a href="draft.html">Draft</a>
+    <a href="setup.html">League Setup</a>
+  </nav>
 
+  <div class="container">
+    <h1>Walk-On Fantasy Football</h1>
+    <p>The only fantasy league built around the Group of 6. For the sicko college football fans that don't tweet at 'croots, reminisce on the Fun-N-Gun offense, and would definitely last a quarter in Ypsilanti.</p>
+
+    <div id="league-info">
+      <p>No league found. Ask your Athletic Director for an invite.</p>
+    </div>
+  </div>
+
+  <script>
+    const league = JSON.parse(localStorage.getItem('leagueData'));
+
+    if (league) {
+      document.getElementById('league-info').innerHTML = `
+        <h2>${league.name}</h2>
+        <table>
+          <tr><td><strong>Teams</strong></td><td>${league.teams}</td></tr>
+          <tr><td><strong>Roster Format</strong></td><td>${league.roster}</td></tr>
+          <tr><td><strong>Draft Time</strong></td><td>${new Date(league.draftTime).toLocaleString()}</td></tr>
+          <tr><td><strong>Draft Order</strong></td><td>${league.orderType === 'random' ? 'Random (set 24hrs before draft)' : 'Manual'}</td></tr>
+        </table>
+        <br>
+        <a href="draft.html">Go to Draft Board</a>
+      `;
+    }
+  </script>
+</body>
+</html>

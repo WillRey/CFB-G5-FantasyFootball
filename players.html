@@ -1,1 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Players | CFB G5 Fantasy</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="players.html">Players</a>
+    <a href="draft.html">Draft</a>
+  </nav>
 
+  <div class="container">
+    <h1>Player Browser</h1>
+
+    <div class="filters">
+      <input type="text" id="search" placeholder="Search by name..." />
+      <select id="conf-filter">
+        <option value="">All Conferences</option>
+        <option value="AAC">AAC</option>
+        <option value="CUSA">C-USA</option>
+        <option value="MAC">MAC</option>
+        <option value="MWC">Mountain West</option>
+        <option value="Sun Belt">Sun Belt</option>
+      </select>
+      <select id="pos-filter">
+        <option value="">All Positions</option>
+        <option value="QB">QB</option>
+        <option value="RB">RB</option>
+        <option value="WR">WR</option>
+        <option value="TE">TE</option>
+        <option value="K">K</option>
+      </select>
+    </div>
+
+    <table id="player-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Position</th>
+          <th>Team</th>
+          <th>Conference</th>
+          <th>Year</th>
+        </tr>
+      </thead>
+      <tbody id="player-body"></tbody>
+    </table>
+  </div>
+
+  <script>
+    let allPlayers = [];
+
+fetch('g5_players_2025.csv')
+  .then(res => res.text())
+  .then(csv => {
+    const lines = csv.trim().split('\n');
+    const headers = lines[0].split(',');
+    allPlayers = lines.slice(1).map(line => {
+      const vals = line.split(',');
+      const obj = {};
+      headers.forEach((h, i) => obj[h.trim()] = (vals[i] || '').trim());
+      return obj;
+    });
+
+    // Filter first, THEN render
+    allPlayers = allPlayers.filter(p =>
+    ['QB', 'RB', 'WR', 'TE', 'K', 'PK'].includes(p.position)
+    ).map(p => ({
+    ...p,
+    position: p.position === 'PK' ? 'K' : p.position
+    }));
+
+    renderTable(allPlayers);
+  });
+
+    function renderTable(players) {
+      const tbody = document.getElementById('player-body');
+      tbody.innerHTML = '';
+      players.slice(0, 200).forEach(p => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${p.firstName} ${p.lastName}</td>
+          <td>${p.position}</td>
+          <td>${p.team}</td>
+          <td>${p.conference}</td>
+          <td>${getClassification(p.year)}</td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    function filterPlayers() {
+      const search = document.getElementById('search').value.toLowerCase();
+      const conf = document.getElementById('conf-filter').value;
+      const pos = document.getElementById('pos-filter').value;
+
+      const filtered = allPlayers.filter(p => {
+        const name = `${p.first_name} ${p.last_name}`.toLowerCase();
+        return (
+          (!search || name.includes(search)) &&
+          (!conf || p.conference === conf) &&
+          (!pos || p.position === pos)
+        );
+      });
+      renderTable(filtered);
+    }
+
+        function getClassification(year) {
+    const map = { '1': 'Freshman', '2': 'Sophomore', '3': 'Junior', '4': 'Senior', '5': 'Graduate' };
+    return map[year] || year;
+    }
+
+    document.getElementById('search').addEventListener('input', filterPlayers);
+    document.getElementById('conf-filter').addEventListener('change', filterPlayers);
+    document.getElementById('pos-filter').addEventListener('change', filterPlayers);
+  </script>
+</body>
+</html>

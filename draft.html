@@ -1,1 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Draft | Walk-On Fantasy Football</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="players.html">Players</a>
+    <a href="draft.html">Draft</a>
+    <a href="setup.html">League Setup</a>
+  </nav>
 
+  <div class="container">
+    <h1>Draft Board</h1>
+
+    <!-- Draft Setup (runs before draft starts) -->
+    <div id="draft-setup">
+      <h2>Team Setup</h2>
+      <p>Enter each team name and manager name before starting the draft.</p>
+      <div id="team-inputs"></div>
+      <button onclick="startDraft()">Start Draft</button>
+    </div>
+
+    <!-- Draft Board (runs during draft) -->
+    <div id="draft-board" style="display:none;">
+
+      <div id="draft-status">
+        <h2 id="current-pick-label">Round 1 | Pick 1</h2>
+        <p id="current-team-label">On the clock: </p>
+        <div id="timer-display">2:00</div>
+      </div>
+
+<div id="draft-order-strip">
+        <div id="pick-list"></div>
+      </div>
+
+      <div id="draft-main">
+
+        <div id="player-pool">
+          <h3>Available Players</h3>
+<input type="text" id="draft-search" placeholder="Search players..." oninput="filterDraftPlayers()" />
+          <select id="draft-pos-filter" onchange="filterDraftPlayers()">
+            <option value="">All Positions</option>
+            <option value="QB">QB</option>
+            <option value="RB">RB</option>
+            <option value="WR">WR</option>
+            <option value="TE">TE</option>
+            <option value="K">K</option>
+          </select>
+          <select id="draft-conf-filter" onchange="filterDraftPlayers()">
+            <option value="">All Conferences</option>
+            <option value="AAC">AAC</option>
+            <option value="CUSA">C-USA</option>
+            <option value="MAC">MAC</option>
+            <option value="MWC">Mountain West</option>
+            <option value="Sun Belt">Sun Belt</option>
+          </select>
+          <select id="draft-team-filter" onchange="filterDraftPlayers()">
+            <option value="">All Teams</option>
+          </select>
+          <table id="draft-player-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Position</th>
+                <th>Team</th>
+                <th>Conference</th>
+                <th>Pick</th>
+              </tr>
+            </thead>
+            <tbody id="draft-player-body"></tbody>
+          </table>
+        </div>
+
+        <div id="my-roster-panel">
+          <h3 id="my-roster-title">My Roster</h3>
+          <div id="my-roster-slots"></div>
+        </div>
+
+      </div>
+
+      <div id="team-rosters">
+        <h3>All Team Rosters</h3>
+        <div id="roster-display"></div>
+      </div>
+
+    </div>
+  </div>
+
+<script>
+    const league = JSON.parse(localStorage.getItem('leagueData')) || { teams: 8, roster: '1QB' };
+    const teamCount = parseInt(league.teams);
+
+    const rosterSlots = league.roster === 'Superflex'
+      ? ['QB', 'RB', 'RB', 'WR', 'WR', 'TE', 'Flex', 'Superflex', 'K', 'DST', 'Bench', 'Bench', 'Bench', 'Bench', 'Bench', 'Bench', 'Bench', 'MR', 'MR']
+      : ['QB', 'RB', 'RB', 'WR', 'WR', 'TE', 'Flex', 'K', 'DST', 'Bench', 'Bench', 'Bench', 'Bench', 'Bench', 'Bench', 'Bench', 'MR', 'MR'];
+
+    const totalRounds = rosterSlots.length;
+    let teams = [];
+    let allPlayers = [];
+    let availablePlayers = [];
+    let draftedPlayers = [];
+    let currentPick = 0;
+    let totalPicks = 0;
+    let timerInterval = null;
+    let secondsLeft = 120;
+
+    // Build team input fields
+    const teamInputs = document.getElementById('team-inputs');
+    for (let i = 0; i < teamCount; i++) {
+      const div = document.createElement('div');
+      div.style.marginBottom = '10px';
+      div.innerHTML = `
+        <strong>Team ${i + 1}</strong><br>
+        <input type="text" id="team-name-${i}" placeholder="Team name" style="margin-right:10px;" />
+        <input type="text" id="manager-name-${i}" placeholder="Manager name" />
+      `;
+      teamInputs.appendChild(div);
+    }
+
+    // Load players from CSV
+    fetch('g5_players_2025.csv')
+      .then(res => res.text())
+      .then(csv => {
+        const lines = csv.trim().split('\n');
+        const headers = lines[0].split(',');
+        allPlayers = lines.slice(1).map(line => {
+          const vals = line.split(',');
+          const obj = {};
+          headers.forEach((h, i) => obj[h.trim()] = (vals[i] || '').trim());
+          return obj;
+        }).filter(p => ['QB', 'RB', 'WR', 'TE', 'K', 'PK'].includes(p.position))
+          .map(p => ({ ...p, position: p.position === 'PK' ? 'K' : p.position }));
+
+        availablePlayers = [...allPlayers];
+      });
+
+    function startDraft() {
+      teams = [];
+      for (let i = 0; i < teamCount; i++) {
+        const name = document.getElementById(`team-name-${i}`).value || `Team ${i + 1}`;
+        const manager = document.getElementById(`manager-name-${i}`).value || `Manager ${i + 1}`;
+        teams.push({ name, manager, roster: [] });
+      }
+
+      // Build snake draft order
+      const order = [];
+      for (let r = 0; r < totalRounds; r++) {
+        const round = Array.from({ length: teamCount }, (_, i) => i);
+        if (r % 2 === 1) round.reverse();
+        order.push(...round);
+      }
+      window.draftOrder = order;
+      totalPicks = order.length;
+      currentPick = 0;
+
+      document.getElementById('draft-setup').style.display = 'none';
+      document.getElementById('draft-board').style.display = 'block';
+
+      renderPickList();
+      renderRosters();
+      renderAvailablePlayers();
+      populateTeamFilter();
+      startTurn();
+    }
+
+    function startTurn() {
+      if (currentPick >= totalPicks) {
+        document.getElementById('current-pick-label').textContent = 'Draft Complete!';
+        document.getElementById('current-team-label').textContent = '';
+        document.getElementById('timer-display').textContent = '';
+        clearInterval(timerInterval);
+        return;
+      }
+
+      const teamIndex = window.draftOrder[currentPick];
+      const round = Math.floor(currentPick / teamCount) + 1;
+      const pick = (currentPick % teamCount) + 1;
+
+      document.getElementById('current-pick-label').textContent = `Round ${round} | Pick ${pick}`;
+      document.getElementById('current-team-label').textContent =
+        `On the clock: ${teams[teamIndex].name} (${teams[teamIndex].manager})`;
+
+      secondsLeft = 120;
+      clearInterval(timerInterval);
+      updateTimerDisplay();
+      timerInterval = setInterval(() => {
+        secondsLeft--;
+        updateTimerDisplay();
+        if (secondsLeft <= 0) {
+          clearInterval(timerInterval);
+          autoPick(teamIndex);
+        }
+      }, 1000);
+
+      renderPickList();
+    }
+
+    function updateTimerDisplay() {
+      const m = Math.floor(secondsLeft / 60);
+      const s = secondsLeft % 60;
+      document.getElementById('timer-display').textContent =
+        `${m}:${s.toString().padStart(2, '0')}`;
+    }
+
+    function draftPlayer(playerIndex) {
+      const teamIndex = window.draftOrder[currentPick];
+      const player = availablePlayers[playerIndex];
+
+      teams[teamIndex].roster.push(player);
+      draftedPlayers.push(player);
+      availablePlayers.splice(playerIndex, 1);
+
+      currentPick++;
+      clearInterval(timerInterval);
+      renderAvailablePlayers();
+      renderRosters();
+      startTurn();
+    }
+
+    function autoPick(teamIndex) {
+      const team = teams[teamIndex];
+      const positionNeeds = getPositionNeeds(team.roster);
+
+      let picked = false;
+      for (const pos of positionNeeds) {
+        const idx = availablePlayers.findIndex(p => p.position === pos);
+        if (idx !== -1) {
+          teams[teamIndex].roster.push(availablePlayers[idx]);
+          draftedPlayers.push(availablePlayers[idx]);
+          availablePlayers.splice(idx, 1);
+          picked = true;
+          break;
+        }
+      }
+
+      if (!picked && availablePlayers.length > 0) {
+        teams[teamIndex].roster.push(availablePlayers[0]);
+        draftedPlayers.push(availablePlayers[0]);
+        availablePlayers.splice(0, 1);
+      }
+
+      currentPick++;
+      renderAvailablePlayers();
+      renderRosters();
+      startTurn();
+    }
+
+    function getPositionNeeds(roster) {
+      const counts = { QB: 0, RB: 0, WR: 0, TE: 0, K: 0 };
+      roster.forEach(p => { if (counts[p.position] !== undefined) counts[p.position]++; });
+      return ['QB', 'RB', 'WR', 'TE', 'K'];
+    }
+
+    function renderAvailablePlayers() {
+      filterDraftPlayers();
+    }
+
+    function populateTeamFilter() {
+      const teamNames = [...new Set(availablePlayers.map(p => p.team))].sort();
+      const select = document.getElementById('draft-team-filter');
+      select.innerHTML = '<option value="">All Teams</option>';
+      teamNames.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t;
+        opt.textContent = t;
+        select.appendChild(opt);
+      });
+    }
+
+    function filterDraftPlayers() {
+      const search = (document.getElementById('draft-search')?.value || '').toLowerCase();
+      const pos = document.getElementById('draft-pos-filter')?.value || '';
+      const conf = document.getElementById('draft-conf-filter')?.value || '';
+      const team = document.getElementById('draft-team-filter')?.value || '';
+
+      const filtered = availablePlayers.filter(p => {
+        const name = `${p.firstName} ${p.lastName}`.toLowerCase();
+        return (
+          (!search || name.includes(search)) &&
+          (!pos || p.position === pos) &&
+          (!conf || p.conference === conf) &&
+          (!team || p.team === team)
+        );
+      });
+
+      const tbody = document.getElementById('draft-player-body');
+      tbody.innerHTML = '';
+      filtered.slice(0, 100).forEach((p) => {
+        const actualIndex = availablePlayers.indexOf(p);
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${p.firstName} ${p.lastName}</td>
+          <td>${p.position}</td>
+          <td>${p.team}</td>
+          <td>${p.conference}</td>
+          <td><button onclick="draftPlayer(${actualIndex})">Draft</button></td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    function renderPickList() {
+      const container = document.getElementById('pick-list');
+      container.innerHTML = '';
+      const start = Math.max(0, currentPick - 3);
+      const end = Math.min(totalPicks, currentPick + 15);
+
+      for (let i = start; i < end; i++) {
+        const teamIndex = window.draftOrder[i];
+        const round = Math.floor(i / teamCount) + 1;
+        const pick = (i % teamCount) + 1;
+        const div = document.createElement('div');
+        div.className = i === currentPick ? 'pick-chip current' : 'pick-chip';
+        div.innerHTML = `<span class="pick-label">R${round}P${pick}</span><span class="pick-team">${teams[teamIndex]?.name || ''}</span>`;
+        container.appendChild(div);
+      }
+    }
+
+    function renderMyRoster() {
+      const myTeamIndex = 0;
+      const team = teams[myTeamIndex];
+      document.getElementById('my-roster-title').textContent = `${team.name} (${team.manager})`;
+
+      const slots = league.roster === 'Superflex'
+        ? [
+            { label: 'QB', positions: ['QB'] },
+            { label: 'RB', positions: ['RB'] },
+            { label: 'RB', positions: ['RB'] },
+            { label: 'WR', positions: ['WR'] },
+            { label: 'WR', positions: ['WR'] },
+            { label: 'TE', positions: ['TE'] },
+            { label: 'Flex', positions: ['RB', 'WR', 'TE'] },
+            { label: 'Superflex', positions: ['QB', 'RB', 'WR', 'TE'] },
+            { label: 'K', positions: ['K'] },
+            { label: 'D/ST', positions: ['DST'] },
+            ...Array(7).fill(null).map(() => ({ label: 'Bench', positions: ['QB', 'RB', 'WR', 'TE', 'K'] })),
+            ...Array(2).fill(null).map(() => ({ label: 'Medical Redshirt', positions: ['QB', 'RB', 'WR', 'TE', 'K'] })),
+          ]
+        : [
+            { label: 'QB', positions: ['QB'] },
+            { label: 'RB', positions: ['RB'] },
+            { label: 'RB', positions: ['RB'] },
+            { label: 'WR', positions: ['WR'] },
+            { label: 'WR', positions: ['WR'] },
+            { label: 'TE', positions: ['TE'] },
+            { label: 'Flex', positions: ['RB', 'WR', 'TE'] },
+            { label: 'K', positions: ['K'] },
+            { label: 'D/ST', positions: ['DST'] },
+            ...Array(7).fill(null).map(() => ({ label: 'Bench', positions: ['QB', 'RB', 'WR', 'TE', 'K'] })),
+            ...Array(2).fill(null).map(() => ({ label: 'Medical Redshirt', positions: ['QB', 'RB', 'WR', 'TE', 'K'] })),
+          ];
+
+      const roster = [...team.roster];
+      const filled = new Array(slots.length).fill(null);
+
+      slots.forEach((slot, i) => {
+        const idx = roster.findIndex(p => slot.positions.includes(p.position));
+        if (idx !== -1) {
+          filled[i] = roster[idx];
+          roster.splice(idx, 1);
+        }
+      });
+
+      const container = document.getElementById('my-roster-slots');
+      container.innerHTML = '';
+      slots.forEach((slot, i) => {
+        const div = document.createElement('div');
+        div.className = `roster-slot ${filled[i] ? 'filled' : 'empty'}`;
+        div.innerHTML = `
+          <span class="slot-label">${slot.label}</span>
+          <span class="slot-player">${filled[i] ? `${filled[i].firstName} ${filled[i].lastName}` : '—'}</span>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function renderRosters() {
+      renderMyRoster();
+      const container = document.getElementById('roster-display');
+      container.innerHTML = '';
+      teams.forEach(team => {
+        const div = document.createElement('div');
+        div.className = 'roster-card';
+        div.innerHTML = `
+          <h4>${team.name} <span style="font-weight:normal;font-size:13px;">(${team.manager})</span></h4>
+          <ul>
+            ${team.roster.map(p => `<li>${p.firstName} ${p.lastName} — ${p.position}</li>`).join('')}
+            ${team.roster.length === 0 ? '<li>No players yet</li>' : ''}
+          </ul>
+        `;
+        container.appendChild(div);
+      });
+    }
+  </script>
+</body>
+</html>
