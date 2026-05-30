@@ -5,6 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Walk-On Fantasy Football</title>
   <link rel="stylesheet" href="style.css" />
+
+  <!-- Firebase -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyABxk_gvkfdvAVMr_Hd-x5OrTv6Qh2i4rE",
+      authDomain: "walk-on-fantasy-football.firebaseapp.com",
+      projectId: "walk-on-fantasy-football",
+      storageBucket: "walk-on-fantasy-football.firebasestorage.app",
+      messagingSenderId: "667624140764",
+      appId: "1:667624140764:web:9bcf904b19013006aa2919"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    window.db = db;
+  </script>
+
 </head>
 <body>
   <nav>
@@ -23,22 +43,37 @@
     </div>
   </div>
 
-  <script>
-    const league = JSON.parse(localStorage.getItem('leagueData'));
+<script type="module">
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-    if (league) {
-      document.getElementById('league-info').innerHTML = `
-        <h2>${league.name}</h2>
-        <table>
-          <tr><td><strong>Teams</strong></td><td>${league.teams}</td></tr>
-          <tr><td><strong>Roster Format</strong></td><td>${league.roster}</td></tr>
-          <tr><td><strong>Draft Time</strong></td><td>${new Date(league.draftTime).toLocaleString()}</td></tr>
-          <tr><td><strong>Draft Order</strong></td><td>${league.orderType === 'random' ? 'Random (set 24hrs before draft)' : 'Manual'}</td></tr>
-        </table>
-        <br>
-        <a href="draft.html">Go to Draft Board</a>
-      `;
+    async function loadLeague() {
+      try {
+        const db = window.db;
+        const docSnap = await getDoc(doc(db, "leagues", "main"));
+
+        if (docSnap.exists()) {
+          const league = docSnap.data();
+          document.getElementById('league-info').innerHTML = `
+            <h2>${league.name}</h2>
+            <table>
+              <tr><td><strong>Teams</strong></td><td>${league.teams}</td></tr>
+              <tr><td><strong>Roster Format</strong></td><td>${league.roster}</td></tr>
+              <tr><td><strong>Draft Time</strong></td><td>${new Date(league.draftTime).toLocaleString()}</td></tr>
+              <tr><td><strong>Draft Order</strong></td><td>${league.orderType === 'random' ? 'Random (set 24hrs before draft)' : 'Manual'}</td></tr>
+            </table>
+            <br>
+            <a href="draft.html">Go to Draft Board</a>
+          `;
+        } else {
+          document.getElementById('league-info').innerHTML = '<p>No league found. Ask your Athletic Director for an invite.</p>';
+        }
+      } catch (err) {
+        console.error("Error loading league:", err);
+      }
     }
+
+    // Wait for Firebase to initialize
+    setTimeout(loadLeague, 500);
   </script>
 </body>
 </html>

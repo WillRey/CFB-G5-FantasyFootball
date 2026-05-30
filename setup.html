@@ -3,8 +3,28 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>League Setup | CFB G5 Fantasy</title>
+  <title>Walk-On Fantasy Football</title>
   <link rel="stylesheet" href="style.css" />
+
+  <!-- Firebase -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyABxk_gvkfdvAVMr_Hd-x5OrTv6Qh2i4rE",
+      authDomain: "walk-on-fantasy-football.firebaseapp.com",
+      projectId: "walk-on-fantasy-football",
+      storageBucket: "walk-on-fantasy-football.firebasestorage.app",
+      messagingSenderId: "667624140764",
+      appId: "1:667624140764:web:9bcf904b19013006aa2919"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    window.db = db;
+  </script>
+
 </head>
 <body>
   <nav>
@@ -143,7 +163,7 @@
       }
     });
 
-    function saveLeague() {
+async function saveLeague() {
       const name = document.getElementById('league-name').value;
       const teams = document.getElementById('team-count').value;
       const draftTime = document.getElementById('draft-time').value;
@@ -159,7 +179,8 @@
         teams,
         roster: selectedRoster,
         draftTime,
-        orderType
+        orderType,
+        createdAt: new Date().toISOString()
       };
 
       if (orderType === 'manual') {
@@ -170,12 +191,22 @@
         leagueData.draftOrder = order;
       }
 
-      localStorage.setItem('leagueData', JSON.stringify(leagueData));
+      try {
+        const { getFirestore, doc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+        const db = window.db;
+        await setDoc(doc(db, "leagues", "main"), leagueData);
 
-      document.getElementById('confirm-details').textContent =
-        `${name} | ${teams} Teams | ${selectedRoster} | Draft: ${new Date(draftTime).toLocaleString()}`;
-      document.getElementById('confirm-message').style.display = 'block';
-      document.querySelector('.setup-form').style.display = 'none';
+        // Still save to localStorage as backup
+        localStorage.setItem('leagueData', JSON.stringify(leagueData));
+
+        document.getElementById('confirm-details').textContent =
+          `${name} | ${teams} Teams | ${selectedRoster} | Draft: ${new Date(draftTime).toLocaleString()}`;
+        document.getElementById('confirm-message').style.display = 'block';
+        document.querySelector('.setup-form').style.display = 'none';
+      } catch (err) {
+        console.error("Error saving league:", err);
+        alert("Something went wrong saving the league. Check the console for details.");
+      }
     }
   </script>
 </body>
