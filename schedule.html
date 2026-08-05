@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Schedule | Walk-On Fantasy Football</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="players.html">Players</a>
+    <a href="draft.html">Draft</a>
+    <a href="setup.html">League Setup</a>
+    <a href="scores.html">Scores</a>
+    <a href="login.html">Login</a>
+  </nav>
+
+  <div class="container">
+    <h1>Season Schedule</h1>
+
+    <div id="schedule-controls">
+      <p>Generate a random schedule for the season. This will create matchups for all 11 regular season weeks plus playoffs.</p>
+      <button onclick="generateSchedule()">Generate Schedule</button>
+      <button onclick="clearSchedule()" style="margin-left:10px;background:#e55;">Clear Schedule</button>
+    </div>
+
+    <div id="schedule-output" style="margin-top:24px;"></div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyABxk_gvkfdvAVMr_Hd-x5OrTv6Qh2i4rE",
+      authDomain: "walk-on-fantasy-football.firebaseapp.com",
+      projectId: "walk-on-fantasy-football",
+      storageBucket: "walk-on-fantasy-football.firebasestorage.app",
+      messagingSenderId: "667624140764",
+      appId: "1:667624140764:web:9bcf904b19013006aa2919"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    const REGULAR_SEASON_WEEKS = 11;
+    const PLAYOFF_WEEKS = [12, 13];
+
+    let teams = [];
+    let existingSchedule = null;
+
+    onAuthStateChanged(auth, async user => {
+      if (user) {
+        const nav = document.querySelector('nav');
+        const draftDoc = await getDoc(doc(db, "drafts", "main"));
+        if (draftDoc.exists()) {
+          teams = draftDoc.data().teams || [];
+
+          // Add My Team link if applicable
+          const hasTeam = teams.some(t =>
+            t.email && t.email.toLowerCase() === user.email.toLowerCase()
+          );
+          if (hasTeam || teams.length > 0) {
+            const myTeamLink = document.createElement('a');
+            myTeamLink.href = 'myteam.html';
+            myTeamLink.textContent = 'My Team';
+            const loginLink = nav.querySelector('a[href="login.html"]');
+            nav.insertBefore(myTeamLink, loginLink);
+          }
+        }
+      }
+
+      // Load existing schedule
+      const scheduleDoc = await getDoc(doc(db, "schedule", "main"));
+      if (scheduleDoc.exists()) {
+        existingSchedule = scheduleDoc.data().weeks;
+        renderSchedule(existingSchedule);
+      }
+    });
+
+    window.generateSchedule = async function() {
+      if (teams.length < 2) {
+        alert('Need at least 2 teams to generate a schedule. Make sure the draft is complete.');
+        return;
+      }
+
+      if (existingSchedule) {
+        if (!confirm('A schedule already exists. Are you sure you want to regenerate it?')) return;
+      }
+
+      const schedule = buildSchedule(teams, REGULAR_SEASON_WEEKS);
+      existingSchedule = schedule;
+
+      await setDoc(doc(db, "schedule", "main"), {
+        weeks: schedule,
+        generatedAt: new Date().toISOString(),
+        teamCount: teams.length
+      });
+
+      renderSchedule(schedule);
+    }
+
+    window.clearSchedule = async function() {
+      if (!confirm('Are you sure you want to clear the schedule? This cannot be undone.')) return;
+      await setDoc(doc(db, "schedule", "main"), { weeks: [], cleared: true });
+      existingSchedule = null;
+      document.getElementById('schedule-output').innerHTML = '<p>Schedule cleared.</p>';
+    }
+
+    function buildSchedule(teams, regularSeasonWeeks) {
+      const n = teams.length;
+      const weeks = [];
+
+      // Build a pool of all possible matchups
+      const allMatchups = [];
+      for (let i = 0; i < n; i++) {
+        for (let j = i + 1; j < n; j++) {
+          allMatchups.push([i, j]);
+        }
+      }
+
+      // Track how many times each team has played each other
+      const playCount = Array.from({ length: n }, () => new Array(n).fill(0));
+
+      for (let week = 1; week <= regularSeasonWeeks; week++) {
+        const weekMatchups = [];
+        const teamsScheduled = new Set();
+
+        // Shuffle matchups to randomize
+        const shuffled = [...allMatchups].sort(() => Math.random() - 0.5);
+
+        for (const [a, b] of shuffled) {
+          if (teamsScheduled.has(a) || teamsScheduled.has(b)) continue;
+
+          weekMatchups.push({
+            home: a,
+            away: b,
+            homeScore: null,
+            awayScore: null
+          });
+
+          playCount[a][b]++;
+          playCount[b][a]++;
+          teamsScheduled.add(a);
+          teamsScheduled.add(b);
+
+          if (weekMatchups.length >= Math.floor(n / 2)) break;
+        }
+
+        // Handle bye week for odd number of teams
+        const byeTeam = [...Array(n).keys()].find(i => !teamsScheduled.has(i));
+
+        weeks.push({
+          week,
+          type: 'regular',
+          matchups: weekMatchups,
+          bye: byeTeam !== undefined ? byeTeam : null
+        });
+      }
+
+      // Playoff weeks - placeholders (seeding determined at end of regular season)
+      PLAYOFF_WEEKS.forEach((week, i) => {
+        weeks.push({
+          week,
+          type: i === 0 ? 'semifinals' : 'championship',
+          matchups: [],
+          playoff: true
+        });
+      });
+
+      return weeks;
+    }
+
+    function renderSchedule(weeks) {
+      const el = document.getElementById('schedule-output');
+      el.innerHTML = '';
+
+      weeks.forEach(weekData => {
+        const section = document.createElement('div');
+        section.style.marginBottom = '24px';
+
+        const label = weekData.type === 'regular'
+          ? `Week ${weekData.week}`
+          : weekData.type === 'semifinals'
+          ? 'Week 12 — Semifinals'
+          : 'Week 13 — Championship';
+
+        section.innerHTML = `<h3 style="border-bottom:2px solid #eee;padding-bottom:6px;">${label}</h3>`;
+
+        if (weekData.playoff) {
+          section.innerHTML += `<p style="color:#888;">Playoff matchups will be set after the regular season based on standings.</p>`;
+        } else {
+          weekData.matchups.forEach(m => {
+            const home = teams[m.home]?.name || `Team ${m.home + 1}`;
+            const away = teams[m.away]?.name || `Team ${m.away + 1}`;
+            const row = document.createElement('div');
+            row.style.cssText = 'display:flex;gap:16px;padding:8px 0;border-bottom:1px solid #f0f0f0;align-items:center;';
+            row.innerHTML = `
+              <span style="flex:1;text-align:right;font-weight:bold;">${home}</span>
+              <span style="color:#888;">vs</span>
+              <span style="flex:1;font-weight:bold;">${away}</span>
+            `;
+            section.appendChild(row);
+          });
+
+          if (weekData.bye !== null && weekData.bye !== undefined) {
+            const byeName = teams[weekData.bye]?.name || `Team ${weekData.bye + 1}`;
+            const bye = document.createElement('p');
+            bye.style.color = '#888';
+            bye.style.fontSize = '13px';
+            bye.textContent = `Bye: ${byeName}`;
+            section.appendChild(bye);
+          }
+        }
+
+        el.appendChild(section);
+      });
+    }
+  </script>
+</body>
+</html>

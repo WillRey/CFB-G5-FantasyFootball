@@ -44,6 +44,7 @@
         <option value="CUSA">C-USA</option>
         <option value="MAC">MAC</option>
         <option value="MWC">Mountain West</option>
+        <option value="Pac-12">Pac-12</option>
         <option value="Sun Belt">Sun Belt</option>
       </select>
       <select id="pos-filter">
@@ -73,7 +74,7 @@
   <script>
     let allPlayers = [];
 
-fetch('g5_players_2026.csv')
+fetch('g6_players_2026.csv')
   .then(res => res.text())
   .then(csv => {
     const lines = csv.trim().split('\n');

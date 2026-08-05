@@ -160,7 +160,7 @@
   }
 
   // Load players from CSV
-  fetch('g5_players_2026.csv')
+  fetch('g6_players_2026.csv')
     .then(res => res.text())
     .then(csv => {
       const lines = csv.trim().split('\n');
@@ -452,6 +452,7 @@ teams.push({ name, manager, email, roster: [] });
           { label: 'WR', positions: ['WR'] },
           { label: 'TE', positions: ['TE'] },
           { label: 'Flex', positions: ['RB', 'WR', 'TE'] },
+          { label: 'Flex', positions: ['RB', 'WR', 'TE'] },
           { label: 'Superflex', positions: ['QB', 'RB', 'WR', 'TE'] },
           { label: 'K', positions: ['K'] },
           { label: 'D/ST', positions: ['DST'] },
@@ -465,6 +466,7 @@ teams.push({ name, manager, email, roster: [] });
           { label: 'WR', positions: ['WR'] },
           { label: 'WR', positions: ['WR'] },
           { label: 'TE', positions: ['TE'] },
+          { label: 'Flex', positions: ['RB', 'WR', 'TE'] },
           { label: 'Flex', positions: ['RB', 'WR', 'TE'] },
           { label: 'K', positions: ['K'] },
           { label: 'D/ST', positions: ['DST'] },
