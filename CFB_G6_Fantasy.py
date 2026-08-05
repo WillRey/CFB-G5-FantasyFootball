@@ -2,47 +2,74 @@ import requests
 import csv
 import time
 
-API_KEY = "wGonuprEJPw9b8O603cjKsKJUaptdltJQr6mq6YMq4k4za2L++y15CbrVPdtzKyJ"
-HEADERS = {"Authorization": f"Bearer {API_KEY}"}
+API_KEY = "YOUR_API_KEY_HERE"
 
-G5_CONFERENCES = ["AAC", "CUSA", "MAC", "MWC", "Sun Belt"]
+G6_CONFERENCES = {
+    "AAC": 151,
+    "CUSA": 12,
+    "MAC": 15,
+    "MWC": 17,
+    "Pac-12": 9,
+    "Sun Belt": 37
+}
 
-def get_teams(conference):
-    url = f"https://api.collegefootballdata.com/teams?conference={conference}"
-    res = requests.get(url, headers=HEADERS)
-    return res.json()
+SKILL_POSITIONS = ['QB', 'RB', 'WR', 'TE', 'K', 'PK', 'P']
 
-def get_roster(team, year=2025):
-    url = f"https://api.collegefootballdata.com/roster?team={team}&year={year}"
-    res = requests.get(url, headers=HEADERS)
-    return res.json()
+def get_teams_espn(conference_id):
+    url = f"https://site.web.api.espn.com/apis/site/v2/sports/football/college-football/teams?groups={conference_id}&groupType=conference&enable=groups&limit=100"
+    res = requests.get(url)
+    data = res.json()
+    teams = []
+    league = data.get('sports', [{}])[0].get('leagues', [{}])[0]
+    for group in league.get('groups', []):
+        for team in group.get('teams', []):
+            teams.append({'id': team['id'], 'name': team['displayName']})
+    return teams
+
+def get_roster_espn(team_id, team_name, conference):
+    url = f"https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams/{team_id}/roster"
+    res = requests.get(url)
+    data = res.json()
+    players = []
+    for group in data.get('athletes', []):
+        for athlete in group.get('items', []):
+            position = athlete.get('position', {}).get('abbreviation', '')
+            if position not in SKILL_POSITIONS:
+                continue
+            # Normalize PK to K
+            if position == 'PK':
+                position = 'K'
+            players.append({
+                'id': athlete.get('id', ''),
+                'firstName': athlete.get('firstName', ''),
+                'lastName': athlete.get('lastName', ''),
+                'position': position,
+                'team': team_name,
+                'conference': conference,
+                'jersey': athlete.get('jersey', ''),
+                'year': athlete.get('experience', {}).get('years', ''),
+            })
+    return players
 
 all_players = []
 
-for conf in G5_CONFERENCES:
-    print(f"Fetching teams for {conf}...")
-    teams = get_teams(conf)
-    
+for conf_name, conf_id in G6_CONFERENCES.items():
+    print(f"\nFetching teams for {conf_name}...")
+    teams = get_teams_espn(conf_id)
+    print(f"  Found {len(teams)} teams")
+
     for team in teams:
-        team_name = team["school"]
-        print(f"  Fetching roster for {team_name}...")
-        
-        roster = get_roster(team_name)
-        
-        for player in roster:
-            player["conference"] = conf
-            player["team"] = team_name
-            all_players.append(player)
-        
-        time.sleep(0.3)  # be polite to the API
+        print(f"  Fetching roster for {team['name']}...")
+        roster = get_roster_espn(team['id'], team['name'], conf_name)
+        all_players.extend(roster)
+        time.sleep(0.3)
 
-print(f"\nTotal players found: {len(all_players)}")
+print(f"\nTotal skill position players found: {len(all_players)}")
 
-# Write to CSV
 if all_players:
     keys = all_players[0].keys()
-    with open("g5_players_2025.csv", "w", newline="") as f:
+    with open("g6_players_2026.csv", "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=keys)
         writer.writeheader()
         writer.writerows(all_players)
-    print("Saved to g5_players_2025.csv")
+    print("Saved to g6_players_2026.csv")

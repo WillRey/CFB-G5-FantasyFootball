@@ -1,1 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>My Team | Walk-On Fantasy Football</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .roster-slot {
+      display: flex;
+      align-items: center;
+      padding: 8px 12px;
+      border-bottom: 1px solid #eee;
+      font-size: 14px;
+      gap: 12px;
+    }
+    .slot-label {
+      min-width: 90px;
+      font-weight: bold;
+      color: white;
+      background: #2a7ae2;
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 2px solid #2a7ae2;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+    .slot-label:hover {
+      background: #1a5bbf;
+      border-color: #1a5bbf;
+    }
+    .slot-label.empty-slot {
+      background: #ccc;
+      border-color: #ccc;
+      color: #666;
+    }
+    .slot-player {
+      flex: 1;
+    }
+    .section-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin: 20px 0 8px;
+      padding-bottom: 4px;
+      border-bottom: 2px solid #eee;
+    }
 
+    /* Modal */
+    #swap-modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+    #swap-modal.open {
+      display: flex;
+    }
+    #swap-modal-box {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      width: 420px;
+      max-width: 90vw;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    #swap-modal-title {
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 16px;
+      color: #333;
+    }
+    .swap-option {
+      display: flex;
+      align-items: center;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid #eee;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+      gap: 12px;
+    }
+    .swap-option:hover {
+      background: #f0f4ff;
+      border-color: #2a7ae2;
+    }
+    .swap-option-slot {
+      font-size: 11px;
+      font-weight: bold;
+      color: #888;
+      min-width: 50px;
+    }
+    .swap-option-name {
+      font-weight: bold;
+      font-size: 14px;
+    }
+    .swap-option-details {
+      font-size: 12px;
+      color: #666;
+    }
+    #swap-modal-cancel {
+      margin-top: 12px;
+      width: 100%;
+      padding: 10px;
+      background: #f5f5f5;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    #swap-modal-cancel:hover {
+      background: #e5e5e5;
+    }
+  </style>
+</head>
+<body>
+<nav>
+  <a href="index.html">Home</a>
+  <a href="players.html">Players</a>
+  <a href="draft.html">Draft</a>
+  <a href="myteam.html">My Team</a>
+  <a href="login.html">Login</a>
+</nav>
+
+  <!-- Swap Modal -->
+  <div id="swap-modal">
+    <div id="swap-modal-box">
+      <div id="swap-modal-title"></div>
+      <div id="swap-options"></div>
+      <button id="swap-modal-cancel" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <div id="loading">Loading your team...</div>
+    <div id="team-content" style="display:none;">
+      <h1 id="team-heading"></h1>
+      <p id="manager-name"></p>
+
+      <div class="section-title">Starting Lineup</div>
+      <div id="starting-lineup"></div>
+
+      <div class="section-title">Bench</div>
+      <div id="bench-slots"></div>
+
+      <div class="section-title">Medical Redshirt</div>
+      <div id="mr-slots"></div>
+    </div>
+    <div id="no-team" style="display:none;">
+      <h2>No team found</h2>
+      <p>Your account isn't linked to a team yet. Contact your Athletic Director.</p>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyABxk_gvkfdvAVMr_Hd-x5OrTv6Qh2i4rE",
+      authDomain: "walk-on-fantasy-football.firebaseapp.com",
+      projectId: "walk-on-fantasy-football",
+      storageBucket: "walk-on-fantasy-football.firebasestorage.app",
+      messagingSenderId: "667624140764",
+      appId: "1:667624140764:web:9bcf904b19013006aa2919"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    let myTeamIndex = 0;
+    let startingLineup = [];
+    let bench = [];
+    let mr = [];
+    let selectedStarterIndex = null;
+    let draftData = null;
+
+    const leagueRoster = JSON.parse(localStorage.getItem('leagueData'))?.roster || '1QB';
+
+    const startingSlotDefs = leagueRoster === 'Superflex'
+      ? [
+          { label: 'QB', positions: ['QB'] },
+          { label: 'RB', positions: ['RB'] },
+          { label: 'RB', positions: ['RB'] },
+          { label: 'WR', positions: ['WR'] },
+          { label: 'WR', positions: ['WR'] },
+          { label: 'TE', positions: ['TE'] },
+          { label: 'Flex', positions: ['RB', 'WR', 'TE'] },
+          { label: 'Superflex', positions: ['QB', 'RB', 'WR', 'TE'] },
+          { label: 'K', positions: ['K'] },
+          { label: 'D/ST', positions: ['DST'] },
+        ]
+      : [
+          { label: 'QB', positions: ['QB'] },
+          { label: 'RB', positions: ['RB'] },
+          { label: 'RB', positions: ['RB'] },
+          { label: 'WR', positions: ['WR'] },
+          { label: 'WR', positions: ['WR'] },
+          { label: 'TE', positions: ['TE'] },
+          { label: 'Flex', positions: ['RB', 'WR', 'TE'] },
+          { label: 'K', positions: ['K'] },
+          { label: 'D/ST', positions: ['DST'] },
+        ];
+
+    onAuthStateChanged(auth, async user => {
+      if (!user) {
+        window.location.href = 'login.html';
+        return;
+      }
+
+      const nav = document.querySelector('nav');
+      const signOutBtn = document.createElement('a');
+      signOutBtn.href = '#';
+      signOutBtn.textContent = 'Sign Out';
+      signOutBtn.onclick = async () => {
+        await signOut(auth);
+        window.location.href = 'login.html';
+      };
+      nav.appendChild(signOutBtn);
+
+      await loadTeam(user);
+    });
+
+    async function loadTeam(user) {
+      const draftDoc = await getDoc(doc(db, "drafts", "main"));
+      if (!draftDoc.exists()) {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('no-team').style.display = 'block';
+        return;
+      }
+
+      draftData = draftDoc.data();
+      const teams = draftData.teams;
+      const picks = draftData.picks || [];
+
+      const teamIndex = teams.findIndex(t =>
+        t.email && t.email.toLowerCase() === user.email.toLowerCase()
+      );
+      myTeamIndex = teamIndex !== -1 ? teamIndex : 0;
+      const myTeam = teams[myTeamIndex];
+      const myPicks = picks.filter(p => p.teamIndex === myTeamIndex);
+
+      if (myTeam.lineup) {
+        startingLineup = myTeam.lineup.starting;
+        bench = myTeam.lineup.bench;
+        mr = myTeam.lineup.mr;
+      } else {
+        const roster = [...myPicks];
+        startingLineup = new Array(startingSlotDefs.length).fill(null);
+        startingSlotDefs.forEach((slot, i) => {
+          const idx = roster.findIndex(p => slot.positions.includes(p.position));
+          if (idx !== -1) {
+            startingLineup[i] = roster[idx];
+            roster.splice(idx, 1);
+          }
+        });
+        bench = roster.slice(0, 7);
+        mr = roster.slice(7, 9);
+      }
+
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('team-content').style.display = 'block';
+      document.getElementById('team-heading').textContent = myTeam.name;
+      document.getElementById('manager-name').textContent = `Manager: ${myTeam.manager}`;
+
+      renderLineup();
+    }
+
+    function renderLineup() {
+      renderStarters();
+      renderBench();
+      renderMR();
+    }
+
+    function renderStarters() {
+      const el = document.getElementById('starting-lineup');
+      el.innerHTML = '';
+      startingSlotDefs.forEach((slot, i) => {
+        const player = startingLineup[i];
+        const div = document.createElement('div');
+        div.className = 'roster-slot';
+        div.innerHTML = `
+          <span class="slot-label ${!player ? 'empty-slot' : ''}" onclick="openSwapModal(${i})">${slot.label}</span>
+          <span class="slot-player">
+            ${player ? `${player.firstName} ${player.lastName} — ${player.position} — ${player.team}` : '—'}
+          </span>
+        `;
+        el.appendChild(div);
+      });
+    }
+
+    function renderBench() {
+      const el = document.getElementById('bench-slots');
+      el.innerHTML = '';
+      for (let i = 0; i < 7; i++) {
+        const player = bench[i] || null;
+        const div = document.createElement('div');
+        div.className = 'roster-slot';
+        div.innerHTML = `
+          <span class="slot-label ${!player ? 'empty-slot' : ''}" onclick="openBenchSwapModal(${i})">BE</span>
+          <span class="slot-player">
+            ${player ? `${player.firstName} ${player.lastName} — ${player.position} — ${player.team}` : '—'}
+          </span>
+        `;
+        el.appendChild(div);
+      }
+    }
+
+    function renderMR() {
+      const el = document.getElementById('mr-slots');
+      el.innerHTML = '';
+      for (let i = 0; i < 2; i++) {
+        const player = mr[i] || null;
+        const div = document.createElement('div');
+        div.className = 'roster-slot';
+        div.innerHTML = `
+          <span class="slot-label ${!player ? 'empty-slot' : ''}">MR</span>
+          <span class="slot-player">
+            ${player ? `${player.firstName} ${player.lastName} — ${player.position} — ${player.team}` : '—'}
+          </span>
+        `;
+        el.appendChild(div);
+      }
+    }
+
+    window.openSwapModal = function(starterIndex) {
+      selectedStarterIndex = starterIndex;
+      const slot = startingSlotDefs[starterIndex];
+      const currentPlayer = startingLineup[starterIndex];
+
+      document.getElementById('swap-modal-title').textContent =
+        `Select a player to fill the ${slot.label} slot`;
+
+      const optionsEl = document.getElementById('swap-options');
+      optionsEl.innerHTML = '';
+
+      // Eligible starters (other than current slot)
+      startingSlotDefs.forEach((otherSlot, i) => {
+        if (i === starterIndex) return;
+        const player = startingLineup[i];
+        if (!player) return;
+        if (!slot.positions.includes(player.position)) return;
+
+        const div = document.createElement('div');
+        div.className = 'swap-option';
+        div.innerHTML = `
+          <span class="swap-option-slot">${otherSlot.label}</span>
+          <div>
+            <div class="swap-option-name">${player.firstName} ${player.lastName}</div>
+            <div class="swap-option-details">${player.position} — ${player.team} — ${player.conference}</div>
+          </div>
+        `;
+        div.onclick = () => swapStarters(starterIndex, i);
+        optionsEl.appendChild(div);
+      });
+
+      // Eligible bench players
+      bench.forEach((player, i) => {
+        if (!player) return;
+        if (!slot.positions.includes(player.position)) return;
+
+        const div = document.createElement('div');
+        div.className = 'swap-option';
+        div.innerHTML = `
+          <span class="swap-option-slot">BE</span>
+          <div>
+            <div class="swap-option-name">${player.firstName} ${player.lastName}</div>
+            <div class="swap-option-details">${player.position} — ${player.team} — ${player.conference}</div>
+          </div>
+        `;
+        div.onclick = () => swapWithBench(starterIndex, i);
+        optionsEl.appendChild(div);
+      });
+
+      if (optionsEl.innerHTML === '') {
+        optionsEl.innerHTML = '<p style="color:#888;font-size:14px;">No eligible players available to swap in.</p>';
+      }
+
+      document.getElementById('swap-modal').classList.add('open');
+    }
+
+    window.openBenchSwapModal = function(benchIndex) {
+      const benchPlayer = bench[benchIndex];
+      if (!benchPlayer) return;
+
+      document.getElementById('swap-modal-title').textContent =
+        `Move ${benchPlayer.firstName} ${benchPlayer.lastName} to starting lineup`;
+
+      const optionsEl = document.getElementById('swap-options');
+      optionsEl.innerHTML = '';
+
+      // Find eligible starting slots
+      startingSlotDefs.forEach((slot, i) => {
+        if (!slot.positions.includes(benchPlayer.position)) return;
+
+        const currentStarter = startingLineup[i];
+        const div = document.createElement('div');
+        div.className = 'swap-option';
+        div.innerHTML = `
+          <span class="swap-option-slot">${slot.label}</span>
+          <div>
+            <div class="swap-option-name">${currentStarter ? `${currentStarter.firstName} ${currentStarter.lastName}` : 'Empty slot'}</div>
+            <div class="swap-option-details">${currentStarter ? `${currentStarter.position} — ${currentStarter.team}` : ''}</div>
+          </div>
+        `;
+        div.onclick = () => swapWithBench(i, benchIndex);
+        optionsEl.appendChild(div);
+      });
+
+      if (optionsEl.innerHTML === '') {
+        optionsEl.innerHTML = '<p style="color:#888;font-size:14px;">No eligible starting slots for this player.</p>';
+      }
+
+      document.getElementById('swap-modal').classList.add('open');
+    }
+
+    window.closeModal = function() {
+      document.getElementById('swap-modal').classList.remove('open');
+      selectedStarterIndex = null;
+    }
+
+    async function swapStarters(indexA, indexB) {
+      const temp = startingLineup[indexA];
+      startingLineup[indexA] = startingLineup[indexB];
+      startingLineup[indexB] = temp;
+      closeModal();
+      renderLineup();
+      await saveLineup();
+    }
+
+    async function swapWithBench(starterIndex, benchIndex) {
+      const temp = startingLineup[starterIndex];
+      startingLineup[starterIndex] = bench[benchIndex];
+      bench[benchIndex] = temp;
+      closeModal();
+      renderLineup();
+      await saveLineup();
+    }
+
+    async function saveLineup() {
+      const updatedTeams = draftData.teams.map((t, i) => {
+        if (i === myTeamIndex) {
+          return {
+            ...t,
+            lineup: { starting: startingLineup, bench, mr }
+          };
+        }
+        return t;
+      });
+
+      await setDoc(doc(db, "drafts", "main"), {
+        ...draftData,
+        teams: updatedTeams
+      });
+
+      draftData.teams = updatedTeams;
+    }
+  </script>
+</body>
+</html>

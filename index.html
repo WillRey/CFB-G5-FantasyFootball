@@ -5,11 +5,29 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Walk-On Fantasy Football</title>
   <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="players.html">Players</a>
+    <a href="draft.html">Draft</a>
+    <a href="setup.html">League Setup</a>
+    <a href="login.html">Login</a>
+  </nav>
 
-  <!-- Firebase -->
+  <div class="container">
+    <h1>Walk-On Fantasy Football</h1>
+    <p>The only fantasy league built around the Group of 6. For the sicko college football fans that don't tweet at 'croots, reminisce on the Fun-N-Gun offense, and would definitely last a quarter in Ypsilanti.</p>
+
+    <div id="league-info">
+      <p>No league found. Ask your Athletic Director for an invite.</p>
+    </div>
+  </div>
+
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyABxk_gvkfdvAVMr_Hd-x5OrTv6Qh2i4rE",
@@ -22,35 +40,12 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
-    window.db = db;
-  </script>
+    const auth = getAuth(app);
 
-</head>
-<body>
-  <nav>
-    <a href="index.html">Home</a>
-    <a href="players.html">Players</a>
-    <a href="draft.html">Draft</a>
-    <a href="setup.html">League Setup</a>
-  </nav>
-
-  <div class="container">
-    <h1>Walk-On Fantasy Football</h1>
-    <p>The only fantasy league built around the Group of 6. For the sicko college football fans that don't tweet at 'croots, reminisce on the Fun-N-Gun offense, and would definitely last a quarter in Ypsilanti.</p>
-
-    <div id="league-info">
-      <p>No league found. Ask your Athletic Director for an invite.</p>
-    </div>
-  </div>
-
-<script type="module">
-    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
+    // Load league info
     async function loadLeague() {
       try {
-        const db = window.db;
         const docSnap = await getDoc(doc(db, "leagues", "main"));
-
         if (docSnap.exists()) {
           const league = docSnap.data();
           document.getElementById('league-info').innerHTML = `
@@ -72,8 +67,31 @@
       }
     }
 
-    // Wait for Firebase to initialize
-    setTimeout(loadLeague, 500);
+    // Show My Team link if logged in and has a team
+    onAuthStateChanged(auth, async user => {
+      if (user) {
+        const draftDoc = await getDoc(doc(db, "drafts", "main"));
+        if (draftDoc.exists()) {
+          const data = draftDoc.data();
+          const teams = data.teams || [];
+          const hasTeam = teams.some(t =>
+            t.email && t.email.toLowerCase() === user.email.toLowerCase()
+          );
+          const isAD = teams.length > 0 && !teams.some(t => t.email);
+
+          if (hasTeam || isAD) {
+            const nav = document.querySelector('nav');
+            const myTeamLink = document.createElement('a');
+            myTeamLink.href = 'myteam.html';
+            myTeamLink.textContent = 'My Team';
+            const loginLink = nav.querySelector('a[href="login.html"]');
+            nav.insertBefore(myTeamLink, loginLink);
+          }
+        }
+      }
+    });
+
+    loadLeague();
   </script>
 </body>
 </html>

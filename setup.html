@@ -46,12 +46,13 @@
 
       <div class="form-group">
         <label>Number of Teams</label>
-        <select id="team-count">
-          <option value="4">4 Teams</option>
-          <option value="6">6 Teams</option>
-          <option value="8" selected>8 Teams</option>
-          <option value="12">12 Teams</option>
-        </select>
+      <select id="team-count">
+        <option value="1">1 Team (Testing)</option>
+        <option value="4">4 Teams</option>
+        <option value="6">6 Teams</option>
+        <option value="8" selected>8 Teams</option>
+        <option value="12">12 Teams</option>
+      </select>
       </div>
 
       <div class="form-group">
@@ -209,5 +210,50 @@ async function saveLeague() {
       }
     }
   </script>
+
+  <script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyABxk_gvkfdvAVMr_Hd-x5OrTv6Qh2i4rE",
+    authDomain: "walk-on-fantasy-football.firebaseapp.com",
+    projectId: "walk-on-fantasy-football",
+    storageBucket: "walk-on-fantasy-football.firebasestorage.app",
+    messagingSenderId: "667624140764",
+    appId: "1:667624140764:web:9bcf904b19013006aa2919"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const auth = getAuth(app);
+
+  onAuthStateChanged(auth, async user => {
+    if (!user) return;
+
+    const draftDoc = await getDoc(doc(db, "drafts", "main"));
+    if (!draftDoc.exists()) return;
+
+    const data = draftDoc.data();
+    const teams = data.teams || [];
+    const hasTeam = teams.some(t =>
+      t.email && t.email.toLowerCase() === user.email.toLowerCase()
+    );
+
+    // Fallback: Athletic Director (team 0) also gets the link
+    const isAD = teams.length > 0 && !teams.some(t => t.email);
+
+    if (hasTeam || isAD) {
+      const nav = document.querySelector('nav');
+      const myTeamLink = document.createElement('a');
+      myTeamLink.href = 'myteam.html';
+      myTeamLink.textContent = 'My Team';
+      // Insert before Login link
+      const loginLink = nav.querySelector('a[href="login.html"]');
+      nav.insertBefore(myTeamLink, loginLink);
+    }
+  });
+</script>
 </body>
 </html>
