@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Scores | Walk-On Fantasy Football</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .week-selector {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+    .week-btn {
+      padding: 6px 14px;
+      border: 2px solid #ccc;
+      border-radius: 6px;
+      cursor: pointer;
+      background: white;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    .week-btn:hover {
+      border-color: #2a7ae2;
+      color: #2a7ae2;
+    }
+    .week-btn.active {
+      background: #2a7ae2;
+      border-color: #2a7ae2;
+      color: white;
+    }
+    .week-btn.playoff {
+      border-color: #f59e0b;
+      color: #f59e0b;
+    }
+    .week-btn.playoff.active {
+      background: #f59e0b;
+      color: white;
+    }
+    .matchup-card {
+      border: 1px solid #eee;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin-bottom: 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .matchup-card:hover {
+      border-color: #2a7ae2;
+      box-shadow: 0 2px 8px rgba(42,122,226,0.1);
+    }
+    .matchup-team {
+      flex: 1;
+    }
+    .matchup-team.home {
+      text-align: right;
+    }
+    .matchup-team-name {
+      font-weight: bold;
+      font-size: 16px;
+    }
+    .matchup-team-manager {
+      font-size: 12px;
+      color: #888;
+    }
+    .matchup-score {
+      text-align: center;
+      min-width: 80px;
+    }
+    .matchup-score-value {
+      font-size: 22px;
+      font-weight: bold;
+      color: #2a7ae2;
+    }
+    .matchup-score-vs {
+      font-size: 12px;
+      color: #aaa;
+    }
+    .matchup-score-final {
+      font-size: 11px;
+      color: #22c55e;
+      font-weight: bold;
+    }
+    .week-label {
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 16px;
+    }
+    .bye-team {
+      color: #888;
+      font-size: 14px;
+      margin-top: 8px;
+    }
+    .playoff-badge {
+      background: #f59e0b;
+      color: white;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-bottom: 12px;
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="players.html">Players</a>
+    <a href="draft.html">Draft</a>
+    <a href="setup.html">League Setup</a>
+    <a href="scores.html">Scores</a>
+    <a href="login.html">Login</a>
+  </nav>
+
+  <div class="container">
+    <h1>Scores</h1>
+    <div id="loading">Loading schedule...</div>
+    <div id="scores-content" style="display:none;">
+      <div class="week-selector" id="week-selector"></div>
+      <div id="week-display"></div>
+    </div>
+    <div id="no-schedule" style="display:none;">
+      <p>No schedule found. Ask your Athletic Director to generate one on the <a href="schedule.html">Schedule page</a>.</p>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyABxk_gvkfdvAVMr_Hd-x5OrTv6Qh2i4rE",
+      authDomain: "walk-on-fantasy-football.firebaseapp.com",
+      projectId: "walk-on-fantasy-football",
+      storageBucket: "walk-on-fantasy-football.firebasestorage.app",
+      messagingSenderId: "667624140764",
+      appId: "1:667624140764:web:9bcf904b19013006aa2919"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    let teams = [];
+    let schedule = [];
+    let currentWeek = 1;
+
+    onAuthStateChanged(auth, async user => {
+      if (user) {
+        const nav = document.querySelector('nav');
+        const draftDoc = await getDoc(doc(db, "drafts", "main"));
+        if (draftDoc.exists()) {
+          teams = draftDoc.data().teams || [];
+          const hasTeam = teams.some(t =>
+            t.email && t.email.toLowerCase() === user.email.toLowerCase()
+          );
+          if (hasTeam || teams.length > 0) {
+            const myTeamLink = document.createElement('a');
+            myTeamLink.href = 'myteam.html';
+            myTeamLink.textContent = 'My Team';
+            const loginLink = nav.querySelector('a[href="login.html"]');
+            nav.insertBefore(myTeamLink, loginLink);
+          }
+        }
+      }
+
+      await loadSchedule();
+    });
+
+    async function loadSchedule() {
+      const scheduleDoc = await getDoc(doc(db, "schedule", "main"));
+      const draftDoc = await getDoc(doc(db, "drafts", "main"));
+
+      if (!scheduleDoc.exists() || !draftDoc.exists()) {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('no-schedule').style.display = 'block';
+        return;
+      }
+
+      teams = draftDoc.data().teams || [];
+      schedule = scheduleDoc.data().weeks || [];
+
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('scores-content').style.display = 'block';
+
+      // Default to current week (Week 1 for now)
+      currentWeek = getCurrentWeek();
+      renderWeekSelector();
+      renderWeek(currentWeek);
+    }
+
+    function getCurrentWeek() {
+      // Returns current week based on date
+      // Season starts Week 1 = Sept 3, 2026
+      const seasonStart = new Date('2026-09-03');
+      const now = new Date();
+      const diff = Math.floor((now - seasonStart) / (7 * 24 * 60 * 60 * 1000));
+      const week = Math.min(Math.max(diff + 1, 1), 13);
+      return week;
+    }
+
+    function renderWeekSelector() {
+      const el = document.getElementById('week-selector');
+      el.innerHTML = '';
+      schedule.forEach(weekData => {
+        const btn = document.createElement('button');
+        btn.className = `week-btn ${weekData.playoff ? 'playoff' : ''} ${weekData.week === currentWeek ? 'active' : ''}`;
+        btn.textContent = weekData.playoff
+          ? (weekData.type === 'semifinals' ? 'Semis' : 'Champ')
+          : `Wk ${weekData.week}`;
+        btn.onclick = () => {
+          currentWeek = weekData.week;
+          document.querySelectorAll('.week-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          renderWeek(currentWeek);
+        };
+        el.appendChild(btn);
+      });
+    }
+
+    function renderWeek(week) {
+      const weekData = schedule.find(w => w.week === week);
+      if (!weekData) return;
+
+      const el = document.getElementById('week-display');
+      el.innerHTML = '';
+
+      const label = weekData.type === 'regular'
+        ? `Week ${week}`
+        : weekData.type === 'semifinals'
+        ? 'Semifinals'
+        : 'Championship';
+
+      el.innerHTML = `<div class="week-label">${label}</div>`;
+
+      if (weekData.playoff) {
+        el.innerHTML += `<span class="playoff-badge">Playoffs</span>`;
+        el.innerHTML += `<p style="color:#888;">Playoff matchups will be set after the regular season.</p>`;
+        return;
+      }
+
+      if (weekData.matchups.length === 0) {
+        el.innerHTML += `<p style="color:#888;">No matchups scheduled for this week.</p>`;
+        return;
+      }
+
+      weekData.matchups.forEach((matchup, i) => {
+        const homeTeam = teams[matchup.home];
+        const awayTeam = teams[matchup.away];
+        if (!homeTeam || !awayTeam) return;
+
+        const homeScore = matchup.homeScore;
+        const awayScore = matchup.awayScore;
+        const hasScores = homeScore !== null && awayScore !== null;
+
+        const card = document.createElement('div');
+        card.className = 'matchup-card';
+        card.onclick = () => {
+          window.location.href = `matchup.html?week=${week}&matchup=${i}`;
+        };
+
+        card.innerHTML = `
+          <div class="matchup-team home">
+            <div class="matchup-team-name">${homeTeam.name}</div>
+            <div class="matchup-team-manager">${homeTeam.manager}</div>
+          </div>
+          <div class="matchup-score">
+            ${hasScores
+              ? `<div class="matchup-score-value">${homeScore} - ${awayScore}</div>
+                 <div class="matchup-score-final">Final</div>`
+              : `<div class="matchup-score-vs">vs</div>`
+            }
+          </div>
+          <div class="matchup-team">
+            <div class="matchup-team-name">${awayTeam.name}</div>
+            <div class="matchup-team-manager">${awayTeam.manager}</div>
+          </div>
+        `;
+
+        el.appendChild(card);
+      });
+
+      if (weekData.bye !== null && weekData.bye !== undefined) {
+        const byeName = teams[weekData.bye]?.name || `Team ${weekData.bye + 1}`;
+        el.innerHTML += `<p class="bye-team">Bye week: ${byeName}</p>`;
+      }
+    }
+  </script>
+</body>
+</html>
