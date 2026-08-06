@@ -84,16 +84,24 @@ export function initNav(currentPage) {
         }
       }
 
-      const signOutBtn = document.createElement('a');
-      signOutBtn.href = '#';
-      signOutBtn.textContent = 'Sign Out';
-      signOutBtn.onclick = async (e) => {
-        e.preventDefault();
-        await signOut(auth);
-        clearLeagueId();
-        window.location.href = 'index.html';
-      };
-      nav.appendChild(signOutBtn);
+    // Add greeting
+    const greeting = document.createElement('span');
+    greeting.style.cssText = 'padding: 0 12px; font-size: 14px; color: #666; display: flex; align-items: center;';
+    const firstName = user.displayName ? user.displayName.split(' ')[0] : '';
+    greeting.textContent = firstName ? `Hello, ${firstName}!` : '';
+    nav.appendChild(greeting);
+
+    // Sign Out button
+    const signOutBtn = document.createElement('a');
+    signOutBtn.href = '#';
+    signOutBtn.textContent = 'Sign Out';
+    signOutBtn.onclick = async (e) => {
+      e.preventDefault();
+      await signOut(auth);
+      clearLeagueId();
+      window.location.href = 'index.html';
+    };
+    nav.appendChild(signOutBtn);
 
     } else {
       const loginLink = document.createElement('a');
