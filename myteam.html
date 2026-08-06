@@ -445,11 +445,14 @@
         if (league.draftTime && !draftDone) startSigningDayCountdown(league.draftTime);
       }
 
-      if (!draftDoc.exists()) {
-        document.getElementById('loading').style.display = 'none';
-        document.getElementById('no-team').style.display = 'block';
-        return;
-      }
+    if (!draftDoc.exists()) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('team-content').style.display = 'block';
+      document.getElementById('team-heading').textContent = 'Welcome!';
+      document.getElementById('manager-name').textContent = 'Signing Day has not started yet.';
+      document.getElementById('page-roster').innerHTML = '';
+      return;
+    }
 
       draftData = draftDoc.data();
       const teams = draftData.teams;
