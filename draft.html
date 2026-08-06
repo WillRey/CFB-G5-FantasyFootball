@@ -3,50 +3,72 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Walk-On Fantasy Football</title>
+  <title>Signing Day | Walk-On Fantasy Football</title>
   <link rel="stylesheet" href="style.css" />
-
-  <!-- Firebase -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyABxk_gvkfdvAVMr_Hd-x5OrTv6Qh2i4rE",
-      authDomain: "walk-on-fantasy-football.firebaseapp.com",
-      projectId: "walk-on-fantasy-football",
-      storageBucket: "walk-on-fantasy-football.firebasestorage.app",
-      messagingSenderId: "667624140764",
-      appId: "1:667624140764:web:9bcf904b19013006aa2919"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    window.db = db;
-  </script>
-
+  <style>
+    #draft-order-strip {
+      overflow-x: auto;
+      white-space: nowrap;
+      padding: 10px 0;
+      border-bottom: 2px solid #ccc;
+      margin-bottom: 20px;
+    }
+    #pick-list { display: inline-flex; gap: 8px; }
+    .pick-chip {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 6px 12px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 12px;
+      min-width: 80px;
+    }
+    .pick-chip.current { background: #2a7ae2; color: white; border-color: #2a7ae2; }
+    .pick-label { font-weight: bold; }
+    .pick-team { font-size: 11px; }
+    #draft-main { display: flex; gap: 24px; margin-top: 20px; }
+    #player-pool { flex: 2; }
+    #my-roster-panel { min-width: 220px; flex: 1; }
+    #draft-status {
+      background: #f0f4ff;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    #timer-display { font-size: 48px; font-weight: bold; color: #2a7ae2; }
+    #draft-player-table { width: 100%; margin-top: 10px; }
+    #team-rosters { margin-top: 30px; }
+    #roster-display { display: flex; flex-wrap: wrap; gap: 16px; }
+    .roster-slot {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 10px;
+      border-bottom: 1px solid #eee;
+    }
+    .roster-slot.empty .slot-player { color: #aaa; }
+    .roster-slot.filled .slot-player { font-weight: bold; }
+    .slot-label { color: #666; min-width: 90px; }
+  </style>
 </head>
 <body>
-  <nav>
-    <a href="index.html">Home</a>
-    <a href="players.html">Players</a>
-    <a href="draft.html">Draft</a>
-    <a href="setup.html">League Setup</a>
-  </nav>
+  <nav></nav>
 
   <div class="container">
-    <h1>Draft Board</h1>
+    <h1>Signing Day</h1>
 
-    <!-- Draft Setup (runs before draft starts) -->
     <div id="draft-setup">
       <h2>Team Setup</h2>
-      <p>Enter each team name and manager name before starting the draft.</p>
+      <p>Enter each team name, manager name, and email before starting Signing Day.</p>
       <div id="team-inputs"></div>
-      <button onclick="startDraft()">Start Draft</button>
+      <button onclick="startDraft()">Start Signing Day</button>
     </div>
 
-    <!-- Draft Board (runs during draft) -->
     <div id="draft-board" style="display:none;">
+      <div id="draft-order-strip">
+        <div id="pick-list"></div>
+      </div>
 
       <div id="draft-status">
         <h2 id="current-pick-label">Round 1 | Pick 1</h2>
@@ -54,15 +76,10 @@
         <div id="timer-display">2:00</div>
       </div>
 
-<div id="draft-order-strip">
-        <div id="pick-list"></div>
-      </div>
-
       <div id="draft-main">
-
         <div id="player-pool">
           <h3>Available Players</h3>
-<input type="text" id="draft-search" placeholder="Search players..." oninput="filterDraftPlayers()" />
+          <input type="text" id="draft-search" placeholder="Search players..." oninput="filterDraftPlayers()" />
           <select id="draft-pos-filter" onchange="filterDraftPlayers()">
             <option value="">All Positions</option>
             <option value="QB">QB</option>
@@ -77,6 +94,7 @@
             <option value="CUSA">C-USA</option>
             <option value="MAC">MAC</option>
             <option value="MWC">Mountain West</option>
+            <option value="Pac-12">Pac-12</option>
             <option value="Sun Belt">Sun Belt</option>
           </select>
           <select id="draft-team-filter" onchange="filterDraftPlayers()">
@@ -100,115 +118,143 @@
           <h3 id="my-roster-title">My Roster</h3>
           <div id="my-roster-slots"></div>
         </div>
-
       </div>
 
       <div id="team-rosters">
         <h3>All Team Rosters</h3>
         <div id="roster-display"></div>
       </div>
-
     </div>
   </div>
 
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, addDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  <script type="module">
+    import { initNav, db, getLeagueId } from './nav.js';
+    import { doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyABxk_gvkfdvAVMr_Hd-x5OrTv6Qh2i4rE",
-    authDomain: "walk-on-fantasy-football.firebaseapp.com",
-    projectId: "walk-on-fantasy-football",
-    storageBucket: "walk-on-fantasy-football.firebasestorage.app",
-    messagingSenderId: "667624140764",
-    appId: "1:667624140764:web:9bcf904b19013006aa2919"
-  };
+    initNav('draft.html');
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
+    const leagueId = getLeagueId();
+    if (!leagueId) window.location.href = 'index.html';
 
-  let league = JSON.parse(localStorage.getItem('leagueData')) || { teams: 8, roster: '1QB' };
-  let teamCount = parseInt(league.teams);
+    const league = JSON.parse(localStorage.getItem('leagueData')) || { teams: 8, roster: '1QB' };
+    let teamCount = parseInt(league.teams);
 
-  const rosterSlots = league.roster === 'Superflex'
-    ? ['QB', 'RB', 'RB', 'WR', 'WR', 'TE', 'Flex', 'Superflex', 'K', 'DST', 'Bench', 'Bench', 'Bench', 'Bench', 'Bench', 'Bench', 'Bench', 'MR', 'MR']
-    : ['QB', 'RB', 'RB', 'WR', 'WR', 'TE', 'Flex', 'K', 'DST', 'Bench', 'Bench', 'Bench', 'Bench', 'Bench', 'Bench', 'Bench', 'MR', 'MR'];
+    const rosterSlots = league.roster === 'Superflex'
+      ? ['QB', 'RB', 'RB', 'WR', 'WR', 'TE', 'Flex', 'Flex', 'Superflex', 'K', 'DST', 'Bench', 'Bench', 'Bench', 'Bench', 'Bench', 'Bench', 'Bench', 'MR', 'MR']
+      : ['QB', 'RB', 'RB', 'WR', 'WR', 'TE', 'Flex', 'Flex', 'K', 'DST', 'Bench', 'Bench', 'Bench', 'Bench', 'Bench', 'Bench', 'Bench', 'MR', 'MR'];
 
-  const totalRounds = rosterSlots.length;
-  let teams = [];
-  let allPlayers = [];
-  let availablePlayers = [];
-  let draftedPlayers = [];
-  let currentPick = 0;
-  let totalPicks = 0;
-  let timerInterval = null;
-  let secondsLeft = 120;
-  let draftStarted = false;
+    const totalRounds = rosterSlots.length;
+    let teams = [];
+    let allPlayers = [];
+    let availablePlayers = [];
+    let draftedPlayers = [];
+    let currentPick = 0;
+    let totalPicks = 0;
+    let timerInterval = null;
+    let secondsLeft = 120;
+    let draftData = null;
 
-  // Build team input fields
-  const teamInputs = document.getElementById('team-inputs');
-  for (let i = 0; i < teamCount; i++) {
-    const div = document.createElement('div');
-    div.style.marginBottom = '10px';
-  div.innerHTML = `
-    <strong>Team ${i + 1}</strong><br>
-    <input type="text" id="team-name-${i}" placeholder="Team name" style="margin-right:10px;" />
-    <input type="text" id="manager-name-${i}" placeholder="Manager name" style="margin-right:10px;" />
-    <input type="email" id="manager-email-${i}" placeholder="Manager email" />
-  `;
-    teamInputs.appendChild(div);
-  }
+    // Build team input fields
+    const teamInputs = document.getElementById('team-inputs');
+    for (let i = 0; i < teamCount; i++) {
+      const div = document.createElement('div');
+      div.style.marginBottom = '10px';
+      div.innerHTML = `
+        <strong>Team ${i + 1}</strong><br>
+        <input type="text" id="team-name-${i}" placeholder="Team name" style="margin-right:10px;" />
+        <input type="text" id="manager-name-${i}" placeholder="Manager name" style="margin-right:10px;" />
+        <input type="email" id="manager-email-${i}" placeholder="Manager email" />
+      `;
+      teamInputs.appendChild(div);
+    }
 
-  // Load players from CSV
-  fetch('g6_players_2026.csv')
-    .then(res => res.text())
-    .then(csv => {
-      const lines = csv.trim().split('\n');
-      const headers = lines[0].split(',');
-      allPlayers = lines.slice(1).map(line => {
-        const vals = line.split(',');
-        const obj = {};
-        headers.forEach((h, i) => obj[h.trim()] = (vals[i] || '').trim());
-        return obj;
-      }).filter(p => ['QB', 'RB', 'WR', 'TE', 'K', 'PK'].includes(p.position))
-        .map(p => ({ ...p, position: p.position === 'PK' ? 'K' : p.position }));
+    // Load players
+    fetch('g6_players_2026.csv')
+      .then(res => res.text())
+      .then(csv => {
+        const lines = csv.trim().split('\n');
+        const headers = lines[0].split(',');
+        allPlayers = lines.slice(1).map(line => {
+          const vals = line.split(',');
+          const obj = {};
+          headers.forEach((h, i) => obj[h.trim()] = (vals[i] || '').trim());
+          return obj;
+        }).filter(p => ['QB', 'RB', 'WR', 'TE', 'K', 'PK'].includes(p.position))
+          .map(p => ({ ...p, position: p.position === 'PK' ? 'K' : p.position }));
 
-      availablePlayers = [...allPlayers];
-
-      // Check if draft already exists in Firestore
-      checkExistingDraft();
-    });
-
-  async function checkExistingDraft() {
-    const draftDoc = await getDoc(doc(db, "drafts", "main"));
-    if (draftDoc.exists()) {
-      const data = draftDoc.data();
-      teams = data.teams;
-      teamCount = teams.length;
-
-      // Remove already drafted players from available pool
-      draftedPlayers = data.picks || [];
-      draftedPlayers.forEach(pick => {
-        const idx = availablePlayers.findIndex(p =>
-          p.firstName === pick.firstName && p.lastName === pick.lastName && p.team === pick.team
-        );
-        if (idx !== -1) availablePlayers.splice(idx, 1);
-
-        // Add to team roster
-        const teamIdx = pick.teamIndex;
-        if (teams[teamIdx]) teams[teamIdx].roster.push(pick);
+        availablePlayers = [...allPlayers];
+        checkExistingDraft();
       });
 
-      currentPick = draftedPlayers.length;
+    async function checkExistingDraft() {
+      const draftDoc = await getDoc(doc(db, "drafts", leagueId));
+      if (draftDoc.exists()) {
+        draftData = draftDoc.data();
+        teams = draftData.teams;
+        teamCount = teams.length;
 
-      const order = buildSnakeOrder(teamCount, totalRounds);
-      window.draftOrder = order;
-      totalPicks = order.length;
+        draftedPlayers = draftData.picks || [];
+        draftedPlayers.forEach(pick => {
+          const idx = availablePlayers.findIndex(p =>
+            p.firstName === pick.firstName && p.lastName === pick.lastName && p.team === pick.team
+          );
+          if (idx !== -1) availablePlayers.splice(idx, 1);
+          if (teams[pick.teamIndex]) teams[pick.teamIndex].roster.push(pick);
+        });
+
+        currentPick = draftedPlayers.length;
+        window.draftOrder = buildSnakeOrder(teamCount, totalRounds);
+        totalPicks = window.draftOrder.length;
+
+        document.getElementById('draft-setup').style.display = 'none';
+        document.getElementById('draft-board').style.display = 'block';
+
+        renderPickList();
+        renderRosters();
+        renderAvailablePlayers();
+        populateTeamFilter();
+        startTurn();
+        listenForPicks();
+      }
+    }
+
+    function buildSnakeOrder(teamCount, totalRounds) {
+      const order = [];
+      for (let r = 0; r < totalRounds; r++) {
+        const round = Array.from({ length: teamCount }, (_, i) => i);
+        if (r % 2 === 1) round.reverse();
+        order.push(...round);
+      }
+      return order;
+    }
+
+    window.startDraft = async function() {
+      teams = [];
+      for (let i = 0; i < teamCount; i++) {
+        const name = document.getElementById(`team-name-${i}`).value || `Team ${i + 1}`;
+        const manager = document.getElementById(`manager-name-${i}`).value || `Manager ${i + 1}`;
+        const email = document.getElementById(`manager-email-${i}`).value || '';
+        teams.push({ name, manager, email, roster: [] });
+      }
+
+      window.draftOrder = buildSnakeOrder(teamCount, totalRounds);
+      totalPicks = window.draftOrder.length;
+      currentPick = 0;
+
+      draftData = {
+        teams: teams.map(t => ({ name: t.name, manager: t.manager, email: t.email, roster: [] })),
+        picks: [],
+        currentPick: 0,
+        started: true,
+        leagueId,
+        createdAt: new Date().toISOString()
+      };
+
+      await setDoc(doc(db, "drafts", leagueId), draftData);
 
       document.getElementById('draft-setup').style.display = 'none';
       document.getElementById('draft-board').style.display = 'block';
 
-      draftStarted = true;
       renderPickList();
       renderRosters();
       renderAvailablePlayers();
@@ -216,305 +262,234 @@
       startTurn();
       listenForPicks();
     }
-  }
 
-  function buildSnakeOrder(teamCount, totalRounds) {
-    const order = [];
-    for (let r = 0; r < totalRounds; r++) {
-      const round = Array.from({ length: teamCount }, (_, i) => i);
-      if (r % 2 === 1) round.reverse();
-      order.push(...round);
+    function listenForPicks() {
+      onSnapshot(doc(db, "drafts", leagueId), (snapshot) => {
+        if (!snapshot.exists()) return;
+        const data = snapshot.data();
+        const newPickCount = data.picks ? data.picks.length : 0;
+
+        if (newPickCount !== draftedPlayers.length) {
+          draftedPlayers = data.picks || [];
+          availablePlayers = allPlayers.filter(p =>
+            !draftedPlayers.find(d => d.firstName === p.firstName && d.lastName === p.lastName && d.team === p.team)
+          );
+          teams.forEach(t => t.roster = []);
+          draftedPlayers.forEach(pick => {
+            if (teams[pick.teamIndex]) teams[pick.teamIndex].roster.push(pick);
+          });
+
+          currentPick = newPickCount;
+          draftData = data;
+          clearInterval(timerInterval);
+          renderPickList();
+          renderRosters();
+          renderAvailablePlayers();
+          startTurn();
+        }
+      });
     }
-    return order;
-  }
 
-  window.startDraft = async function() {
-    teams = [];
-    for (let i = 0; i < teamCount; i++) {
-      const name = document.getElementById(`team-name-${i}`).value || `Team ${i + 1}`;
-      const manager = document.getElementById(`manager-name-${i}`).value || `Manager ${i + 1}`;
-      const email = document.getElementById(`manager-email-${i}`).value || '';
-teams.push({ name, manager, email, roster: [] });
-    }
-
-    const order = buildSnakeOrder(teamCount, totalRounds);
-    window.draftOrder = order;
-    totalPicks = order.length;
-    currentPick = 0;
-
-    // Save draft setup to Firestore
-    await setDoc(doc(db, "drafts", "main"), {
-      teams: teams.map(t => ({ name: t.name, manager: t.manager, roster: [] })),
-      picks: [],
-      currentPick: 0,
-      started: true,
-      createdAt: new Date().toISOString()
-    });
-
-    document.getElementById('draft-setup').style.display = 'none';
-    document.getElementById('draft-board').style.display = 'block';
-
-    draftStarted = true;
-    renderPickList();
-    renderRosters();
-    renderAvailablePlayers();
-    populateTeamFilter();
-    startTurn();
-    listenForPicks();
-  }
-
-  function listenForPicks() {
-    onSnapshot(doc(db, "drafts", "main"), (snapshot) => {
-      if (!snapshot.exists()) return;
-      const data = snapshot.data();
-
-      // Sync current pick count
-      const newPickCount = data.picks ? data.picks.length : 0;
-      if (newPickCount !== draftedPlayers.length) {
-        draftedPlayers = data.picks || [];
-
-        // Rebuild available players
-        availablePlayers = allPlayers.filter(p =>
-          !draftedPlayers.find(d => d.firstName === p.firstName && d.lastName === p.lastName && d.team === p.team)
-        );
-
-        // Rebuild team rosters
-        teams.forEach(t => t.roster = []);
-        draftedPlayers.forEach(pick => {
-          if (teams[pick.teamIndex]) teams[pick.teamIndex].roster.push(pick);
-        });
-
-        currentPick = newPickCount;
+    function startTurn() {
+      if (currentPick >= totalPicks) {
+        document.getElementById('current-pick-label').textContent = 'Signing Day Complete!';
+        document.getElementById('current-team-label').textContent = '';
+        document.getElementById('timer-display').textContent = '';
         clearInterval(timerInterval);
-        renderPickList();
-        renderRosters();
-        renderAvailablePlayers();
-        startTurn();
+        return;
       }
-    });
-  }
 
-  function startTurn() {
-    if (currentPick >= totalPicks) {
-      document.getElementById('current-pick-label').textContent = 'Draft Complete!';
-      document.getElementById('current-team-label').textContent = '';
-      document.getElementById('timer-display').textContent = '';
+      const teamIndex = window.draftOrder[currentPick];
+      const round = Math.floor(currentPick / teamCount) + 1;
+      const pick = (currentPick % teamCount) + 1;
+
+      document.getElementById('current-pick-label').textContent = `Round ${round} | Pick ${pick}`;
+      document.getElementById('current-team-label').textContent =
+        `On the clock: ${teams[teamIndex].name} (${teams[teamIndex].manager})`;
+
+      secondsLeft = 120;
       clearInterval(timerInterval);
-      return;
-    }
-
-    const teamIndex = window.draftOrder[currentPick];
-    const round = Math.floor(currentPick / teamCount) + 1;
-    const pick = (currentPick % teamCount) + 1;
-
-    document.getElementById('current-pick-label').textContent = `Round ${round} | Pick ${pick}`;
-    document.getElementById('current-team-label').textContent =
-      `On the clock: ${teams[teamIndex].name} (${teams[teamIndex].manager})`;
-
-    secondsLeft = 120;
-    clearInterval(timerInterval);
-    updateTimerDisplay();
-    timerInterval = setInterval(() => {
-      secondsLeft--;
       updateTimerDisplay();
-      if (secondsLeft <= 0) {
-        clearInterval(timerInterval);
-        autoPick(teamIndex);
+      timerInterval = setInterval(() => {
+        secondsLeft--;
+        updateTimerDisplay();
+        if (secondsLeft <= 0) {
+          clearInterval(timerInterval);
+          autoPick(teamIndex);
+        }
+      }, 1000);
+
+      renderPickList();
+    }
+
+    function updateTimerDisplay() {
+      const m = Math.floor(secondsLeft / 60);
+      const s = secondsLeft % 60;
+      document.getElementById('timer-display').textContent = `${m}:${s.toString().padStart(2, '0')}`;
+    }
+
+    window.draftPlayer = async function(playerIndex) {
+      const teamIndex = window.draftOrder[currentPick];
+      const player = availablePlayers[playerIndex];
+      const pick = { ...player, teamIndex, pickNumber: currentPick };
+
+      clearInterval(timerInterval);
+
+      const draftDoc = await getDoc(doc(db, "drafts", leagueId));
+      const existingPicks = draftDoc.data().picks || [];
+      await setDoc(doc(db, "drafts", leagueId), {
+        ...draftDoc.data(),
+        picks: [...existingPicks, pick],
+        currentPick: currentPick + 1
+      });
+    }
+
+    async function autoPick(teamIndex) {
+      const positionNeeds = ['QB', 'RB', 'WR', 'TE', 'K'];
+      for (const pos of positionNeeds) {
+        const idx = availablePlayers.findIndex(p => p.position === pos);
+        if (idx !== -1) { await window.draftPlayer(idx); return; }
       }
-    }, 1000);
+      if (availablePlayers.length > 0) await window.draftPlayer(0);
+    }
 
-    renderPickList();
-  }
+    function populateTeamFilter() {
+      const teamNames = [...new Set(availablePlayers.map(p => p.team))].sort();
+      const select = document.getElementById('draft-team-filter');
+      select.innerHTML = '<option value="">All Teams</option>';
+      teamNames.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t;
+        opt.textContent = t;
+        select.appendChild(opt);
+      });
+    }
 
-  function updateTimerDisplay() {
-    const m = Math.floor(secondsLeft / 60);
-    const s = secondsLeft % 60;
-    document.getElementById('timer-display').textContent =
-      `${m}:${s.toString().padStart(2, '0')}`;
-  }
+    window.filterDraftPlayers = function() {
+      const search = (document.getElementById('draft-search')?.value || '').toLowerCase();
+      const pos = document.getElementById('draft-pos-filter')?.value || '';
+      const conf = document.getElementById('draft-conf-filter')?.value || '';
+      const team = document.getElementById('draft-team-filter')?.value || '';
 
-  window.draftPlayer = async function(playerIndex) {
-    const teamIndex = window.draftOrder[currentPick];
-    const player = availablePlayers[playerIndex];
+      const filtered = availablePlayers.filter(p => {
+        const name = `${p.firstName} ${p.lastName}`.toLowerCase();
+        return (
+          (!search || name.includes(search)) &&
+          (!pos || p.position === pos) &&
+          (!conf || p.conference === conf) &&
+          (!team || p.team === team)
+        );
+      });
 
-    const pick = {
-      ...player,
-      teamIndex,
-      pickNumber: currentPick
-    };
+      const tbody = document.getElementById('draft-player-body');
+      tbody.innerHTML = '';
+      filtered.slice(0, 100).forEach(p => {
+        const actualIndex = availablePlayers.indexOf(p);
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${p.firstName} ${p.lastName}</td>
+          <td>${p.position}</td>
+          <td>${p.team}</td>
+          <td>${p.conference}</td>
+          <td><button onclick="draftPlayer(${actualIndex})">Sign</button></td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
 
-    clearInterval(timerInterval);
+    function renderAvailablePlayers() { window.filterDraftPlayers(); }
 
-    // Save pick to Firestore
-    const draftDoc = await getDoc(doc(db, "drafts", "main"));
-    const existingPicks = draftDoc.data().picks || [];
-    await setDoc(doc(db, "drafts", "main"), {
-      ...draftDoc.data(),
-      picks: [...existingPicks, pick],
-      currentPick: currentPick + 1
-    });
-  }
+    function renderPickList() {
+      const container = document.getElementById('pick-list');
+      container.innerHTML = '';
+      const start = Math.max(0, currentPick - 3);
+      const end = Math.min(totalPicks, currentPick + 15);
 
-  async function autoPick(teamIndex) {
-    const positionNeeds = ['QB', 'RB', 'WR', 'TE', 'K'];
-    let picked = false;
-
-    for (const pos of positionNeeds) {
-      const idx = availablePlayers.findIndex(p => p.position === pos);
-      if (idx !== -1) {
-        await draftPlayer(idx);
-        picked = true;
-        break;
+      for (let i = start; i < end; i++) {
+        const teamIndex = window.draftOrder[i];
+        const round = Math.floor(i / teamCount) + 1;
+        const pick = (i % teamCount) + 1;
+        const div = document.createElement('div');
+        div.className = i === currentPick ? 'pick-chip current' : 'pick-chip';
+        div.innerHTML = `<span class="pick-label">R${round}P${pick}</span><span class="pick-team">${teams[teamIndex]?.name || ''}</span>`;
+        container.appendChild(div);
       }
     }
 
-    if (!picked && availablePlayers.length > 0) {
-      await draftPlayer(0);
+    function renderMyRoster() {
+      const myTeamIndex = 0;
+      const team = teams[myTeamIndex];
+      if (!team) return;
+      document.getElementById('my-roster-title').textContent = `${team.name} (${team.manager})`;
+
+      const slots = league.roster === 'Superflex'
+        ? [
+            { label: 'QB', positions: ['QB'] },
+            { label: 'RB', positions: ['RB'] },
+            { label: 'RB', positions: ['RB'] },
+            { label: 'WR', positions: ['WR'] },
+            { label: 'WR', positions: ['WR'] },
+            { label: 'TE', positions: ['TE'] },
+            { label: 'Flex', positions: ['RB', 'WR', 'TE'] },
+            { label: 'Flex', positions: ['RB', 'WR', 'TE'] },
+            { label: 'Superflex', positions: ['QB', 'RB', 'WR', 'TE'] },
+            { label: 'K', positions: ['K'] },
+            { label: 'D/ST', positions: ['DST'] },
+            ...Array(7).fill(null).map(() => ({ label: 'Bench', positions: ['QB', 'RB', 'WR', 'TE', 'K'] })),
+            ...Array(2).fill(null).map(() => ({ label: 'Medical Redshirt', positions: ['QB', 'RB', 'WR', 'TE', 'K'] })),
+          ]
+        : [
+            { label: 'QB', positions: ['QB'] },
+            { label: 'RB', positions: ['RB'] },
+            { label: 'RB', positions: ['RB'] },
+            { label: 'WR', positions: ['WR'] },
+            { label: 'WR', positions: ['WR'] },
+            { label: 'TE', positions: ['TE'] },
+            { label: 'Flex', positions: ['RB', 'WR', 'TE'] },
+            { label: 'Flex', positions: ['RB', 'WR', 'TE'] },
+            { label: 'K', positions: ['K'] },
+            { label: 'D/ST', positions: ['DST'] },
+            ...Array(7).fill(null).map(() => ({ label: 'Bench', positions: ['QB', 'RB', 'WR', 'TE', 'K'] })),
+            ...Array(2).fill(null).map(() => ({ label: 'Medical Redshirt', positions: ['QB', 'RB', 'WR', 'TE', 'K'] })),
+          ];
+
+      const roster = [...team.roster];
+      const filled = new Array(slots.length).fill(null);
+      slots.forEach((slot, i) => {
+        const idx = roster.findIndex(p => slot.positions.includes(p.position));
+        if (idx !== -1) { filled[i] = roster[idx]; roster.splice(idx, 1); }
+      });
+
+      const container = document.getElementById('my-roster-slots');
+      container.innerHTML = '';
+      slots.forEach((slot, i) => {
+        const div = document.createElement('div');
+        div.className = `roster-slot ${filled[i] ? 'filled' : 'empty'}`;
+        div.innerHTML = `
+          <span class="slot-label">${slot.label}</span>
+          <span class="slot-player">${filled[i] ? `${filled[i].firstName} ${filled[i].lastName}` : '—'}</span>
+        `;
+        container.appendChild(div);
+      });
     }
-  }
 
-  function populateTeamFilter() {
-    const teamNames = [...new Set(availablePlayers.map(p => p.team))].sort();
-    const select = document.getElementById('draft-team-filter');
-    select.innerHTML = '<option value="">All Teams</option>';
-    teamNames.forEach(t => {
-      const opt = document.createElement('option');
-      opt.value = t;
-      opt.textContent = t;
-      select.appendChild(opt);
-    });
-  }
-
-  window.filterDraftPlayers = function() {
-    const search = (document.getElementById('draft-search')?.value || '').toLowerCase();
-    const pos = document.getElementById('draft-pos-filter')?.value || '';
-    const conf = document.getElementById('draft-conf-filter')?.value || '';
-    const team = document.getElementById('draft-team-filter')?.value || '';
-
-    const filtered = availablePlayers.filter(p => {
-      const name = `${p.firstName} ${p.lastName}`.toLowerCase();
-      return (
-        (!search || name.includes(search)) &&
-        (!pos || p.position === pos) &&
-        (!conf || p.conference === conf) &&
-        (!team || p.team === team)
-      );
-    });
-
-    const tbody = document.getElementById('draft-player-body');
-    tbody.innerHTML = '';
-    filtered.slice(0, 100).forEach((p) => {
-      const actualIndex = availablePlayers.indexOf(p);
-      const row = document.createElement('tr');
-      row.innerHTML = `
-        <td>${p.firstName} ${p.lastName}</td>
-        <td>${p.position}</td>
-        <td>${p.team}</td>
-        <td>${p.conference}</td>
-        <td><button onclick="draftPlayer(${actualIndex})">Draft</button></td>
-      `;
-      tbody.appendChild(row);
-    });
-  }
-
-  function renderAvailablePlayers() {
-    filterDraftPlayers();
-  }
-
-  function renderPickList() {
-    const container = document.getElementById('pick-list');
-    container.innerHTML = '';
-    const start = Math.max(0, currentPick - 3);
-    const end = Math.min(totalPicks, currentPick + 15);
-
-    for (let i = start; i < end; i++) {
-      const teamIndex = window.draftOrder[i];
-      const round = Math.floor(i / teamCount) + 1;
-      const pick = (i % teamCount) + 1;
-      const div = document.createElement('div');
-      div.className = i === currentPick ? 'pick-chip current' : 'pick-chip';
-      div.innerHTML = `<span class="pick-label">R${round}P${pick}</span><span class="pick-team">${teams[teamIndex]?.name || ''}</span>`;
-      container.appendChild(div);
+    function renderRosters() {
+      renderMyRoster();
+      const container = document.getElementById('roster-display');
+      container.innerHTML = '';
+      teams.forEach(team => {
+        const div = document.createElement('div');
+        div.className = 'roster-card';
+        div.innerHTML = `
+          <h4>${team.name} <span style="font-weight:normal;font-size:13px;">(${team.manager})</span></h4>
+          <ul>
+            ${team.roster.map(p => `<li>${p.firstName} ${p.lastName} — ${p.position}</li>`).join('')}
+            ${team.roster.length === 0 ? '<li>No players yet</li>' : ''}
+          </ul>
+        `;
+        container.appendChild(div);
+      });
     }
-  }
-
-  function renderMyRoster() {
-    const myTeamIndex = 0;
-    const team = teams[myTeamIndex];
-    document.getElementById('my-roster-title').textContent = `${team.name} (${team.manager})`;
-
-    const slots = league.roster === 'Superflex'
-      ? [
-          { label: 'QB', positions: ['QB'] },
-          { label: 'RB', positions: ['RB'] },
-          { label: 'RB', positions: ['RB'] },
-          { label: 'WR', positions: ['WR'] },
-          { label: 'WR', positions: ['WR'] },
-          { label: 'TE', positions: ['TE'] },
-          { label: 'Flex', positions: ['RB', 'WR', 'TE'] },
-          { label: 'Flex', positions: ['RB', 'WR', 'TE'] },
-          { label: 'Superflex', positions: ['QB', 'RB', 'WR', 'TE'] },
-          { label: 'K', positions: ['K'] },
-          { label: 'D/ST', positions: ['DST'] },
-          ...Array(7).fill(null).map(() => ({ label: 'Bench', positions: ['QB', 'RB', 'WR', 'TE', 'K'] })),
-          ...Array(2).fill(null).map(() => ({ label: 'Medical Redshirt', positions: ['QB', 'RB', 'WR', 'TE', 'K'] })),
-        ]
-      : [
-          { label: 'QB', positions: ['QB'] },
-          { label: 'RB', positions: ['RB'] },
-          { label: 'RB', positions: ['RB'] },
-          { label: 'WR', positions: ['WR'] },
-          { label: 'WR', positions: ['WR'] },
-          { label: 'TE', positions: ['TE'] },
-          { label: 'Flex', positions: ['RB', 'WR', 'TE'] },
-          { label: 'Flex', positions: ['RB', 'WR', 'TE'] },
-          { label: 'K', positions: ['K'] },
-          { label: 'D/ST', positions: ['DST'] },
-          ...Array(7).fill(null).map(() => ({ label: 'Bench', positions: ['QB', 'RB', 'WR', 'TE', 'K'] })),
-          ...Array(2).fill(null).map(() => ({ label: 'Medical Redshirt', positions: ['QB', 'RB', 'WR', 'TE', 'K'] })),
-        ];
-
-    const roster = [...team.roster];
-    const filled = new Array(slots.length).fill(null);
-
-    slots.forEach((slot, i) => {
-      const idx = roster.findIndex(p => slot.positions.includes(p.position));
-      if (idx !== -1) {
-        filled[i] = roster[idx];
-        roster.splice(idx, 1);
-      }
-    });
-
-    const container = document.getElementById('my-roster-slots');
-    container.innerHTML = '';
-    slots.forEach((slot, i) => {
-      const div = document.createElement('div');
-      div.className = `roster-slot ${filled[i] ? 'filled' : 'empty'}`;
-      div.innerHTML = `
-        <span class="slot-label">${slot.label}</span>
-        <span class="slot-player">${filled[i] ? `${filled[i].firstName} ${filled[i].lastName}` : '—'}</span>
-      `;
-      container.appendChild(div);
-    });
-  }
-
-  function renderRosters() {
-    renderMyRoster();
-    const container = document.getElementById('roster-display');
-    container.innerHTML = '';
-    teams.forEach(team => {
-      const div = document.createElement('div');
-      div.className = 'roster-card';
-      div.innerHTML = `
-        <h4>${team.name} <span style="font-weight:normal;font-size:13px;">(${team.manager})</span></h4>
-        <ul>
-          ${team.roster.map(p => `<li>${p.firstName} ${p.lastName} — ${p.position}</li>`).join('')}
-          ${team.roster.length === 0 ? '<li>No players yet</li>' : ''}
-        </ul>
-      `;
-      container.appendChild(div);
-    });
-  }
-</script>
+  </script>
 </body>
 </html>

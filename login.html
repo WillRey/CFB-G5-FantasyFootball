@@ -5,36 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Login | Walk-On Fantasy Football</title>
   <link rel="stylesheet" href="style.css" />
-
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-    import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyABxk_gvkfdvAVMr_Hd-x5OrTv6Qh2i4rE",
-      authDomain: "walk-on-fantasy-football.firebaseapp.com",
-      projectId: "walk-on-fantasy-football",
-      storageBucket: "walk-on-fantasy-football.firebasestorage.app",
-      messagingSenderId: "667624140764",
-      appId: "1:667624140764:web:9bcf904b19013006aa2919"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const auth = getAuth(app);
-    window.db = db;
-    window.auth = auth;
-  </script>
 </head>
 <body>
-  <nav>
-    <a href="index.html">Home</a>
-    <a href="players.html">Players</a>
-    <a href="draft.html">Draft</a>
-    <a href="setup.html">League Setup</a>
-    <a href="login.html">Login</a>
-  </nav>
+  <nav></nav>
 
   <div class="container">
     <h1>Walk-On Fantasy Football</h1>
@@ -51,11 +24,11 @@
       </div>
       <button onclick="signIn()">Sign In</button>
       <p id="login-error" style="color:red;display:none;"></p>
+      <p style="margin-top:12px;font-size:14px;">New here? <a href="#" onclick="toggleRegister()">Create an account</a></p>
     </div>
 
     <div id="register-box" style="display:none;">
-      <h2>Set Your Password</h2>
-      <p>Welcome! Set a password to activate your account.</p>
+      <h2>Create Your Account</h2>
       <div class="form-group">
         <label>Email</label>
         <input type="email" id="register-email" placeholder="Enter your email" />
@@ -70,42 +43,24 @@
       </div>
       <button onclick="register()">Create Account</button>
       <p id="register-error" style="color:red;display:none;"></p>
+      <p style="margin-top:12px;font-size:14px;">Already have an account? <a href="#" onclick="toggleRegister()">Sign in</a></p>
     </div>
-
-    <p style="margin-top:16px;">
-      New manager? <a href="#" onclick="toggleRegister()">Create your account here</a>
-    </p>
-
   </div>
 
   <script type="module">
+    import { initNav, auth } from './nav.js';
     import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyABxk_gvkfdvAVMr_Hd-x5OrTv6Qh2i4rE",
-      authDomain: "walk-on-fantasy-football.firebaseapp.com",
-      projectId: "walk-on-fantasy-football",
-      storageBucket: "walk-on-fantasy-football.firebasestorage.app",
-      messagingSenderId: "667624140764",
-      appId: "1:667624140764:web:9bcf904b19013006aa2919"
-    };
+    initNav('login.html');
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-
-    // If already logged in, redirect to My Team
     onAuthStateChanged(auth, user => {
-      if (user) {
-        window.location.href = 'myteam.html';
-      }
+      if (user) window.location.href = 'myteam.html';
     });
 
     window.signIn = async function() {
       const email = document.getElementById('login-email').value;
       const password = document.getElementById('login-password').value;
       const errorEl = document.getElementById('login-error');
-
       try {
         await signInWithEmailAndPassword(auth, email, password);
         window.location.href = 'myteam.html';
@@ -142,49 +97,6 @@
       loginBox.style.display = loginBox.style.display === 'none' ? 'block' : 'none';
       registerBox.style.display = registerBox.style.display === 'none' ? 'block' : 'none';
     }
-
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-
-  const firebaseConfig = {
-    apiKey: "AIzaSyABxk_gvkfdvAVMr_Hd-x5OrTv6Qh2i4rE",
-    authDomain: "walk-on-fantasy-football.firebaseapp.com",
-    projectId: "walk-on-fantasy-football",
-    storageBucket: "walk-on-fantasy-football.firebasestorage.app",
-    messagingSenderId: "667624140764",
-    appId: "1:667624140764:web:9bcf904b19013006aa2919"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  const auth = getAuth(app);
-
-  onAuthStateChanged(auth, async user => {
-    if (!user) return;
-
-    const draftDoc = await getDoc(doc(db, "drafts", "main"));
-    if (!draftDoc.exists()) return;
-
-    const data = draftDoc.data();
-    const teams = data.teams || [];
-    const hasTeam = teams.some(t =>
-      t.email && t.email.toLowerCase() === user.email.toLowerCase()
-    );
-
-    // Fallback: Athletic Director (team 0) also gets the link
-    const isAD = teams.length > 0 && !teams.some(t => t.email);
-
-    if (hasTeam || isAD) {
-      const nav = document.querySelector('nav');
-      const myTeamLink = document.createElement('a');
-      myTeamLink.href = 'myteam.html';
-      myTeamLink.textContent = 'My Team';
-      // Insert before Login link
-      const loginLink = nav.querySelector('a[href="login.html"]');
-      nav.insertBefore(myTeamLink, loginLink);
-    }
-  });
   </script>
 </body>
 </html>

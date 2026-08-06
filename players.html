@@ -3,35 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Walk-On Fantasy Football</title>
+  <title>Players | Walk-On Fantasy Football</title>
   <link rel="stylesheet" href="style.css" />
-
-  <!-- Firebase -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyABxk_gvkfdvAVMr_Hd-x5OrTv6Qh2i4rE",
-      authDomain: "walk-on-fantasy-football.firebaseapp.com",
-      projectId: "walk-on-fantasy-football",
-      storageBucket: "walk-on-fantasy-football.firebasestorage.app",
-      messagingSenderId: "667624140764",
-      appId: "1:667624140764:web:9bcf904b19013006aa2919"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    window.db = db;
-  </script>
-
 </head>
 <body>
-  <nav>
-    <a href="index.html">Home</a>
-    <a href="players.html">Players</a>
-    <a href="draft.html">Draft</a>
-  </nav>
+  <nav></nav>
 
   <div class="container">
     <h1>Player Browser</h1>
@@ -55,6 +31,9 @@
         <option value="TE">TE</option>
         <option value="K">K</option>
       </select>
+      <select id="team-filter">
+        <option value="">All Teams</option>
+      </select>
     </div>
 
     <table id="player-table">
@@ -64,43 +43,58 @@
           <th>Position</th>
           <th>Team</th>
           <th>Conference</th>
-          <th>Year</th>
+          <th>Class</th>
         </tr>
       </thead>
       <tbody id="player-body"></tbody>
     </table>
   </div>
 
+  <script type="module">
+    import { initNav } from './nav.js';
+    initNav('players.html');
+  </script>
+
   <script>
     let allPlayers = [];
 
-fetch('g6_players_2026.csv')
-  .then(res => res.text())
-  .then(csv => {
-    const lines = csv.trim().split('\n');
-    const headers = lines[0].split(',');
-    allPlayers = lines.slice(1).map(line => {
-      const vals = line.split(',');
-      const obj = {};
-      headers.forEach((h, i) => obj[h.trim()] = (vals[i] || '').trim());
-      return obj;
-    });
+    fetch('g6_players_2026.csv')
+      .then(res => res.text())
+      .then(csv => {
+        const lines = csv.trim().split('\n');
+        const headers = lines[0].split(',');
+        allPlayers = lines.slice(1).map(line => {
+          const vals = line.split(',');
+          const obj = {};
+          headers.forEach((h, i) => obj[h.trim()] = (vals[i] || '').trim());
+          return obj;
+        }).filter(p => ['QB', 'RB', 'WR', 'TE', 'K', 'PK'].includes(p.position))
+          .map(p => ({ ...p, position: p.position === 'PK' ? 'K' : p.position }));
 
-    // Filter first, THEN render
-    allPlayers = allPlayers.filter(p =>
-    ['QB', 'RB', 'WR', 'TE', 'K', 'PK'].includes(p.position)
-    ).map(p => ({
-    ...p,
-    position: p.position === 'PK' ? 'K' : p.position
-    }));
+        populateTeamDropdown();
+        renderTable(allPlayers);
+      });
 
-    renderTable(allPlayers);
-  });
+    function getClassification(year) {
+      const map = { '0': 'Freshman', '1': 'Sophomore', '2': 'Junior', '3': 'Senior', '4': 'Graduate' };
+      return map[String(year)] || year || '—';
+    }
+
+    function populateTeamDropdown() {
+      const teams = [...new Set(allPlayers.map(p => p.team))].sort();
+      const select = document.getElementById('team-filter');
+      teams.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t;
+        opt.textContent = t;
+        select.appendChild(opt);
+      });
+    }
 
     function renderTable(players) {
       const tbody = document.getElementById('player-body');
       tbody.innerHTML = '';
-      players.slice(0, 200).forEach(p => {
+      players.slice(0, 100).forEach(p => {
         const row = document.createElement('tr');
         row.innerHTML = `
           <td>${p.firstName} ${p.lastName}</td>
@@ -117,71 +111,24 @@ fetch('g6_players_2026.csv')
       const search = document.getElementById('search').value.toLowerCase();
       const conf = document.getElementById('conf-filter').value;
       const pos = document.getElementById('pos-filter').value;
+      const team = document.getElementById('team-filter').value;
 
       const filtered = allPlayers.filter(p => {
-        const name = `${p.first_name} ${p.last_name}`.toLowerCase();
+        const name = `${p.firstName} ${p.lastName}`.toLowerCase();
         return (
           (!search || name.includes(search)) &&
           (!conf || p.conference === conf) &&
-          (!pos || p.position === pos)
+          (!pos || p.position === pos) &&
+          (!team || p.team === team)
         );
       });
       renderTable(filtered);
     }
 
-        function getClassification(year) {
-    const map = { '1': 'Freshman', '2': 'Sophomore', '3': 'Junior', '4': 'Senior', '5': 'Graduate' };
-    return map[year] || year;
-    }
-
     document.getElementById('search').addEventListener('input', filterPlayers);
     document.getElementById('conf-filter').addEventListener('change', filterPlayers);
     document.getElementById('pos-filter').addEventListener('change', filterPlayers);
+    document.getElementById('team-filter').addEventListener('change', filterPlayers);
   </script>
-
-  <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-
-  const firebaseConfig = {
-    apiKey: "AIzaSyABxk_gvkfdvAVMr_Hd-x5OrTv6Qh2i4rE",
-    authDomain: "walk-on-fantasy-football.firebaseapp.com",
-    projectId: "walk-on-fantasy-football",
-    storageBucket: "walk-on-fantasy-football.firebasestorage.app",
-    messagingSenderId: "667624140764",
-    appId: "1:667624140764:web:9bcf904b19013006aa2919"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  const auth = getAuth(app);
-
-  onAuthStateChanged(auth, async user => {
-    if (!user) return;
-
-    const draftDoc = await getDoc(doc(db, "drafts", "main"));
-    if (!draftDoc.exists()) return;
-
-    const data = draftDoc.data();
-    const teams = data.teams || [];
-    const hasTeam = teams.some(t =>
-      t.email && t.email.toLowerCase() === user.email.toLowerCase()
-    );
-
-    // Fallback: Athletic Director (team 0) also gets the link
-    const isAD = teams.length > 0 && !teams.some(t => t.email);
-
-    if (hasTeam || isAD) {
-      const nav = document.querySelector('nav');
-      const myTeamLink = document.createElement('a');
-      myTeamLink.href = 'myteam.html';
-      myTeamLink.textContent = 'My Team';
-      // Insert before Login link
-      const loginLink = nav.querySelector('a[href="login.html"]');
-      nav.insertBefore(myTeamLink, loginLink);
-    }
-  });
-</script>
 </body>
 </html>

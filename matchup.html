@@ -16,114 +16,28 @@
       border-radius: 10px;
       border: 1px solid #eee;
     }
-    .matchup-header-team {
-      flex: 1;
-    }
-    .matchup-header-team.home {
-      text-align: right;
-    }
-    .matchup-header-team-name {
-      font-size: 20px;
-      font-weight: bold;
-    }
-    .matchup-header-team-manager {
-      font-size: 13px;
-      color: #888;
-    }
-    .matchup-header-score {
-      text-align: center;
-      min-width: 120px;
-    }
-    .matchup-header-score-value {
-      font-size: 32px;
-      font-weight: bold;
-      color: #2a7ae2;
-    }
-    .matchup-header-score-label {
-      font-size: 12px;
-      color: #aaa;
-    }
-    .rosters-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 24px;
-    }
-    .roster-section h3 {
-      font-size: 16px;
-      font-weight: bold;
-      margin-bottom: 12px;
-      padding-bottom: 6px;
-      border-bottom: 2px solid #eee;
-    }
-    .player-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 8px 0;
-      border-bottom: 1px solid #f5f5f5;
-      font-size: 14px;
-    }
-    .player-row-info {
-      flex: 1;
-    }
-    .player-row-name {
-      font-weight: bold;
-    }
-    .player-row-details {
-      font-size: 12px;
-      color: #888;
-    }
-    .player-row-slot {
-      font-size: 11px;
-      font-weight: bold;
-      color: white;
-      background: #2a7ae2;
-      padding: 2px 8px;
-      border-radius: 4px;
-      min-width: 50px;
-      text-align: center;
-      margin-right: 10px;
-    }
-    .player-row-points {
-      font-weight: bold;
-      color: #2a7ae2;
-      min-width: 50px;
-      text-align: right;
-    }
-    .total-row {
-      display: flex;
-      justify-content: space-between;
-      font-weight: bold;
-      margin-top: 12px;
-      padding-top: 8px;
-      border-top: 2px solid #eee;
-    }
-    .back-link {
-      display: inline-block;
-      margin-bottom: 16px;
-      color: #2a7ae2;
-      cursor: pointer;
-      font-size: 14px;
-    }
-    .back-link:hover {
-      text-decoration: underline;
-    }
-    .week-label {
-      font-size: 13px;
-      color: #888;
-      margin-bottom: 8px;
-    }
+    .matchup-header-team { flex: 1; }
+    .matchup-header-team.home { text-align: right; }
+    .matchup-header-team-name { font-size: 20px; font-weight: bold; }
+    .matchup-header-team-manager { font-size: 13px; color: #888; }
+    .matchup-header-score { text-align: center; min-width: 120px; }
+    .matchup-header-score-value { font-size: 32px; font-weight: bold; color: #2a7ae2; }
+    .matchup-header-score-label { font-size: 12px; color: #aaa; }
+    .rosters-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .roster-section h3 { font-size: 16px; font-weight: bold; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid #eee; }
+    .player-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f5f5f5; font-size: 14px; }
+    .player-row-slot { font-size: 11px; font-weight: bold; color: white; background: #2a7ae2; padding: 2px 8px; border-radius: 4px; min-width: 50px; text-align: center; margin-right: 10px; }
+    .player-row-info { flex: 1; }
+    .player-row-name { font-weight: bold; }
+    .player-row-details { font-size: 12px; color: #888; }
+    .player-row-points { font-weight: bold; color: #2a7ae2; min-width: 50px; text-align: right; }
+    .total-row { display: flex; justify-content: space-between; font-weight: bold; margin-top: 12px; padding-top: 8px; border-top: 2px solid #eee; }
+    .back-link { display: inline-block; margin-bottom: 16px; color: #2a7ae2; cursor: pointer; font-size: 14px; }
+    .back-link:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
-  <nav>
-    <a href="index.html">Home</a>
-    <a href="players.html">Players</a>
-    <a href="draft.html">Draft</a>
-    <a href="setup.html">League Setup</a>
-    <a href="scores.html">Scores</a>
-    <a href="login.html">Login</a>
-  </nav>
+  <nav></nav>
 
   <div class="container">
     <div class="back-link" onclick="history.back()">← Back to Scores</div>
@@ -132,22 +46,13 @@
   </div>
 
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { initNav, db, getLeagueId } from './nav.js';
+    import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyABxk_gvkfdvAVMr_Hd-x5OrTv6Qh2i4rE",
-      authDomain: "walk-on-fantasy-football.firebaseapp.com",
-      projectId: "walk-on-fantasy-football",
-      storageBucket: "walk-on-fantasy-football.firebasestorage.app",
-      messagingSenderId: "667624140764",
-      appId: "1:667624140764:web:9bcf904b19013006aa2919"
-    };
+    initNav('matchup.html');
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const auth = getAuth(app);
+    const leagueId = getLeagueId();
+    if (!leagueId) window.location.href = 'index.html';
 
     const params = new URLSearchParams(window.location.search);
     const week = parseInt(params.get('week')) || 1;
@@ -168,32 +73,10 @@
       { label: 'D/ST', positions: ['DST'] },
     ];
 
-    onAuthStateChanged(auth, async user => {
-      if (user) {
-        const nav = document.querySelector('nav');
-        const draftDoc = await getDoc(doc(db, "drafts", "main"));
-        if (draftDoc.exists()) {
-          teams = draftDoc.data().teams || [];
-          const hasTeam = teams.some(t =>
-            t.email && t.email.toLowerCase() === user.email.toLowerCase()
-          );
-          if (hasTeam || teams.length > 0) {
-            const myTeamLink = document.createElement('a');
-            myTeamLink.href = 'myteam.html';
-            myTeamLink.textContent = 'My Team';
-            const loginLink = nav.querySelector('a[href="login.html"]');
-            nav.insertBefore(myTeamLink, loginLink);
-          }
-        }
-      }
-
-      await loadMatchup();
-    });
-
     async function loadMatchup() {
       const [scheduleDoc, draftDoc] = await Promise.all([
-        getDoc(doc(db, "schedule", "main")),
-        getDoc(doc(db, "drafts", "main"))
+        getDoc(doc(db, "schedule", leagueId)),
+        getDoc(doc(db, "drafts", leagueId))
       ]);
 
       if (!scheduleDoc.exists() || !draftDoc.exists()) {
@@ -206,16 +89,10 @@
       const picks = draftDoc.data().picks || [];
 
       const weekData = schedule.find(w => w.week === week);
-      if (!weekData) {
-        document.getElementById('loading').textContent = 'Week not found.';
-        return;
-      }
+      if (!weekData) { document.getElementById('loading').textContent = 'Week not found.'; return; }
 
       const matchup = weekData.matchups[matchupIndex];
-      if (!matchup) {
-        document.getElementById('loading').textContent = 'Matchup not found.';
-        return;
-      }
+      if (!matchup) { document.getElementById('loading').textContent = 'Matchup not found.'; return; }
 
       const homeTeam = teams[matchup.home];
       const awayTeam = teams[matchup.away];
@@ -232,24 +109,14 @@
     }
 
     function buildLineup(team, picks) {
-      if (team.lineup) {
-        return {
-          starting: team.lineup.starting,
-          bench: team.lineup.bench,
-          mr: team.lineup.mr
-        };
-      }
+      if (team.lineup) return { starting: team.lineup.starting, bench: team.lineup.bench, mr: team.lineup.mr };
 
       const roster = [...picks];
       const starting = new Array(startingSlotDefs.length).fill(null);
       startingSlotDefs.forEach((slot, i) => {
         const idx = roster.findIndex(p => slot.positions.includes(p.position));
-        if (idx !== -1) {
-          starting[i] = roster[idx];
-          roster.splice(idx, 1);
-        }
+        if (idx !== -1) { starting[i] = roster[idx]; roster.splice(idx, 1); }
       });
-
       return { starting, bench: roster.slice(0, 7), mr: roster.slice(7, 9) };
     }
 
@@ -258,7 +125,7 @@
       const hasScores = matchup.homeScore !== null && matchup.awayScore !== null;
 
       el.innerHTML = `
-        <div class="week-label">Week ${week}</div>
+        <div style="font-size:13px;color:#888;margin-bottom:8px;">Week ${week}</div>
         <div class="matchup-header">
           <div class="matchup-header-team home">
             <div class="matchup-header-team-name">${homeTeam.name}</div>
@@ -266,18 +133,14 @@
           </div>
           <div class="matchup-header-score">
             ${hasScores
-              ? `<div class="matchup-header-score-value">${matchup.homeScore} - ${matchup.awayScore}</div>
-                 <div class="matchup-header-score-label">Final</div>`
-              : `<div class="matchup-header-score-value" style="font-size:20px;color:#aaa;">vs</div>
-                 <div class="matchup-header-score-label">Upcoming</div>`
-            }
+              ? `<div class="matchup-header-score-value">${matchup.homeScore} - ${matchup.awayScore}</div><div class="matchup-header-score-label">Final</div>`
+              : `<div class="matchup-header-score-value" style="font-size:20px;color:#aaa;">vs</div><div class="matchup-header-score-label">Upcoming</div>`}
           </div>
           <div class="matchup-header-team">
             <div class="matchup-header-team-name">${awayTeam.name}</div>
             <div class="matchup-header-team-manager">${awayTeam.manager}</div>
           </div>
         </div>
-
         <div class="rosters-grid">
           <div class="roster-section">
             <h3>${homeTeam.name}</h3>
@@ -299,7 +162,6 @@
         const player = starting[i];
         const pts = player?.weekPoints || null;
         if (pts) totalPoints += pts;
-
         html += `
           <div class="player-row">
             <span class="player-row-slot">${slot.label}</span>
@@ -312,9 +174,8 @@
         `;
       });
 
-      // Bench
       html += `<div style="margin-top:12px;font-size:12px;font-weight:bold;color:#888;padding:4px 0;">BENCH</div>`;
-      bench.forEach(player => {
+      bench?.forEach(player => {
         if (!player) return;
         html += `
           <div class="player-row" style="opacity:0.6;">
@@ -328,15 +189,11 @@
         `;
       });
 
-      html += `
-        <div class="total-row">
-          <span>Total</span>
-          <span style="color:#2a7ae2;">${totalPoints > 0 ? totalPoints.toFixed(1) : '—'}</span>
-        </div>
-      `;
-
+      html += `<div class="total-row"><span>Total</span><span style="color:#2a7ae2;">${totalPoints > 0 ? totalPoints.toFixed(1) : '—'}</span></div>`;
       return html;
     }
+
+    loadMatchup();
   </script>
 </body>
 </html>

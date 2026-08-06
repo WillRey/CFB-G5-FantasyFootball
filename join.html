@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Join League | Walk-On Fantasy Football</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <nav></nav>
+
+  <div class="container">
+    <div id="loading">Loading league info...</div>
+
+    <div id="join-content" style="display:none;">
+      <h1>You've Been Invited!</h1>
+      <div id="league-details" style="margin-bottom:24px;padding:16px;background:#f0f4ff;border-radius:8px;border:1px solid #2a7ae2;"></div>
+
+      <div id="auth-section">
+        <div id="login-box">
+          <h2>Sign In</h2>
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="login-email" placeholder="Enter your email" />
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="login-password" placeholder="Enter your password" />
+          </div>
+          <button onclick="signIn()">Sign In & Join League</button>
+          <p style="margin-top:12px;font-size:14px;">New here? <a href="#" onclick="toggleRegister()">Create an account</a></p>
+          <p id="login-error" style="color:red;display:none;"></p>
+        </div>
+
+        <div id="register-box" style="display:none;">
+          <h2>Create Your Account</h2>
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="register-email" placeholder="Enter your email" />
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="register-password" placeholder="Choose a password" />
+          </div>
+          <div class="form-group">
+            <label>Confirm Password</label>
+            <input type="password" id="register-confirm" placeholder="Confirm your password" />
+          </div>
+          <button onclick="register()">Create Account & Join League</button>
+          <p style="margin-top:12px;font-size:14px;">Already have an account? <a href="#" onclick="toggleRegister()">Sign in</a></p>
+          <p id="register-error" style="color:red;display:none;"></p>
+        </div>
+      </div>
+
+      <div id="already-joined" style="display:none;">
+        <h2>You're In!</h2>
+        <p>You've already joined this league.</p>
+        <a href="myteam.html">Go to My Team</a>
+      </div>
+    </div>
+
+    <div id="no-league" style="display:none;">
+      <h2>League Not Found</h2>
+      <p>This invite link may be invalid or expired. Contact your Athletic Director.</p>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initNav, db, auth, setLeagueId } from './nav.js';
+    import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+    initNav('join.html');
+
+    const params = new URLSearchParams(window.location.search);
+    const leagueId = params.get('league');
+    let leagueData = null;
+
+    async function init() {
+      if (!leagueId) {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('no-league').style.display = 'block';
+        return;
+      }
+
+      const leagueDoc = await getDoc(doc(db, "leagues", leagueId));
+      if (!leagueDoc.exists()) {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('no-league').style.display = 'block';
+        return;
+      }
+
+      leagueData = leagueDoc.data();
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('join-content').style.display = 'block';
+      document.getElementById('league-details').innerHTML = `
+        <h3 style="margin:0 0 8px;">${leagueData.name}</h3>
+        <p style="margin:0;font-size:14px;color:#555;">${leagueData.teams} Teams · ${leagueData.roster} · Signing Day: ${new Date(leagueData.draftTime).toLocaleString()}</p>
+      `;
+
+      // Check if already logged in
+      onAuthStateChanged(auth, user => {
+        if (user) {
+          setLeagueId(leagueId);
+          localStorage.setItem('leagueData', JSON.stringify(leagueData));
+          document.getElementById('auth-section').style.display = 'none';
+          document.getElementById('already-joined').style.display = 'block';
+        }
+      });
+    }
+
+    async function joinLeague() {
+      setLeagueId(leagueId);
+      localStorage.setItem('leagueData', JSON.stringify(leagueData));
+      window.location.href = 'myteam.html';
+    }
+
+    window.signIn = async function() {
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+      const errorEl = document.getElementById('login-error');
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+        await joinLeague();
+      } catch (err) {
+        errorEl.textContent = 'Invalid email or password.';
+        errorEl.style.display = 'block';
+      }
+    }
+
+    window.register = async function() {
+      const email = document.getElementById('register-email').value;
+      const password = document.getElementById('register-password').value;
+      const confirm = document.getElementById('register-confirm').value;
+      const errorEl = document.getElementById('register-error');
+
+      if (password !== confirm) {
+        errorEl.textContent = 'Passwords do not match.';
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      try {
+        await createUserWithEmailAndPassword(auth, email, password);
+        await joinLeague();
+      } catch (err) {
+        errorEl.textContent = err.message;
+        errorEl.style.display = 'block';
+      }
+    }
+
+    window.toggleRegister = function() {
+      const loginBox = document.getElementById('login-box');
+      const registerBox = document.getElementById('register-box');
+      loginBox.style.display = loginBox.style.display === 'none' ? 'block' : 'none';
+      registerBox.style.display = registerBox.style.display === 'none' ? 'block' : 'none';
+    }
+
+    init();
+  </script>
+</body>
+</html>

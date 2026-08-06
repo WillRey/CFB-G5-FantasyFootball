@@ -3,41 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Walk-On Fantasy Football</title>
+  <title>Create A League | Walk-On Fantasy Football</title>
   <link rel="stylesheet" href="style.css" />
-
-  <!-- Firebase -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyABxk_gvkfdvAVMr_Hd-x5OrTv6Qh2i4rE",
-      authDomain: "walk-on-fantasy-football.firebaseapp.com",
-      projectId: "walk-on-fantasy-football",
-      storageBucket: "walk-on-fantasy-football.firebasestorage.app",
-      messagingSenderId: "667624140764",
-      appId: "1:667624140764:web:9bcf904b19013006aa2919"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    window.db = db;
-  </script>
-
 </head>
 <body>
-  <nav>
-    <a href="index.html">Home</a>
-    <a href="players.html">Players</a>
-    <a href="draft.html">Draft</a>
-  </nav>
+  <nav></nav>
 
   <div class="container">
-    <h1>League Setup</h1>
+    <h1>Create A League</h1>
     <p>Welcome, Athletic Director. Configure your league below.</p>
 
-    <div class="setup-form">
+    <div class="setup-form" id="setup-form">
 
       <div class="form-group">
         <label>League Name</label>
@@ -46,13 +22,13 @@
 
       <div class="form-group">
         <label>Number of Teams</label>
-      <select id="team-count">
-        <option value="1">1 Team (Testing)</option>
-        <option value="4">4 Teams</option>
-        <option value="6">6 Teams</option>
-        <option value="8" selected>8 Teams</option>
-        <option value="12">12 Teams</option>
-      </select>
+        <select id="team-count">
+          <option value="1">1 Team (Testing)</option>
+          <option value="4">4 Teams</option>
+          <option value="6">6 Teams</option>
+          <option value="8" selected>8 Teams</option>
+          <option value="12">12 Teams</option>
+        </select>
       </div>
 
       <div class="form-group">
@@ -91,14 +67,14 @@
       </div>
 
       <div class="form-group">
-        <label>Draft Date & Time</label>
+        <label>Signing Day Date & Time</label>
         <input type="datetime-local" id="draft-time" />
       </div>
 
       <div class="form-group">
-        <label>Draft Order</label>
+        <label>Signing Day Order</label>
         <select id="draft-order" onchange="toggleManualOrder()">
-          <option value="random">Random (set 24hrs before draft)</option>
+          <option value="random">Random (set 24hrs before Signing Day)</option>
           <option value="manual">Manual (set by Athletic Director)</option>
         </select>
       </div>
@@ -115,29 +91,43 @@
     <div id="confirm-message" style="display:none;">
       <h2>League Created!</h2>
       <p id="confirm-details"></p>
+      <div style="margin-top:16px;padding:16px;background:#f0f4ff;border-radius:8px;border:1px solid #2a7ae2;">
+        <strong>Your League ID:</strong>
+        <div id="league-id-display" style="font-size:24px;font-weight:bold;color:#2a7ae2;margin:8px 0;"></div>
+        <p style="font-size:14px;color:#666;">Share this ID or the invite link with your league members.</p>
+        <div style="margin-top:8px;">
+          <strong>Invite Link:</strong>
+          <div id="invite-link-display" style="font-size:13px;color:#444;word-break:break-all;margin-top:4px;"></div>
+          <button onclick="copyInviteLink()" style="margin-top:8px;padding:6px 14px;font-size:13px;">Copy Invite Link</button>
+        </div>
+      </div>
+      <br>
       <a href="index.html">Go to League Home</a>
     </div>
-
   </div>
 
-  <script>
-    let selectedRoster = '1QB';
+  <script type="module">
+    import { initNav, db, generateLeagueId, setLeagueId } from './nav.js';
+    import { doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-    function selectRoster(format) {
+    initNav('setup.html');
+
+    let selectedRoster = '1QB';
+    let createdLeagueId = null;
+
+    window.selectRoster = function(format) {
       selectedRoster = format;
       document.getElementById('card-1qb').classList.remove('selected');
       document.getElementById('card-superflex').classList.remove('selected');
       document.getElementById(`card-${format.toLowerCase()}`).classList.add('selected');
     }
 
-    // Default select 1QB
     selectRoster('1QB');
 
-    function toggleManualOrder() {
+    window.toggleManualOrder = function() {
       const val = document.getElementById('draft-order').value;
       const section = document.getElementById('manual-order-section');
       const count = parseInt(document.getElementById('team-count').value);
-
       if (val === 'manual') {
         section.style.display = 'block';
         buildManualInputs(count);
@@ -164,7 +154,7 @@
       }
     });
 
-async function saveLeague() {
+    window.saveLeague = async function() {
       const name = document.getElementById('league-name').value;
       const teams = document.getElementById('team-count').value;
       const draftTime = document.getElementById('draft-time').value;
@@ -175,7 +165,11 @@ async function saveLeague() {
         return;
       }
 
+      const leagueId = generateLeagueId();
+      createdLeagueId = leagueId;
+
       const leagueData = {
+        leagueId,
         name,
         teams,
         roster: selectedRoster,
@@ -193,67 +187,32 @@ async function saveLeague() {
       }
 
       try {
-        const { getFirestore, doc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-        const db = window.db;
-        await setDoc(doc(db, "leagues", "main"), leagueData);
+        await setDoc(doc(db, "leagues", leagueId), leagueData);
 
-        // Still save to localStorage as backup
+        // Save league ID and data locally
+        setLeagueId(leagueId);
         localStorage.setItem('leagueData', JSON.stringify(leagueData));
 
+        const inviteLink = `${window.location.origin}/join.html?league=${leagueId}`;
+
+        document.getElementById('league-id-display').textContent = leagueId;
+        document.getElementById('invite-link-display').textContent = inviteLink;
         document.getElementById('confirm-details').textContent =
-          `${name} | ${teams} Teams | ${selectedRoster} | Draft: ${new Date(draftTime).toLocaleString()}`;
+          `${name} | ${teams} Teams | ${selectedRoster} | Signing Day: ${new Date(draftTime).toLocaleString()}`;
         document.getElementById('confirm-message').style.display = 'block';
-        document.querySelector('.setup-form').style.display = 'none';
+        document.getElementById('setup-form').style.display = 'none';
+
       } catch (err) {
         console.error("Error saving league:", err);
         alert("Something went wrong saving the league. Check the console for details.");
       }
     }
-  </script>
 
-  <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-
-  const firebaseConfig = {
-    apiKey: "AIzaSyABxk_gvkfdvAVMr_Hd-x5OrTv6Qh2i4rE",
-    authDomain: "walk-on-fantasy-football.firebaseapp.com",
-    projectId: "walk-on-fantasy-football",
-    storageBucket: "walk-on-fantasy-football.firebasestorage.app",
-    messagingSenderId: "667624140764",
-    appId: "1:667624140764:web:9bcf904b19013006aa2919"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  const auth = getAuth(app);
-
-  onAuthStateChanged(auth, async user => {
-    if (!user) return;
-
-    const draftDoc = await getDoc(doc(db, "drafts", "main"));
-    if (!draftDoc.exists()) return;
-
-    const data = draftDoc.data();
-    const teams = data.teams || [];
-    const hasTeam = teams.some(t =>
-      t.email && t.email.toLowerCase() === user.email.toLowerCase()
-    );
-
-    // Fallback: Athletic Director (team 0) also gets the link
-    const isAD = teams.length > 0 && !teams.some(t => t.email);
-
-    if (hasTeam || isAD) {
-      const nav = document.querySelector('nav');
-      const myTeamLink = document.createElement('a');
-      myTeamLink.href = 'myteam.html';
-      myTeamLink.textContent = 'My Team';
-      // Insert before Login link
-      const loginLink = nav.querySelector('a[href="login.html"]');
-      nav.insertBefore(myTeamLink, loginLink);
+    window.copyInviteLink = function() {
+      const link = document.getElementById('invite-link-display').textContent;
+      navigator.clipboard.writeText(link);
+      alert('Invite link copied!');
     }
-  });
-</script>
+  </script>
 </body>
 </html>

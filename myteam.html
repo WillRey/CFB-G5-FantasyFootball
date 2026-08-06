@@ -6,6 +6,74 @@
   <title>My Team | Walk-On Fantasy Football</title>
   <link rel="stylesheet" href="style.css" />
   <style>
+    .subnav {
+      display: flex;
+      gap: 0;
+      border-bottom: 2px solid #eee;
+      margin-bottom: 24px;
+      position: relative;
+    }
+    .subnav-link {
+      padding: 10px 18px;
+      font-size: 14px;
+      font-weight: bold;
+      color: #666;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .subnav-link:hover { color: #2a7ae2; }
+    .subnav-link.active { color: #2a7ae2; border-bottom-color: #2a7ae2; }
+    .subnav-dropdown { position: relative; }
+    .subnav-dropdown-menu {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      background: white;
+      border: 1px solid #eee;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      z-index: 100;
+      min-width: 180px;
+    }
+    .subnav-dropdown:hover .subnav-dropdown-menu { display: block; }
+    .subnav-dropdown-menu a {
+      display: block;
+      padding: 10px 16px;
+      font-size: 14px;
+      color: #333;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .subnav-dropdown-menu a:hover { background: #f0f4ff; color: #2a7ae2; }
+
+    #signing-day-banner {
+      background: #f0f4ff;
+      border: 1px solid #2a7ae2;
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+    #signing-day-banner h2 { margin: 0 0 8px; color: #2a7ae2; }
+    #countdown { font-size: 32px; font-weight: bold; color: #1a5bbf; margin: 8px 0; }
+    #signing-day-btn {
+      display: none;
+      margin-top: 12px;
+      padding: 10px 24px;
+      background: #2a7ae2;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    #signing-day-btn:hover { background: #1a5bbf; }
+
     .roster-slot {
       display: flex;
       align-items: center;
@@ -26,18 +94,9 @@
       transition: all 0.2s;
       text-align: center;
     }
-    .slot-label:hover {
-      background: #1a5bbf;
-      border-color: #1a5bbf;
-    }
-    .slot-label.empty-slot {
-      background: #ccc;
-      border-color: #ccc;
-      color: #666;
-    }
-    .slot-player {
-      flex: 1;
-    }
+    .slot-label:hover { background: #1a5bbf; border-color: #1a5bbf; }
+    .slot-label.empty-slot { background: #ccc; border-color: #ccc; color: #666; }
+    .slot-player { flex: 1; }
     .section-title {
       font-size: 18px;
       font-weight: bold;
@@ -46,7 +105,6 @@
       border-bottom: 2px solid #eee;
     }
 
-    /* Modal */
     #swap-modal {
       display: none;
       position: fixed;
@@ -57,9 +115,7 @@
       justify-content: center;
       align-items: center;
     }
-    #swap-modal.open {
-      display: flex;
-    }
+    #swap-modal.open { display: flex; }
     #swap-modal-box {
       background: white;
       border-radius: 12px;
@@ -69,12 +125,7 @@
       max-height: 80vh;
       overflow-y: auto;
     }
-    #swap-modal-title {
-      font-size: 16px;
-      font-weight: bold;
-      margin-bottom: 16px;
-      color: #333;
-    }
+    #swap-modal-title { font-size: 16px; font-weight: bold; margin-bottom: 16px; color: #333; }
     .swap-option {
       display: flex;
       align-items: center;
@@ -86,24 +137,10 @@
       transition: background 0.15s;
       gap: 12px;
     }
-    .swap-option:hover {
-      background: #f0f4ff;
-      border-color: #2a7ae2;
-    }
-    .swap-option-slot {
-      font-size: 11px;
-      font-weight: bold;
-      color: #888;
-      min-width: 50px;
-    }
-    .swap-option-name {
-      font-weight: bold;
-      font-size: 14px;
-    }
-    .swap-option-details {
-      font-size: 12px;
-      color: #666;
-    }
+    .swap-option:hover { background: #f0f4ff; border-color: #2a7ae2; }
+    .swap-option-slot { font-size: 11px; font-weight: bold; color: #888; min-width: 50px; }
+    .swap-option-name { font-weight: bold; font-size: 14px; }
+    .swap-option-details { font-size: 12px; color: #666; }
     #swap-modal-cancel {
       margin-top: 12px;
       width: 100%;
@@ -114,22 +151,26 @@
       cursor: pointer;
       font-size: 14px;
     }
-    #swap-modal-cancel:hover {
-      background: #e5e5e5;
+    #swap-modal-cancel:hover { background: #e5e5e5; }
+
+    .conf-page { display: none; }
+    .conf-page.active { display: block; }
+    .scoring-table { width: 100%; border-collapse: collapse; }
+    .scoring-table th, .scoring-table td {
+      padding: 10px 14px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+      font-size: 14px;
     }
+    .scoring-table th { font-weight: bold; color: #666; font-size: 12px; text-transform: uppercase; }
+    .scoring-section-label { font-weight: bold; font-size: 16px; margin: 20px 0 8px; padding-bottom: 4px; border-bottom: 2px solid #eee; }
+    .activity-item { padding: 12px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
+    .activity-item .activity-time { font-size: 12px; color: #aaa; margin-top: 4px; }
   </style>
 </head>
 <body>
-<nav>
-  <a href="index.html">Home</a>
-  <a href="players.html">Players</a>
-  <a href="draft.html">Draft</a>
-  <a href="myteam.html">My Team</a>
-  <a href="scores.html">Scores</a>
-  <a href="login.html">Login</a>
-</nav>
+  <nav></nav>
 
-  <!-- Swap Modal -->
   <div id="swap-modal">
     <div id="swap-modal-box">
       <div id="swap-modal-title"></div>
@@ -140,19 +181,108 @@
 
   <div class="container">
     <div id="loading">Loading your team...</div>
+
     <div id="team-content" style="display:none;">
       <h1 id="team-heading"></h1>
       <p id="manager-name"></p>
 
-      <div class="section-title">Starting Lineup</div>
-      <div id="starting-lineup"></div>
+      <div id="signing-day-banner" style="display:none;">
+        <h2 id="signing-day-title">Signing Day</h2>
+        <div id="countdown"></div>
+        <a id="signing-day-btn" href="draft.html">Enter Signing Day</a>
+      </div>
 
-      <div class="section-title">Bench</div>
-      <div id="bench-slots"></div>
+      <div class="subnav">
+        <a class="subnav-link active" onclick="showPage('roster')" id="tab-roster">My Roster</a>
+        <div class="subnav-dropdown">
+          <a class="subnav-link" id="tab-conference">Conference ▾</a>
+          <div class="subnav-dropdown-menu">
+            <a onclick="showPage('league-settings')">League Settings</a>
+            <a onclick="showPage('scoring')">Scoring System</a>
+            <a onclick="showPage('activity')">Recent Activity</a>
+          </div>
+        </div>
+      </div>
 
-      <div class="section-title">Medical Redshirt</div>
-      <div id="mr-slots"></div>
+      <div class="conf-page active" id="page-roster">
+        <div class="section-title">Starting Lineup</div>
+        <div id="starting-lineup"></div>
+        <div class="section-title">Bench</div>
+        <div id="bench-slots"></div>
+        <div class="section-title">Medical Redshirt</div>
+        <div id="mr-slots"></div>
+      </div>
+
+      <div class="conf-page" id="page-league-settings">
+        <h2>League Settings</h2>
+        <div id="league-settings-content">Loading...</div>
+      </div>
+
+      <div class="conf-page" id="page-scoring">
+        <h2>Scoring System</h2>
+
+        <div class="scoring-section-label">Passing</div>
+        <table class="scoring-table">
+          <tr><td>Passing Yards</td><td>1 pt / 25 yds</td></tr>
+          <tr><td>Passing TD</td><td>4 pts</td></tr>
+          <tr><td>Interception Thrown</td><td>-2 pts</td></tr>
+          <tr><td>2-Point Conversion</td><td>2 pts</td></tr>
+        </table>
+
+        <div class="scoring-section-label">Rushing</div>
+        <table class="scoring-table">
+          <tr><td>Rushing Yards</td><td>1 pt / 10 yds</td></tr>
+          <tr><td>Rushing TD</td><td>6 pts</td></tr>
+          <tr><td>2-Point Conversion</td><td>2 pts</td></tr>
+        </table>
+
+        <div class="scoring-section-label">Receiving</div>
+        <table class="scoring-table">
+          <tr><td>Receiving Yards</td><td>1 pt / 10 yds</td></tr>
+          <tr><td>Receiving TD</td><td>6 pts</td></tr>
+          <tr><td>Reception</td><td>0.5 pts (Half PPR)</td></tr>
+          <tr><td>2-Point Conversion</td><td>2 pts</td></tr>
+        </table>
+
+        <div class="scoring-section-label">Kicking</div>
+        <table class="scoring-table">
+          <tr><td>Extra Point Made</td><td>1 pt</td></tr>
+          <tr><td>Extra Point Missed</td><td>-1 pt</td></tr>
+          <tr><td>FG Made (0-39 yds)</td><td>3 pts</td></tr>
+          <tr><td>FG Made (40-49 yds)</td><td>4 pts</td></tr>
+          <tr><td>FG Made (50-59 yds)</td><td>5 pts</td></tr>
+          <tr><td>FG Made (60+ yds)</td><td>6 pts</td></tr>
+          <tr><td>FG Missed (0-39 yds)</td><td>-2 pts</td></tr>
+          <tr><td>FG Missed (40-59 yds)</td><td>-1 pt</td></tr>
+          <tr><td>FG Missed (60+ yds)</td><td>-0.5 pts</td></tr>
+        </table>
+
+        <div class="scoring-section-label">Defense / Special Teams</div>
+        <table class="scoring-table">
+          <tr><td>0 Points Allowed</td><td>10 pts</td></tr>
+          <tr><td>1-6 Points Allowed</td><td>7 pts</td></tr>
+          <tr><td>7-13 Points Allowed</td><td>4 pts</td></tr>
+          <tr><td>14-20 Points Allowed</td><td>1 pt</td></tr>
+          <tr><td>21-27 Points Allowed</td><td>0 pts</td></tr>
+          <tr><td>28-34 Points Allowed</td><td>-1 pt</td></tr>
+          <tr><td>35-45 Points Allowed</td><td>-3 pts</td></tr>
+          <tr><td>46+ Points Allowed</td><td>-4 pts</td></tr>
+          <tr><td>Sack</td><td>1 pt</td></tr>
+          <tr><td>Interception</td><td>2 pts</td></tr>
+          <tr><td>Fumble Recovered</td><td>2 pts</td></tr>
+          <tr><td>Fumble Forced</td><td>1 pt</td></tr>
+          <tr><td>Any TD (return, blocked kick, etc.)</td><td>6 pts</td></tr>
+          <tr><td>Safety</td><td>4 pts</td></tr>
+          <tr><td>Blocked Kick</td><td>2 pts</td></tr>
+        </table>
+      </div>
+
+      <div class="conf-page" id="page-activity">
+        <h2>Recent Activity</h2>
+        <div id="activity-list">Loading...</div>
+      </div>
     </div>
+
     <div id="no-team" style="display:none;">
       <h2>No team found</h2>
       <p>Your account isn't linked to a team yet. Contact your Athletic Director.</p>
@@ -160,22 +290,14 @@
   </div>
 
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { initNav, db, auth, getLeagueId } from './nav.js';
+    import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyABxk_gvkfdvAVMr_Hd-x5OrTv6Qh2i4rE",
-      authDomain: "walk-on-fantasy-football.firebaseapp.com",
-      projectId: "walk-on-fantasy-football",
-      storageBucket: "walk-on-fantasy-football.firebasestorage.app",
-      messagingSenderId: "667624140764",
-      appId: "1:667624140764:web:9bcf904b19013006aa2919"
-    };
+    initNav('myteam.html');
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const auth = getAuth(app);
+    const leagueId = getLeagueId();
+    if (!leagueId) window.location.href = 'index.html';
 
     let myTeamIndex = 0;
     let startingLineup = [];
@@ -183,6 +305,7 @@
     let mr = [];
     let selectedStarterIndex = null;
     let draftData = null;
+    let countdownInterval = null;
 
     const leagueRoster = JSON.parse(localStorage.getItem('leagueData'))?.roster || '1QB';
 
@@ -213,27 +336,115 @@
           { label: 'D/ST', positions: ['DST'] },
         ];
 
-    onAuthStateChanged(auth, async user => {
-      if (!user) {
-        window.location.href = 'login.html';
-        return;
+    window.showPage = function(page) {
+      document.querySelectorAll('.conf-page').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.subnav-link').forEach(l => l.classList.remove('active'));
+      document.getElementById(`page-${page}`).classList.add('active');
+      if (page === 'roster') {
+        document.getElementById('tab-roster').classList.add('active');
+      } else {
+        document.getElementById('tab-conference').classList.add('active');
+      }
+      if (page === 'league-settings') loadLeagueSettings();
+      if (page === 'activity') loadActivity();
+    }
+
+    async function loadLeagueSettings() {
+      const leagueDoc = await getDoc(doc(db, "leagues", leagueId));
+      const el = document.getElementById('league-settings-content');
+      if (!leagueDoc.exists()) { el.innerHTML = '<p>No league settings found.</p>'; return; }
+      const l = leagueDoc.data();
+      el.innerHTML = `
+        <table class="scoring-table">
+          <tr><td><strong>League Name</strong></td><td>${l.name}</td></tr>
+          <tr><td><strong>League ID</strong></td><td style="font-family:monospace;">${l.leagueId}</td></tr>
+          <tr><td><strong>Teams</strong></td><td>${l.teams}</td></tr>
+          <tr><td><strong>Roster Format</strong></td><td>${l.roster}</td></tr>
+          <tr><td><strong>Signing Day</strong></td><td>${new Date(l.draftTime).toLocaleString()}</td></tr>
+          <tr><td><strong>Draft Order</strong></td><td>${l.orderType === 'random' ? 'Random' : 'Manual'}</td></tr>
+        </table>
+      `;
+    }
+
+    async function loadActivity() {
+      const el = document.getElementById('activity-list');
+      try {
+        const activityDoc = await getDoc(doc(db, "activity", leagueId));
+        if (!activityDoc.exists() || !activityDoc.data().log?.length) {
+          el.innerHTML = '<p style="color:#888;">No recent activity yet.</p>';
+          return;
+        }
+        const log = activityDoc.data().log.slice().reverse();
+        el.innerHTML = log.map(entry => `
+          <div class="activity-item">
+            <span>${entry.message}</span>
+            <div class="activity-time">${new Date(entry.timestamp).toLocaleString()}</div>
+          </div>
+        `).join('');
+      } catch (e) {
+        el.innerHTML = '<p style="color:#888;">No recent activity yet.</p>';
+      }
+    }
+
+    function startSigningDayCountdown(draftTime) {
+      const banner = document.getElementById('signing-day-banner');
+      const countdownEl = document.getElementById('countdown');
+      const btn = document.getElementById('signing-day-btn');
+      const title = document.getElementById('signing-day-title');
+      const draftDate = new Date(draftTime);
+
+      if (new Date() >= draftDate) { banner.style.display = 'none'; return; }
+
+      banner.style.display = 'block';
+
+      function update() {
+        const now = new Date();
+        const diff = draftDate - now;
+
+        if (diff <= 0) {
+          clearInterval(countdownInterval);
+          title.textContent = "Signing Day is Live!";
+          countdownEl.textContent = '';
+          btn.style.display = 'inline-block';
+          return;
+        }
+
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const secs = Math.floor((diff % (1000 * 60)) / 1000);
+
+        countdownEl.textContent = days > 0
+          ? `${days}d ${hours}h ${mins}m ${secs}s`
+          : `${hours}h ${mins}m ${secs}s`;
+
+        if (diff <= 2 * 60 * 60 * 1000) {
+          btn.style.display = 'inline-block';
+          title.textContent = "Signing Day Starts Soon!";
+        }
       }
 
-      const nav = document.querySelector('nav');
-      const signOutBtn = document.createElement('a');
-      signOutBtn.href = '#';
-      signOutBtn.textContent = 'Sign Out';
-      signOutBtn.onclick = async () => {
-        await signOut(auth);
-        window.location.href = 'login.html';
-      };
-      nav.appendChild(signOutBtn);
+      update();
+      countdownInterval = setInterval(update, 1000);
+    }
 
+    onAuthStateChanged(auth, async user => {
+      if (!user) { window.location.href = 'login.html'; return; }
       await loadTeam(user);
     });
 
     async function loadTeam(user) {
-      const draftDoc = await getDoc(doc(db, "drafts", "main"));
+      const [draftDoc, leagueDoc] = await Promise.all([
+        getDoc(doc(db, "drafts", leagueId)),
+        getDoc(doc(db, "leagues", leagueId))
+      ]);
+
+      if (leagueDoc.exists()) {
+        const league = leagueDoc.data();
+        const draftDone = draftDoc.exists() && (draftDoc.data().picks?.length > 0);
+        if (league.draftTime && !draftDone) startSigningDayCountdown(league.draftTime);
+      }
+
       if (!draftDoc.exists()) {
         document.getElementById('loading').style.display = 'none';
         document.getElementById('no-team').style.display = 'block';
@@ -260,10 +471,7 @@
         startingLineup = new Array(startingSlotDefs.length).fill(null);
         startingSlotDefs.forEach((slot, i) => {
           const idx = roster.findIndex(p => slot.positions.includes(p.position));
-          if (idx !== -1) {
-            startingLineup[i] = roster[idx];
-            roster.splice(idx, 1);
-          }
+          if (idx !== -1) { startingLineup[i] = roster[idx]; roster.splice(idx, 1); }
         });
         bench = roster.slice(0, 7);
         mr = roster.slice(7, 9);
@@ -292,9 +500,7 @@
         div.className = 'roster-slot';
         div.innerHTML = `
           <span class="slot-label ${!player ? 'empty-slot' : ''}" onclick="openSwapModal(${i})">${slot.label}</span>
-          <span class="slot-player">
-            ${player ? `${player.firstName} ${player.lastName} — ${player.position} — ${player.team}` : '—'}
-          </span>
+          <span class="slot-player">${player ? `${player.firstName} ${player.lastName} — ${player.position} — ${player.team}` : '—'}</span>
         `;
         el.appendChild(div);
       });
@@ -309,9 +515,7 @@
         div.className = 'roster-slot';
         div.innerHTML = `
           <span class="slot-label ${!player ? 'empty-slot' : ''}" onclick="openBenchSwapModal(${i})">BE</span>
-          <span class="slot-player">
-            ${player ? `${player.firstName} ${player.lastName} — ${player.position} — ${player.team}` : '—'}
-          </span>
+          <span class="slot-player">${player ? `${player.firstName} ${player.lastName} — ${player.position} — ${player.team}` : '—'}</span>
         `;
         el.appendChild(div);
       }
@@ -326,9 +530,7 @@
         div.className = 'roster-slot';
         div.innerHTML = `
           <span class="slot-label ${!player ? 'empty-slot' : ''}">MR</span>
-          <span class="slot-player">
-            ${player ? `${player.firstName} ${player.lastName} — ${player.position} — ${player.team}` : '—'}
-          </span>
+          <span class="slot-player">${player ? `${player.firstName} ${player.lastName} — ${player.position} — ${player.team}` : '—'}</span>
         `;
         el.appendChild(div);
       }
@@ -337,7 +539,6 @@
     window.openSwapModal = function(starterIndex) {
       selectedStarterIndex = starterIndex;
       const slot = startingSlotDefs[starterIndex];
-      const currentPlayer = startingLineup[starterIndex];
 
       document.getElementById('swap-modal-title').textContent =
         `Select a player to fill the ${slot.label} slot`;
@@ -345,13 +546,10 @@
       const optionsEl = document.getElementById('swap-options');
       optionsEl.innerHTML = '';
 
-      // Eligible starters (other than current slot)
       startingSlotDefs.forEach((otherSlot, i) => {
         if (i === starterIndex) return;
         const player = startingLineup[i];
-        if (!player) return;
-        if (!slot.positions.includes(player.position)) return;
-
+        if (!player || !slot.positions.includes(player.position)) return;
         const div = document.createElement('div');
         div.className = 'swap-option';
         div.innerHTML = `
@@ -365,11 +563,8 @@
         optionsEl.appendChild(div);
       });
 
-      // Eligible bench players
       bench.forEach((player, i) => {
-        if (!player) return;
-        if (!slot.positions.includes(player.position)) return;
-
+        if (!player || !slot.positions.includes(player.position)) return;
         const div = document.createElement('div');
         div.className = 'swap-option';
         div.innerHTML = `
@@ -400,10 +595,8 @@
       const optionsEl = document.getElementById('swap-options');
       optionsEl.innerHTML = '';
 
-      // Find eligible starting slots
       startingSlotDefs.forEach((slot, i) => {
         if (!slot.positions.includes(benchPlayer.position)) return;
-
         const currentStarter = startingLineup[i];
         const div = document.createElement('div');
         div.className = 'swap-option';
@@ -451,19 +644,11 @@
     async function saveLineup() {
       const updatedTeams = draftData.teams.map((t, i) => {
         if (i === myTeamIndex) {
-          return {
-            ...t,
-            lineup: { starting: startingLineup, bench, mr }
-          };
+          return { ...t, lineup: { starting: startingLineup, bench, mr } };
         }
         return t;
       });
-
-      await setDoc(doc(db, "drafts", "main"), {
-        ...draftData,
-        teams: updatedTeams
-      });
-
+      await setDoc(doc(db, "drafts", leagueId), { ...draftData, teams: updatedTeams });
       draftData.teams = updatedTeams;
     }
   </script>
