@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Transfer Portal | Walk-On Fantasy Football</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .portal-tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 2px solid #eee;
+      margin-bottom: 24px;
+    }
+    .portal-tab {
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: bold;
+      color: #666;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      transition: all 0.2s;
+    }
+    .portal-tab:hover { color: #2a7ae2; }
+    .portal-tab.active { color: #2a7ae2; border-bottom-color: #2a7ae2; }
+
+    .portal-page { display: none; }
+    .portal-page.active { display: block; }
+
+    .player-card {
+      display: flex;
+      align-items: center;
+      padding: 10px 12px;
+      border: 1px solid #eee;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      gap: 12px;
+    }
+    .player-card:hover { border-color: #2a7ae2; background: #f8faff; }
+    .player-card-info { flex: 1; }
+    .player-card-name { font-weight: bold; font-size: 14px; }
+    .player-card-details { font-size: 12px; color: #888; }
+    .player-card-action button {
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      border: none;
+    }
+    .btn-add { background: #22c55e; color: white; }
+    .btn-add:hover { background: #16a34a; }
+    .btn-drop { background: #ef4444; color: white; }
+    .btn-drop:hover { background: #dc2626; }
+    .btn-propose { background: #2a7ae2; color: white; }
+    .btn-propose:hover { background: #1a5bbf; }
+    .btn-accept { background: #22c55e; color: white; }
+    .btn-reject { background: #ef4444; color: white; margin-left: 6px; }
+
+    .waiver-badge {
+      background: #f59e0b;
+      color: white;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-left: 8px;
+    }
+    .fa-badge {
+      background: #22c55e;
+      color: white;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-left: 8px;
+    }
+
+    .section-header {
+      font-size: 16px;
+      font-weight: bold;
+      margin: 20px 0 12px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid #eee;
+    }
+
+    .waiver-priority {
+      background: #f8f9ff;
+      border: 1px solid #eee;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+    }
+    .waiver-priority-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 6px 0;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 14px;
+    }
+    .waiver-priority-rank {
+      font-weight: bold;
+      color: #2a7ae2;
+      min-width: 24px;
+    }
+
+    .trade-section { margin-bottom: 24px; }
+    .trade-card {
+      border: 1px solid #eee;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .trade-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .trade-teams {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .trade-team-players { font-size: 13px; }
+    .trade-team-label { font-weight: bold; font-size: 12px; color: #888; margin-bottom: 4px; }
+    .trade-arrow { text-align: center; font-size: 20px; color: #aaa; }
+    .trade-status {
+      font-size: 12px;
+      font-weight: bold;
+      padding: 3px 10px;
+      border-radius: 4px;
+    }
+    .trade-status.pending { background: #fef3c7; color: #92400e; }
+    .trade-status.accepted { background: #d1fae5; color: #065f46; }
+    .trade-status.rejected { background: #fee2e2; color: #991b1b; }
+
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      width: 500px;
+      max-width: 90vw;
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+    .modal-box h3 { margin: 0 0 16px; }
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .modal-actions button {
+      flex: 1;
+      padding: 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      border: none;
+    }
+
+    .drop-select-item {
+      display: flex;
+      align-items: center;
+      padding: 8px 12px;
+      border: 1px solid #eee;
+      border-radius: 6px;
+      margin-bottom: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      gap: 10px;
+    }
+    .drop-select-item:hover { background: #f0f4ff; border-color: #2a7ae2; }
+    .drop-select-item.selected { background: #fee2e2; border-color: #ef4444; }
+
+    .trade-player-select {
+      display: flex;
+      align-items: center;
+      padding: 8px 12px;
+      border: 1px solid #eee;
+      border-radius: 6px;
+      margin-bottom: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      gap: 10px;
+    }
+    .trade-player-select:hover { background: #f0f4ff; border-color: #2a7ae2; }
+    .trade-player-select.selected { background: #dbeafe; border-color: #2a7ae2; }
+
+    .filters {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .filters input, .filters select {
+      padding: 6px 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+
+    .locked-banner {
+      background: #fef3c7;
+      border: 1px solid #f59e0b;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      font-size: 14px;
+      color: #92400e;
+    }
+
+    .waiver-claim-card {
+      border: 1px solid #f59e0b;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 8px;
+      background: #fffbeb;
+    }
+    .waiver-claim-details { font-size: 13px; color: #666; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <nav></nav>
+
+  <!-- Add/Drop Modal -->
+  <div class="modal-overlay" id="add-drop-modal">
+    <div class="modal-box">
+      <h3 id="add-drop-title">Add Player</h3>
+      <p id="add-drop-subtitle" style="font-size:13px;color:#666;margin-bottom:12px;"></p>
+      <div id="drop-select-list"></div>
+      <div class="modal-actions">
+        <button style="background:#f5f5f5;" onclick="closeAddDropModal()">Cancel</button>
+        <button style="background:#22c55e;color:white;" onclick="confirmAddDrop()">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Trade Propose Modal -->
+  <div class="modal-overlay" id="trade-modal">
+    <div class="modal-box">
+      <h3>Propose a Trade</h3>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:13px;font-weight:bold;">Trade with:</label>
+        <select id="trade-target-team" onchange="loadTradeTargetRoster()" style="margin-left:8px;padding:6px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
+          <option value="">Select a team...</option>
+        </select>
+      </div>
+      <div class="trade-teams">
+        <div>
+          <div class="trade-team-label">You send:</div>
+          <div id="my-trade-players"></div>
+        </div>
+        <div class="trade-arrow">⇄</div>
+        <div>
+          <div class="trade-team-label">You receive:</div>
+          <div id="their-trade-players"></div>
+        </div>
+      </div>
+      <p id="trade-error" style="color:red;font-size:13px;display:none;"></p>
+      <div class="modal-actions">
+        <button style="background:#f5f5f5;" onclick="closeTradeModal()">Cancel</button>
+        <button style="background:#2a7ae2;color:white;" onclick="submitTrade()">Send Proposal</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <h1>Transfer Portal</h1>
+
+    <div id="loading">Loading...</div>
+    <div id="portal-content" style="display:none;">
+
+      <div id="draft-not-done" style="display:none;">
+        <div class="locked-banner">
+          🔒 The Transfer Portal opens after Signing Day is complete.
+        </div>
+      </div>
+
+      <div id="portal-main" style="display:none;">
+        <div class="portal-tabs">
+          <div class="portal-tab active" onclick="showPortalPage('free-agency')" id="tab-fa">Free Agency</div>
+          <div class="portal-tab" onclick="showPortalPage('waivers')" id="tab-waivers">Waiver Wire</div>
+          <div class="portal-tab" onclick="showPortalPage('trades')" id="tab-trades">Trades</div>
+        </div>
+
+        <!-- Free Agency -->
+        <div class="portal-page active" id="page-free-agency">
+          <div class="section-header">Available Players</div>
+          <div class="filters">
+            <input type="text" id="fa-search" placeholder="Search players..." oninput="filterFAPlayers()" />
+            <select id="fa-pos-filter" onchange="filterFAPlayers()">
+              <option value="">All Positions</option>
+              <option value="QB">QB</option>
+              <option value="RB">RB</option>
+              <option value="WR">WR</option>
+              <option value="TE">TE</option>
+              <option value="K">K</option>
+            </select>
+            <select id="fa-conf-filter" onchange="filterFAPlayers()">
+              <option value="">All Conferences</option>
+              <option value="AAC">AAC</option>
+              <option value="CUSA">C-USA</option>
+              <option value="MAC">MAC</option>
+              <option value="MWC">Mountain West</option>
+              <option value="Pac-12">Pac-12</option>
+              <option value="Sun Belt">Sun Belt</option>
+            </select>
+          </div>
+          <div id="fa-player-list"></div>
+        </div>
+
+        <!-- Waiver Wire -->
+        <div class="portal-page" id="page-waivers">
+          <div class="section-header">Waiver Priority</div>
+          <div class="waiver-priority" id="waiver-priority-list"></div>
+
+          <div class="section-header">My Pending Claims</div>
+          <div id="my-waiver-claims"></div>
+
+          <div class="section-header">Players on Waivers</div>
+          <div class="filters">
+            <input type="text" id="waiver-search" placeholder="Search players..." oninput="filterWaiverPlayers()" />
+            <select id="waiver-pos-filter" onchange="filterWaiverPlayers()">
+              <option value="">All Positions</option>
+              <option value="QB">QB</option>
+              <option value="RB">RB</option>
+              <option value="WR">WR</option>
+              <option value="TE">TE</option>
+              <option value="K">K</option>
+            </select>
+          </div>
+          <div id="waiver-player-list"></div>
+        </div>
+
+        <!-- Trades -->
+        <div class="portal-page" id="page-trades">
+          <div id="trade-deadline-banner" style="display:none;" class="locked-banner">
+            🔒 The trade deadline has passed. No new trades can be proposed.
+          </div>
+
+          <div id="propose-trade-btn-wrap">
+            <button class="btn-propose" onclick="openTradeModal()" style="margin-bottom:16px;">+ Propose Trade</button>
+          </div>
+
+          <div class="section-header">Incoming Trade Offers</div>
+          <div id="incoming-trades"></div>
+
+          <div class="section-header">Outgoing Trade Offers</div>
+          <div id="outgoing-trades"></div>
+
+          <div class="section-header">Trade History</div>
+          <div id="trade-history"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initNav, db, auth, getLeagueId } from './nav.js';
+    import { doc, getDoc, setDoc, updateDoc, arrayUnion, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+    initNav('portal.html');
+
+    const leagueId = getLeagueId();
+    if (!leagueId) window.location.href = 'index.html';
+
+    // Trade deadline = end of Week 9 (approx Oct 29, 2026)
+    const TRADE_DEADLINE = new Date('2026-10-29T23:59:00');
+    const WAIVER_PROCESS_DAY = 2; // Tuesday
+    const WAIVER_PROCESS_HOUR = 7; // 7am MT
+
+    let currentUser = null;
+    let myTeamIndex = 0;
+    let allTeams = [];
+    let draftData = null;
+    let allPlayers = [];
+    let draftedPlayerIds = new Set();
+    let waiverPlayers = [];
+    let freeAgents = [];
+    let myRoster = [];
+    let pendingAddPlayer = null;
+    let pendingDropPlayer = null;
+    let selectedMyTradePlayers = [];
+    let selectedTheirTradePlayers = [];
+    let tradeTargetIndex = null;
+
+    const leagueRoster = JSON.parse(localStorage.getItem('leagueData'))?.roster || '1QB';
+    const startingSlotDefs = leagueRoster === 'Superflex'
+      ? [
+          { label: 'QB', positions: ['QB'] },
+          { label: 'RB', positions: ['RB'] },
+          { label: 'RB', positions: ['RB'] },
+          { label: 'WR', positions: ['WR'] },
+          { label: 'WR', positions: ['WR'] },
+          { label: 'TE', positions: ['TE'] },
+          { label: 'Flex', positions: ['RB', 'WR', 'TE'] },
+          { label: 'Flex', positions: ['RB', 'WR', 'TE'] },
+          { label: 'Superflex', positions: ['QB', 'RB', 'WR', 'TE'] },
+          { label: 'K', positions: ['K'] },
+          { label: 'D/ST', positions: ['DST'] },
+        ]
+      : [
+          { label: 'QB', positions: ['QB'] },
+          { label: 'RB', positions: ['RB'] },
+          { label: 'RB', positions: ['RB'] },
+          { label: 'WR', positions: ['WR'] },
+          { label: 'WR', positions: ['WR'] },
+          { label: 'TE', positions: ['TE'] },
+          { label: 'Flex', positions: ['RB', 'WR', 'TE'] },
+          { label: 'Flex', positions: ['RB', 'WR', 'TE'] },
+          { label: 'K', positions: ['K'] },
+          { label: 'D/ST', positions: ['DST'] },
+        ];
+
+    onAuthStateChanged(auth, async user => {
+      if (!user) { window.location.href = 'login.html'; return; }
+      currentUser = user;
+      await loadPortal(user);
+    });
+
+    async function loadPortal(user) {
+      const draftDoc = await getDoc(doc(db, "drafts", leagueId));
+
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('portal-content').style.display = 'block';
+
+      if (!draftDoc.exists() || !draftDoc.data().picks?.length) {
+        document.getElementById('draft-not-done').style.display = 'block';
+        return;
+      }
+
+      draftData = draftDoc.data();
+      allTeams = draftData.teams || [];
+      const picks = draftData.picks || [];
+
+      // Find my team
+      const teamIndex = allTeams.findIndex(t =>
+        t.email && t.email.toLowerCase() === user.email.toLowerCase()
+      );
+      myTeamIndex = teamIndex !== -1 ? teamIndex : 0;
+
+      // Build drafted player set
+      picks.forEach(p => draftedPlayerIds.add(`${p.firstName}-${p.lastName}-${p.team}`));
+
+      // Build my roster
+      const myPicks = picks.filter(p => p.teamIndex === myTeamIndex);
+      const myTeam = allTeams[myTeamIndex];
+      if (myTeam.lineup) {
+        myRoster = [...myTeam.lineup.starting.filter(Boolean), ...myTeam.lineup.bench.filter(Boolean), ...myTeam.lineup.mr.filter(Boolean)];
+      } else {
+        myRoster = myPicks;
+      }
+
+      // Load all players from CSV
+      await loadAllPlayers();
+
+      document.getElementById('portal-main').style.display = 'block';
+
+      // Check trade deadline
+      if (new Date() > TRADE_DEADLINE) {
+        document.getElementById('trade-deadline-banner').style.display = 'block';
+        document.getElementById('propose-trade-btn-wrap').style.display = 'none';
+      }
+
+      await loadPortalData();
+      renderFAPlayers();
+      renderWaiverPriority();
+      renderWaiverPlayers();
+      renderTrades();
+    }
+
+    async function loadAllPlayers() {
+      const res = await fetch('g6_players_2026.csv');
+      const csv = await res.text();
+      const lines = csv.trim().split('\n');
+      const headers = lines[0].split(',');
+      allPlayers = lines.slice(1).map(line => {
+        const vals = line.split(',');
+        const obj = {};
+        headers.forEach((h, i) => obj[h.trim()] = (vals[i] || '').trim());
+        return obj;
+      }).filter(p => ['QB', 'RB', 'WR', 'TE', 'K', 'PK'].includes(p.position))
+        .map(p => ({ ...p, position: p.position === 'PK' ? 'K' : p.position }));
+    }
+
+    async function loadPortalData() {
+      const portalDoc = await getDoc(doc(db, "portal", leagueId));
+      let portalData = portalDoc.exists() ? portalDoc.data() : { waivers: [], waiverPriority: [], trades: [] };
+
+      // Initialize waiver priority if empty (reverse draft order)
+      if (!portalData.waiverPriority?.length) {
+        const totalRounds = draftData.picks.length / allTeams.length;
+        const lastRoundPicks = draftData.picks.filter(p => p.pickNumber >= draftData.picks.length - allTeams.length);
+        const reverseOrder = [...allTeams.keys()].reverse();
+        portalData.waiverPriority = reverseOrder;
+
+        await setDoc(doc(db, "portal", leagueId), portalData, { merge: true });
+      }
+
+      window.portalData = portalData;
+
+      // Separate waiver players from free agents
+      const now = new Date();
+      waiverPlayers = (portalData.waivers || []).filter(w => {
+        const droppedAt = new Date(w.droppedAt);
+        const processTime = getNextWaiverProcessTime(droppedAt);
+        return now < processTime;
+      });
+
+      freeAgents = allPlayers.filter(p => {
+        const id = `${p.firstName}-${p.lastName}-${p.team}`;
+        const isOnWaiver = waiverPlayers.some(w => `${w.firstName}-${w.lastName}-${w.team}` === id);
+        return !draftedPlayerIds.has(id) && !isOnWaiver;
+      });
+    }
+
+    function getNextWaiverProcessTime(fromDate) {
+      const d = new Date(fromDate);
+      // Find next Tuesday 7am MT (UTC-6 or UTC-7)
+      const mtOffset = 7; // MT is UTC-7
+      while (d.getDay() !== WAIVER_PROCESS_DAY || d.getHours() < WAIVER_PROCESS_HOUR + mtOffset) {
+        d.setDate(d.getDate() + 1);
+        d.setHours(0, 0, 0, 0);
+      }
+      d.setHours(WAIVER_PROCESS_HOUR + mtOffset, 0, 0, 0);
+      return d;
+    }
+
+    // Tab switching
+    window.showPortalPage = function(page) {
+      document.querySelectorAll('.portal-page').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.portal-tab').forEach(t => t.classList.remove('active'));
+      document.getElementById(`page-${page}`).classList.add('active');
+      document.getElementById(`tab-${page === 'free-agency' ? 'fa' : page}`).classList.add('active');
+    }
+
+    // Free Agency
+    function renderFAPlayers() {
+      filterFAPlayers();
+    }
+
+    window.filterFAPlayers = function() {
+      const search = document.getElementById('fa-search').value.toLowerCase();
+      const pos = document.getElementById('fa-pos-filter').value;
+      const conf = document.getElementById('fa-conf-filter').value;
+
+      const filtered = freeAgents.filter(p => {
+        const name = `${p.firstName} ${p.lastName}`.toLowerCase();
+        return (!search || name.includes(search)) &&
+               (!pos || p.position === pos) &&
+               (!conf || p.conference === conf);
+      });
+
+      const el = document.getElementById('fa-player-list');
+      el.innerHTML = '';
+
+      if (!filtered.length) {
+        el.innerHTML = '<p style="color:#888;">No players found.</p>';
+        return;
+      }
+
+      filtered.slice(0, 50).forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'player-card';
+        div.innerHTML = `
+          <div class="player-card-info">
+            <div class="player-card-name">${p.firstName} ${p.lastName}</div>
+            <div class="player-card-details">${p.position} · ${p.team} · ${p.conference}</div>
+          </div>
+          <span class="fa-badge">Free Agent</span>
+          <div class="player-card-action">
+            <button class="btn-add" onclick="openAddDropModal(${JSON.stringify(p).replace(/"/g, '&quot;')}, 'fa')">Add</button>
+          </div>
+        `;
+        el.appendChild(div);
+      });
+    }
+
+    // Waiver Wire
+    function renderWaiverPriority() {
+      const priority = window.portalData?.waiverPriority || [];
+      const el = document.getElementById('waiver-priority-list');
+      el.innerHTML = '';
+      priority.forEach((teamIdx, rank) => {
+        const team = allTeams[teamIdx];
+        if (!team) return;
+        const div = document.createElement('div');
+        div.className = 'waiver-priority-row';
+        div.innerHTML = `
+          <span class="waiver-priority-rank">#${rank + 1}</span>
+          <span>${team.name}</span>
+          <span style="font-size:12px;color:#888;">${team.manager}</span>
+          ${teamIdx === myTeamIndex ? '<span style="font-size:11px;background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:4px;">You</span>' : ''}
+        `;
+        el.appendChild(div);
+      });
+    }
+
+    window.filterWaiverPlayers = function() {
+      const search = document.getElementById('waiver-search').value.toLowerCase();
+      const pos = document.getElementById('waiver-pos-filter').value;
+
+      const filtered = waiverPlayers.filter(p => {
+        const name = `${p.firstName} ${p.lastName}`.toLowerCase();
+        return (!search || name.includes(search)) && (!pos || p.position === pos);
+      });
+
+      const el = document.getElementById('waiver-player-list');
+      el.innerHTML = '';
+
+      if (!filtered.length) {
+        el.innerHTML = '<p style="color:#888;">No players currently on waivers.</p>';
+        return;
+      }
+
+      filtered.forEach(p => {
+        const droppedAt = new Date(p.droppedAt);
+        const processTime = getNextWaiverProcessTime(droppedAt);
+        const div = document.createElement('div');
+        div.className = 'player-card';
+        div.innerHTML = `
+          <div class="player-card-info">
+            <div class="player-card-name">${p.firstName} ${p.lastName}</div>
+            <div class="player-card-details">${p.position} · ${p.team} · ${p.conference}</div>
+            <div style="font-size:11px;color:#f59e0b;margin-top:2px;">Clears waivers: ${processTime.toLocaleDateString()}</div>
+          </div>
+          <span class="waiver-badge">Waivers</span>
+          <div class="player-card-action">
+            <button class="btn-add" onclick="openAddDropModal(${JSON.stringify(p).replace(/"/g, '&quot;')}, 'waiver')">Claim</button>
+          </div>
+        `;
+        el.appendChild(div);
+      });
+    }
+
+    function renderMyWaiverClaims() {
+      const claims = (window.portalData?.waiverClaims || []).filter(c =>
+        c.teamIndex === myTeamIndex && c.status === 'pending'
+      );
+      const el = document.getElementById('my-waiver-claims');
+      el.innerHTML = '';
+
+      if (!claims.length) {
+        el.innerHTML = '<p style="color:#888;font-size:14px;">No pending claims.</p>';
+        return;
+      }
+
+      claims.forEach((claim, i) => {
+        const div = document.createElement('div');
+        div.className = 'waiver-claim-card';
+        div.innerHTML = `
+          <div style="font-weight:bold;font-size:14px;">+ ${claim.addPlayer.firstName} ${claim.addPlayer.lastName}</div>
+          <div style="font-size:13px;color:#ef4444;">- ${claim.dropPlayer.firstName} ${claim.dropPlayer.lastName}</div>
+          <div class="waiver-claim-details">Submitted: ${new Date(claim.submittedAt).toLocaleString()}</div>
+          <button onclick="cancelWaiverClaim(${i})" style="margin-top:8px;padding:4px 12px;border:1px solid #ef4444;color:#ef4444;background:none;border-radius:6px;cursor:pointer;font-size:12px;">Cancel Claim</button>
+        `;
+        el.appendChild(div);
+      });
+    }
+
+    // Add/Drop Modal
+    window.openAddDropModal = function(player, type) {
+      pendingAddPlayer = player;
+      const modal = document.getElementById('add-drop-modal');
+      const title = document.getElementById('add-drop-title');
+      const subtitle = document.getElementById('add-drop-subtitle');
+      const list = document.getElementById('drop-select-list');
+
+      title.textContent = type === 'waiver' ? `Claim ${player.firstName} ${player.lastName}` : `Add ${player.firstName} ${player.lastName}`;
+      subtitle.textContent = 'Select a player from your roster to drop:';
+      list.innerHTML = '';
+      pendingDropPlayer = null;
+
+      myRoster.filter(Boolean).forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'drop-select-item';
+        div.innerHTML = `
+          <span style="font-size:11px;font-weight:bold;color:#888;min-width:30px;">${p.position}</span>
+          <span>${p.firstName} ${p.lastName} — ${p.team}</span>
+        `;
+        div.onclick = () => {
+          document.querySelectorAll('.drop-select-item').forEach(d => d.classList.remove('selected'));
+          div.classList.add('selected');
+          pendingDropPlayer = p;
+        };
+        list.appendChild(div);
+      });
+
+      modal.classList.add('open');
+      window.currentAddType = type;
+    }
+
+    window.closeAddDropModal = function() {
+      document.getElementById('add-drop-modal').classList.remove('open');
+      pendingAddPlayer = null;
+      pendingDropPlayer = null;
+    }
+
+    window.confirmAddDrop = async function() {
+      if (!pendingAddPlayer || !pendingDropPlayer) {
+        alert('Please select a player to drop.');
+        return;
+      }
+
+      const portalData = window.portalData || {};
+      const now = new Date().toISOString();
+
+      if (window.currentAddType === 'waiver') {
+        // Submit waiver claim
+        const claim = {
+          teamIndex: myTeamIndex,
+          addPlayer: pendingAddPlayer,
+          dropPlayer: pendingDropPlayer,
+          submittedAt: now,
+          status: 'pending'
+        };
+
+        portalData.waiverClaims = [...(portalData.waiverClaims || []), claim];
+        await setDoc(doc(db, "portal", leagueId), portalData, { merge: true });
+        alert('Waiver claim submitted! It will be processed on Tuesday at 7am MT.');
+
+      } else {
+        // Instant free agent add/drop
+        await executeAddDrop(pendingAddPlayer, pendingDropPlayer, now);
+        alert(`${pendingAddPlayer.firstName} ${pendingAddPlayer.lastName} added to your roster!`);
+      }
+
+      closeAddDropModal();
+      await loadPortalData();
+      renderFAPlayers();
+      renderWaiverPlayers();
+      renderMyWaiverClaims();
+    }
+
+    async function executeAddDrop(addPlayer, dropPlayer, timestamp) {
+      // Update drafted players set
+      draftedPlayerIds.add(`${addPlayer.firstName}-${addPlayer.lastName}-${addPlayer.team}`);
+      draftedPlayerIds.delete(`${dropPlayer.firstName}-${dropPlayer.lastName}-${dropPlayer.team}`);
+
+      // Add dropped player to waivers
+      const portalData = window.portalData || {};
+      portalData.waivers = [...(portalData.waivers || []), { ...dropPlayer, droppedAt: timestamp, droppedBy: myTeamIndex }];
+
+      // Update team roster in drafts
+      const draftDoc = await getDoc(doc(db, "drafts", leagueId));
+      const data = draftDoc.data();
+      const updatedPicks = data.picks.map(p => {
+        if (p.teamIndex === myTeamIndex &&
+            p.firstName === dropPlayer.firstName &&
+            p.lastName === dropPlayer.lastName &&
+            p.team === dropPlayer.team) {
+          return { ...addPlayer, teamIndex: myTeamIndex, pickNumber: p.pickNumber };
+        }
+        return p;
+      });
+
+      await setDoc(doc(db, "drafts", leagueId), { ...data, picks: updatedPicks });
+      await setDoc(doc(db, "portal", leagueId), portalData, { merge: true });
+
+      // Log activity
+      await logActivity(`${allTeams[myTeamIndex].name} added ${addPlayer.firstName} ${addPlayer.lastName} and dropped ${dropPlayer.firstName} ${dropPlayer.lastName}`);
+    }
+
+    window.cancelWaiverClaim = async function(claimIndex) {
+      const portalData = window.portalData;
+      portalData.waiverClaims[claimIndex].status = 'cancelled';
+      await setDoc(doc(db, "portal", leagueId), portalData, { merge: true });
+      renderMyWaiverClaims();
+    }
+
+    // Trades
+    window.openTradeModal = function() {
+      selectedMyTradePlayers = [];
+      selectedTheirTradePlayers = [];
+      tradeTargetIndex = null;
+
+      const select = document.getElementById('trade-target-team');
+      select.innerHTML = '<option value="">Select a team...</option>';
+      allTeams.forEach((t, i) => {
+        if (i === myTeamIndex) return;
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = `${t.name} (${t.manager})`;
+        select.appendChild(opt);
+      });
+
+      renderMyTradePlayers();
+      document.getElementById('their-trade-players').innerHTML = '<p style="color:#888;font-size:13px;">Select a team first.</p>';
+      document.getElementById('trade-modal').classList.add('open');
+    }
+
+    window.closeTradeModal = function() {
+      document.getElementById('trade-modal').classList.remove('open');
+    }
+
+    function renderMyTradePlayers() {
+      const el = document.getElementById('my-trade-players');
+      el.innerHTML = '';
+      myRoster.filter(Boolean).forEach(p => {
+        const isSelected = selectedMyTradePlayers.some(s => s.firstName === p.firstName && s.lastName === p.lastName);
+        const div = document.createElement('div');
+        div.className = `trade-player-select ${isSelected ? 'selected' : ''}`;
+        div.innerHTML = `
+          <span style="font-size:11px;font-weight:bold;color:#888;min-width:28px;">${p.position}</span>
+          <span style="font-size:13px;">${p.firstName} ${p.lastName}</span>
+        `;
+        div.onclick = () => {
+          if (isSelected) {
+            selectedMyTradePlayers = selectedMyTradePlayers.filter(s => !(s.firstName === p.firstName && s.lastName === p.lastName));
+          } else {
+            selectedMyTradePlayers.push(p);
+          }
+          renderMyTradePlayers();
+        };
+        el.appendChild(div);
+      });
+    }
+
+    window.loadTradeTargetRoster = function() {
+      const idx = parseInt(document.getElementById('trade-target-team').value);
+      if (isNaN(idx)) return;
+      tradeTargetIndex = idx;
+      selectedTheirTradePlayers = [];
+
+      const theirPicks = draftData.picks.filter(p => p.teamIndex === idx);
+      const theirTeam = allTeams[idx];
+      let theirRoster = theirPicks;
+      if (theirTeam.lineup) {
+        theirRoster = [...theirTeam.lineup.starting.filter(Boolean), ...theirTeam.lineup.bench.filter(Boolean)];
+      }
+
+      const el = document.getElementById('their-trade-players');
+      el.innerHTML = '';
+      theirRoster.forEach(p => {
+        const isSelected = selectedTheirTradePlayers.some(s => s.firstName === p.firstName && s.lastName === p.lastName);
+        const div = document.createElement('div');
+        div.className = `trade-player-select ${isSelected ? 'selected' : ''}`;
+        div.innerHTML = `
+          <span style="font-size:11px;font-weight:bold;color:#888;min-width:28px;">${p.position}</span>
+          <span style="font-size:13px;">${p.firstName} ${p.lastName}</span>
+        `;
+        div.onclick = () => {
+          if (isSelected) {
+            selectedTheirTradePlayers = selectedTheirTradePlayers.filter(s => !(s.firstName === p.firstName && s.lastName === p.lastName));
+          } else {
+            selectedTheirTradePlayers.push(p);
+          }
+          window.loadTradeTargetRoster();
+          const updatedEl = document.getElementById('their-trade-players');
+          // re-render with updated selections
+          theirRoster.forEach((pp, i) => {
+            const isSel = selectedTheirTradePlayers.some(s => s.firstName === pp.firstName && s.lastName === pp.lastName);
+            updatedEl.children[i]?.classList.toggle('selected', isSel);
+          });
+        };
+        el.appendChild(div);
+      });
+    }
+
+    window.submitTrade = async function() {
+      const errorEl = document.getElementById('trade-error');
+      if (!tradeTargetIndex && tradeTargetIndex !== 0) {
+        errorEl.textContent = 'Please select a team to trade with.';
+        errorEl.style.display = 'block';
+        return;
+      }
+      if (!selectedMyTradePlayers.length || !selectedTheirTradePlayers.length) {
+        errorEl.textContent = 'Please select at least one player on each side.';
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      const trade = {
+        id: `trade-${Date.now()}`,
+        fromTeam: myTeamIndex,
+        toTeam: tradeTargetIndex,
+        sendPlayers: selectedMyTradePlayers,
+        receivePlayers: selectedTheirTradePlayers,
+        status: 'pending',
+        proposedAt: new Date().toISOString()
+      };
+
+      const portalData = window.portalData || {};
+      portalData.trades = [...(portalData.trades || []), trade];
+      await setDoc(doc(db, "portal", leagueId), portalData, { merge: true });
+
+      closeTradeModal();
+      await loadPortalData();
+      renderTrades();
+      alert('Trade proposal sent!');
+    }
+
+    function renderTrades() {
+      const trades = window.portalData?.trades || [];
+      const incoming = trades.filter(t => t.toTeam === myTeamIndex && t.status === 'pending');
+      const outgoing = trades.filter(t => t.fromTeam === myTeamIndex && t.status === 'pending');
+      const history = trades.filter(t =>
+        (t.fromTeam === myTeamIndex || t.toTeam === myTeamIndex) && t.status !== 'pending'
+      );
+
+      renderTradeList('incoming-trades', incoming, true);
+      renderTradeList('outgoing-trades', outgoing, false);
+      renderTradeList('trade-history', history, false, true);
+    }
+
+    function renderTradeList(elId, trades, canRespond, isHistory = false) {
+      const el = document.getElementById(elId);
+      el.innerHTML = '';
+
+      if (!trades.length) {
+        el.innerHTML = '<p style="color:#888;font-size:14px;">None.</p>';
+        return;
+      }
+
+      trades.forEach(trade => {
+        const fromTeam = allTeams[trade.fromTeam];
+        const toTeam = allTeams[trade.toTeam];
+        const div = document.createElement('div');
+        div.className = 'trade-card';
+        div.innerHTML = `
+          <div class="trade-card-header">
+            <span style="font-size:13px;color:#666;">${fromTeam?.name} → ${toTeam?.name}</span>
+            <span class="trade-status ${trade.status}">${trade.status.charAt(0).toUpperCase() + trade.status.slice(1)}</span>
+          </div>
+          <div class="trade-teams">
+            <div>
+              <div class="trade-team-label">${fromTeam?.name} sends:</div>
+              ${trade.sendPlayers.map(p => `<div class="trade-team-players">${p.position} ${p.firstName} ${p.lastName}</div>`).join('')}
+            </div>
+            <div class="trade-arrow">⇄</div>
+            <div>
+              <div class="trade-team-label">${toTeam?.name} sends:</div>
+              ${trade.receivePlayers.map(p => `<div class="trade-team-players">${p.position} ${p.firstName} ${p.lastName}</div>`).join('')}
+            </div>
+          </div>
+          ${canRespond ? `
+            <div style="display:flex;gap:8px;margin-top:8px;">
+              <button class="btn-accept" onclick="respondTrade('${trade.id}', 'accepted')">Accept</button>
+              <button class="btn-reject" onclick="respondTrade('${trade.id}', 'rejected')">Reject</button>
+            </div>
+          ` : ''}
+          <div style="font-size:11px;color:#aaa;margin-top:8px;">${new Date(trade.proposedAt).toLocaleString()}</div>
+        `;
+        el.appendChild(div);
+      });
+    }
+
+    window.respondTrade = async function(tradeId, response) {
+      const portalData = window.portalData;
+      const tradeIdx = portalData.trades.findIndex(t => t.id === tradeId);
+      if (tradeIdx === -1) return;
+
+      const trade = portalData.trades[tradeIdx];
+      trade.status = response;
+      trade.respondedAt = new Date().toISOString();
+
+      if (response === 'accepted') {
+        // Execute trade — swap players in picks
+        const draftDoc = await getDoc(doc(db, "drafts", leagueId));
+        const data = draftDoc.data();
+        let picks = [...data.picks];
+
+        trade.sendPlayers.forEach(p => {
+          const idx = picks.findIndex(pick =>
+            pick.teamIndex === trade.fromTeam &&
+            pick.firstName === p.firstName &&
+            pick.lastName === p.lastName
+          );
+          if (idx !== -1) picks[idx] = { ...picks[idx], teamIndex: trade.toTeam };
+        });
+
+        trade.receivePlayers.forEach(p => {
+          const idx = picks.findIndex(pick =>
+            pick.teamIndex === trade.toTeam &&
+            pick.firstName === p.firstName &&
+            pick.lastName === p.lastName
+          );
+          if (idx !== -1) picks[idx] = { ...picks[idx], teamIndex: trade.fromTeam };
+        });
+
+        await setDoc(doc(db, "drafts", leagueId), { ...data, picks });
+        await logActivity(`Trade completed: ${allTeams[trade.fromTeam].name} and ${allTeams[trade.toTeam].name} swapped players.`);
+      }
+
+      await setDoc(doc(db, "portal", leagueId), portalData, { merge: true });
+      await loadPortalData();
+      renderTrades();
+    }
+
+    async function logActivity(message) {
+      const activityDoc = await getDoc(doc(db, "activity", leagueId));
+      const log = activityDoc.exists() ? activityDoc.data().log || [] : [];
+      log.push({ message, timestamp: new Date().toISOString() });
+      await setDoc(doc(db, "activity", leagueId), { log });
+    }
+  </script>
+</body>
+</html>
