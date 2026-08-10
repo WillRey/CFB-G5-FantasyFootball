@@ -293,9 +293,10 @@
     function startTurn() {
       if (currentPick >= totalPicks) {
         document.getElementById('current-pick-label').textContent = 'Signing Day Complete!';
-        document.getElementById('current-team-label').textContent = '';
+        document.getElementById('current-team-label').textContent = 'Redirecting to your team...';
         document.getElementById('timer-display').textContent = '';
         clearInterval(timerInterval);
+        setTimeout(() => { window.location.href = 'myteam.html'; }, 3000);
         return;
       }
 

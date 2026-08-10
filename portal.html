@@ -740,11 +740,11 @@
         alert(`${pendingAddPlayer.firstName} ${pendingAddPlayer.lastName} added to your roster!`);
       }
 
-      closeAddDropModal();
-      await loadPortalData();
-      renderFAPlayers();
-      renderWaiverPlayers();
-      renderMyWaiverClaims();
+        closeAddDropModal();
+        await loadPortalData();
+        filterFAPlayers();
+        filterWaiverPlayers();
+        renderMyWaiverClaims();
     }
 
     async function executeAddDrop(addPlayer, dropPlayer, timestamp) {
