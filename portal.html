@@ -234,7 +234,6 @@
   </style>
 </head>
 <body>
-    <script>console.log('[portal] raw script executing, no imports yet');</script>
   <nav></nav>
 
   <!-- Add/Drop Modal -->
@@ -442,12 +441,10 @@
     });
 
     async function loadPortal(user) {
-        console.log('[portal] 1. loadPortal start');
         const [draftDoc] = await Promise.all([
             getDoc(doc(db, "drafts", leagueId)),
             loadAllPlayers()
         ]);
-        console.log('[portal] 2. draft + players loaded', { players: allPlayers.length });
 
       document.getElementById('loading').style.display = 'none';
       document.getElementById('portal-content').style.display = 'block';
@@ -487,20 +484,13 @@
         document.getElementById('propose-trade-btn-wrap').style.display = 'none';
       }
 
-console.log('[portal] 3. calling loadPortalData');
-      await loadPortalData();
-      console.log('[portal] 4. loadPortalData done', { waivers: waiverPlayers.length, freeAgents: freeAgents.length });
-      renderFAPlayers();
-      console.log('[portal] 5. FA rendered');
-      renderWaiverPriority();
-      console.log('[portal] 6. waiver priority rendered');
-      renderWaiverPlayers();
-      console.log('[portal] 7. waiver players rendered');
-      renderMyWaiverClaims();
-      console.log('[portal] 8. waiver claims rendered');
-      renderTrades();
-      console.log('[portal] 9. trades rendered — loadPortal complete');
-    }
+    await loadPortalData();
+        renderFAPlayers();
+        renderWaiverPriority();
+        renderWaiverPlayers();
+        renderMyWaiverClaims();
+        renderTrades();
+        }
 
     async function loadAllPlayers() {
       const res = await fetch('g6_players_2026.csv');
