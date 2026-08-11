@@ -441,13 +441,12 @@
     });
 
     async function loadPortal(user) {
-      // Fetch the draft doc and the (static) player CSV in parallel —
-      // they don't depend on each other, so there's no reason to wait
-      // on one before starting the other.
-      const [draftDoc] = await Promise.all([
-        getDoc(doc(db, "drafts", leagueId)),
-        loadAllPlayers()
-      ]);
+        console.log('[portal] 1. loadPortal start');
+        const [draftDoc] = await Promise.all([
+            getDoc(doc(db, "drafts", leagueId)),
+            loadAllPlayers()
+        ]);
+        console.log('[portal] 2. draft + players loaded', { players: allPlayers.length });
 
       document.getElementById('loading').style.display = 'none';
       document.getElementById('portal-content').style.display = 'block';
@@ -487,12 +486,19 @@
         document.getElementById('propose-trade-btn-wrap').style.display = 'none';
       }
 
+console.log('[portal] 3. calling loadPortalData');
       await loadPortalData();
+      console.log('[portal] 4. loadPortalData done', { waivers: waiverPlayers.length, freeAgents: freeAgents.length });
       renderFAPlayers();
+      console.log('[portal] 5. FA rendered');
       renderWaiverPriority();
+      console.log('[portal] 6. waiver priority rendered');
       renderWaiverPlayers();
+      console.log('[portal] 7. waiver players rendered');
       renderMyWaiverClaims();
+      console.log('[portal] 8. waiver claims rendered');
       renderTrades();
+      console.log('[portal] 9. trades rendered — loadPortal complete');
     }
 
     async function loadAllPlayers() {
