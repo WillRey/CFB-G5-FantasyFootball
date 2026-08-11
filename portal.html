@@ -551,19 +551,28 @@
     }
 
     function getNextWaiverProcessTime(fromDate) {
-      // Find next Tuesday 7am MT (approx UTC-7), strictly after fromDate.
-      const mtOffset = 7; // MT is UTC-7
-      const from = new Date(fromDate);
-      const target = new Date(from);
-      target.setHours(WAIVER_PROCESS_HOUR + mtOffset, 0, 0, 0);
+    const mtOffset = 7; // MT is UTC-7
+    const from = new Date(fromDate);
 
-      // Advance day-by-day, resetting to the correct target hour each
-      // time (not midnight), until we land on a Tuesday that's after `from`.
-      while (target.getDay() !== WAIVER_PROCESS_DAY || target <= from) {
+    // Guard against malformed/missing droppedAt values in Firestore data —
+    // an Invalid Date makes every comparison below return false, which
+    // caused the infinite loop even after the day-vs-hour bug was fixed.
+    if (isNaN(from.getTime())) {
+        return new Date(0); // treat as already cleared
+    }
+
+    const target = new Date(from);
+    target.setHours(WAIVER_PROCESS_HOUR + mtOffset, 0, 0, 0);
+
+    // Hard cap as a safety net — this loop should resolve in <=7 iterations,
+    // so if it hasn't after 14, bail out rather than hang the tab.
+    let guard = 0;
+    while (target.getDay() !== WAIVER_PROCESS_DAY || target <= from) {
         target.setDate(target.getDate() + 1);
         target.setHours(WAIVER_PROCESS_HOUR + mtOffset, 0, 0, 0);
-      }
-      return target;
+        if (++guard > 14) return new Date(0);
+    }
+    return target;
     }
 
     function debounce(fn, delay = 200) {
