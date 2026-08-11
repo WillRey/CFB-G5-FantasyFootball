@@ -301,7 +301,7 @@
         <div class="portal-page active" id="page-free-agency">
           <div class="section-header">Available Players</div>
           <div class="filters">
-            <input type="text" id="fa-search" placeholder="Search players..." oninput="filterFAPlayers()" />
+            <input type="text" id="fa-search" placeholder="Search players..." oninput="debouncedFilterFA()" />
             <select id="fa-pos-filter" onchange="filterFAPlayers()">
               <option value="">All Positions</option>
               <option value="QB">QB</option>
@@ -333,7 +333,7 @@
 
           <div class="section-header">Players on Waivers</div>
           <div class="filters">
-            <input type="text" id="waiver-search" placeholder="Search players..." oninput="filterWaiverPlayers()" />
+            <input type="text" id="waiver-search" placeholder="Search players..." oninput="debouncedFilterWaiver()" />
             <select id="waiver-pos-filter" onchange="filterWaiverPlayers()">
               <option value="">All Positions</option>
               <option value="QB">QB</option>
@@ -383,6 +383,8 @@
     const TRADE_DEADLINE = new Date('2026-10-29T23:59:00');
     const WAIVER_PROCESS_DAY = 2; // Tuesday
     const WAIVER_PROCESS_HOUR = 7; // 7am MT
+    const FA_PAGE_SIZE = 30;
+    const WAIVER_PAGE_SIZE = 30;
 
     let currentUser = null;
     let myTeamIndex = 0;
@@ -398,6 +400,11 @@
     let selectedMyTradePlayers = [];
     let selectedTheirTradePlayers = [];
     let tradeTargetIndex = null;
+
+    let faPage = 0;
+    let filteredFAPlayers = [];
+    let waiverPage = 0;
+    let filteredWaiverPlayers = [];
 
     const leagueRoster = JSON.parse(localStorage.getItem('leagueData'))?.roster || '1QB';
     const startingSlotDefs = leagueRoster === 'Superflex'
@@ -434,7 +441,13 @@
     });
 
     async function loadPortal(user) {
-      const draftDoc = await getDoc(doc(db, "drafts", leagueId));
+      // Fetch the draft doc and the (static) player CSV in parallel —
+      // they don't depend on each other, so there's no reason to wait
+      // on one before starting the other.
+      const [draftDoc] = await Promise.all([
+        getDoc(doc(db, "drafts", leagueId)),
+        loadAllPlayers()
+      ]);
 
       document.getElementById('loading').style.display = 'none';
       document.getElementById('portal-content').style.display = 'block';
@@ -466,9 +479,6 @@
         myRoster = myPicks;
       }
 
-      // Load all players from CSV
-      await loadAllPlayers();
-
       document.getElementById('portal-main').style.display = 'block';
 
       // Check trade deadline
@@ -481,6 +491,7 @@
       renderFAPlayers();
       renderWaiverPriority();
       renderWaiverPlayers();
+      renderMyWaiverClaims();
       renderTrades();
     }
 
@@ -489,13 +500,22 @@
       const csv = await res.text();
       const lines = csv.trim().split('\n');
       const headers = lines[0].split(',');
-      allPlayers = lines.slice(1).map(line => {
-        const vals = line.split(',');
+      const validPositions = new Set(['QB', 'RB', 'WR', 'TE', 'K', 'PK']);
+
+      // Single pass: parse, filter, and normalize position together
+      // instead of filter() followed by a separate map().
+      const parsed = [];
+      for (let i = 1; i < lines.length; i++) {
+        const vals = lines[i].split(',');
         const obj = {};
-        headers.forEach((h, i) => obj[h.trim()] = (vals[i] || '').trim());
-        return obj;
-      }).filter(p => ['QB', 'RB', 'WR', 'TE', 'K', 'PK'].includes(p.position))
-        .map(p => ({ ...p, position: p.position === 'PK' ? 'K' : p.position }));
+        for (let h = 0; h < headers.length; h++) {
+          obj[headers[h].trim()] = (vals[h] || '').trim();
+        }
+        if (!validPositions.has(obj.position)) continue;
+        if (obj.position === 'PK') obj.position = 'K';
+        parsed.push(obj);
+      }
+      allPlayers = parsed;
     }
 
     async function loadPortalData() {
@@ -504,8 +524,6 @@
 
       // Initialize waiver priority if empty (reverse draft order)
       if (!portalData.waiverPriority?.length) {
-        const totalRounds = draftData.picks.length / allTeams.length;
-        const lastRoundPicks = draftData.picks.filter(p => p.pickNumber >= draftData.picks.length - allTeams.length);
         const reverseOrder = [...allTeams.keys()].reverse();
         portalData.waiverPriority = reverseOrder;
 
@@ -522,10 +540,13 @@
         return now < processTime;
       });
 
+      // Use a Set for O(1) waiver membership checks instead of
+      // re-scanning the waiverPlayers array for every player in the pool.
+      const waiverIds = new Set(waiverPlayers.map(w => `${w.firstName}-${w.lastName}-${w.team}`));
+
       freeAgents = allPlayers.filter(p => {
         const id = `${p.firstName}-${p.lastName}-${p.team}`;
-        const isOnWaiver = waiverPlayers.some(w => `${w.firstName}-${w.lastName}-${w.team}` === id);
-        return !draftedPlayerIds.has(id) && !isOnWaiver;
+        return !draftedPlayerIds.has(id) && !waiverIds.has(id);
       });
     }
 
@@ -541,6 +562,14 @@
       return d;
     }
 
+    function debounce(fn, delay = 200) {
+      let t;
+      return (...args) => {
+        clearTimeout(t);
+        t = setTimeout(() => fn(...args), delay);
+      };
+    }
+
     // Tab switching
     window.showPortalPage = function(page) {
       document.querySelectorAll('.portal-page').forEach(p => p.classList.remove('active'));
@@ -549,10 +578,7 @@
       document.getElementById(`tab-${page === 'free-agency' ? 'fa' : page}`).classList.add('active');
     }
 
-    // Free Agency
-let faPage = 0;
-    const FA_PAGE_SIZE = 30;
-    let filteredFAPlayers = [];
+    // ===== Free Agency =====
 
     function renderFAPlayers() {
       faPage = 0;
@@ -575,9 +601,10 @@ let faPage = 0;
       renderFAPage();
     }
 
+    window.debouncedFilterFA = debounce(() => filterFAPlayers());
+
     function renderFAPage() {
       const el = document.getElementById('fa-player-list');
-      el.innerHTML = '';
 
       if (!filteredFAPlayers.length) {
         el.innerHTML = '<p style="color:#888;">No players found.</p>';
@@ -588,93 +615,138 @@ let faPage = 0;
       const end = Math.min(start + FA_PAGE_SIZE, filteredFAPlayers.length);
       const pagePlayers = filteredFAPlayers.slice(start, end);
 
-      pagePlayers.forEach(p => {
-        const div = document.createElement('div');
-        div.className = 'player-card';
-        div.innerHTML = `
+      // Build one HTML string and set innerHTML once, instead of
+      // appendChild-ing a node per card (much cheaper for large pages).
+      const rows = pagePlayers.map((p, i) => `
+        <div class="player-card">
           <div class="player-card-info">
             <div class="player-card-name">${p.firstName} ${p.lastName}</div>
             <div class="player-card-details">${p.position} · ${p.team} · ${p.conference}</div>
           </div>
           <span class="fa-badge">Free Agent</span>
           <div class="player-card-action">
-            <button class="btn-add" onclick="openAddDropModal(${JSON.stringify(p).replace(/"/g, '&quot;')}, 'fa')">Add</button>
+            <button class="btn-add" data-idx="${start + i}">Add</button>
           </div>
-        `;
-        el.appendChild(div);
+        </div>
+      `).join('');
+
+      el.innerHTML = rows + `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;font-size:14px;">
+          <button id="fa-prev-btn" ${faPage === 0 ? 'disabled' : ''} style="padding:6px 14px;border:1px solid #ccc;border-radius:6px;cursor:pointer;background:white;">← Prev</button>
+          <span style="color:#666;">Showing ${start + 1}–${end} of ${filteredFAPlayers.length}</span>
+          <button id="fa-next-btn" ${end >= filteredFAPlayers.length ? 'disabled' : ''} style="padding:6px 14px;border:1px solid #ccc;border-radius:6px;cursor:pointer;background:white;">Next →</button>
+        </div>
+      `;
+
+      // Event delegation: one listener setup per render instead of an
+      // inline onclick (and a JSON.stringify'd player object) per card.
+      el.querySelectorAll('.btn-add').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const player = filteredFAPlayers[parseInt(btn.dataset.idx, 10)];
+          openAddDropModal(player, 'fa');
+        });
       });
 
-      // Pagination controls
-      const controls = document.createElement('div');
-      controls.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-top:16px;font-size:14px;';
-      controls.innerHTML = `
-        <button onclick="changeFAPage(-1)" ${faPage === 0 ? 'disabled' : ''} style="padding:6px 14px;border:1px solid #ccc;border-radius:6px;cursor:pointer;background:white;">← Prev</button>
-        <span style="color:#666;">Showing ${start + 1}–${end} of ${filteredFAPlayers.length}</span>
-        <button onclick="changeFAPage(1)" ${end >= filteredFAPlayers.length ? 'disabled' : ''} style="padding:6px 14px;border:1px solid #ccc;border-radius:6px;cursor:pointer;background:white;">Next →</button>
-      `;
-      el.appendChild(controls);
+      document.getElementById('fa-prev-btn')?.addEventListener('click', () => changeFAPage(-1));
+      document.getElementById('fa-next-btn')?.addEventListener('click', () => changeFAPage(1));
     }
 
-    window.changeFAPage = function(dir) {
+    function changeFAPage(dir) {
       faPage += dir;
       renderFAPage();
     }
 
-    // Waiver Wire
+    // ===== Waiver Wire =====
+
     function renderWaiverPriority() {
       const priority = window.portalData?.waiverPriority || [];
-      const el = document.getElementById('waiver-priority-list');
-      el.innerHTML = '';
-      priority.forEach((teamIdx, rank) => {
+      const rows = priority.map((teamIdx, rank) => {
         const team = allTeams[teamIdx];
-        if (!team) return;
-        const div = document.createElement('div');
-        div.className = 'waiver-priority-row';
-        div.innerHTML = `
-          <span class="waiver-priority-rank">#${rank + 1}</span>
-          <span>${team.name}</span>
-          <span style="font-size:12px;color:#888;">${team.manager}</span>
-          ${teamIdx === myTeamIndex ? '<span style="font-size:11px;background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:4px;">You</span>' : ''}
+        if (!team) return '';
+        return `
+          <div class="waiver-priority-row">
+            <span class="waiver-priority-rank">#${rank + 1}</span>
+            <span>${team.name}</span>
+            <span style="font-size:12px;color:#888;">${team.manager}</span>
+            ${teamIdx === myTeamIndex ? '<span style="font-size:11px;background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:4px;">You</span>' : ''}
+          </div>
         `;
-        el.appendChild(div);
-      });
+      }).join('');
+      document.getElementById('waiver-priority-list').innerHTML = rows;
+    }
+
+    function renderWaiverPlayers() {
+      waiverPage = 0;
+      filterWaiverPlayers();
     }
 
     window.filterWaiverPlayers = function() {
       const search = document.getElementById('waiver-search').value.toLowerCase();
       const pos = document.getElementById('waiver-pos-filter').value;
 
-      const filtered = waiverPlayers.filter(p => {
+      filteredWaiverPlayers = waiverPlayers.filter(p => {
         const name = `${p.firstName} ${p.lastName}`.toLowerCase();
         return (!search || name.includes(search)) && (!pos || p.position === pos);
       });
 
-      const el = document.getElementById('waiver-player-list');
-      el.innerHTML = '';
+      waiverPage = 0;
+      renderWaiverPage();
+    }
 
-      if (!filtered.length) {
+    window.debouncedFilterWaiver = debounce(() => filterWaiverPlayers());
+
+    function renderWaiverPage() {
+      const el = document.getElementById('waiver-player-list');
+
+      if (!filteredWaiverPlayers.length) {
         el.innerHTML = '<p style="color:#888;">No players currently on waivers.</p>';
         return;
       }
 
-      filtered.forEach(p => {
+      const start = waiverPage * WAIVER_PAGE_SIZE;
+      const end = Math.min(start + WAIVER_PAGE_SIZE, filteredWaiverPlayers.length);
+      const pagePlayers = filteredWaiverPlayers.slice(start, end);
+
+      const rows = pagePlayers.map((p, i) => {
         const droppedAt = new Date(p.droppedAt);
         const processTime = getNextWaiverProcessTime(droppedAt);
-        const div = document.createElement('div');
-        div.className = 'player-card';
-        div.innerHTML = `
-          <div class="player-card-info">
-            <div class="player-card-name">${p.firstName} ${p.lastName}</div>
-            <div class="player-card-details">${p.position} · ${p.team} · ${p.conference}</div>
-            <div style="font-size:11px;color:#f59e0b;margin-top:2px;">Clears waivers: ${processTime.toLocaleDateString()}</div>
-          </div>
-          <span class="waiver-badge">Waivers</span>
-          <div class="player-card-action">
-            <button class="btn-add" onclick="openAddDropModal(${JSON.stringify(p).replace(/"/g, '&quot;')}, 'waiver')">Claim</button>
+        return `
+          <div class="player-card">
+            <div class="player-card-info">
+              <div class="player-card-name">${p.firstName} ${p.lastName}</div>
+              <div class="player-card-details">${p.position} · ${p.team} · ${p.conference}</div>
+              <div style="font-size:11px;color:#f59e0b;margin-top:2px;">Clears waivers: ${processTime.toLocaleDateString()}</div>
+            </div>
+            <span class="waiver-badge">Waivers</span>
+            <div class="player-card-action">
+              <button class="btn-add" data-idx="${start + i}">Claim</button>
+            </div>
           </div>
         `;
-        el.appendChild(div);
+      }).join('');
+
+      el.innerHTML = rows + (filteredWaiverPlayers.length > WAIVER_PAGE_SIZE ? `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;font-size:14px;">
+          <button id="waiver-prev-btn" ${waiverPage === 0 ? 'disabled' : ''} style="padding:6px 14px;border:1px solid #ccc;border-radius:6px;cursor:pointer;background:white;">← Prev</button>
+          <span style="color:#666;">Showing ${start + 1}–${end} of ${filteredWaiverPlayers.length}</span>
+          <button id="waiver-next-btn" ${end >= filteredWaiverPlayers.length ? 'disabled' : ''} style="padding:6px 14px;border:1px solid #ccc;border-radius:6px;cursor:pointer;background:white;">Next →</button>
+        </div>
+      ` : '');
+
+      el.querySelectorAll('.btn-add').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const player = filteredWaiverPlayers[parseInt(btn.dataset.idx, 10)];
+          openAddDropModal(player, 'waiver');
+        });
       });
+
+      document.getElementById('waiver-prev-btn')?.addEventListener('click', () => changeWaiverPage(-1));
+      document.getElementById('waiver-next-btn')?.addEventListener('click', () => changeWaiverPage(1));
+    }
+
+    function changeWaiverPage(dir) {
+      waiverPage += dir;
+      renderWaiverPage();
     }
 
     function renderMyWaiverClaims() {
@@ -682,28 +754,29 @@ let faPage = 0;
         c.teamIndex === myTeamIndex && c.status === 'pending'
       );
       const el = document.getElementById('my-waiver-claims');
-      el.innerHTML = '';
 
       if (!claims.length) {
         el.innerHTML = '<p style="color:#888;font-size:14px;">No pending claims.</p>';
         return;
       }
 
-      claims.forEach((claim, i) => {
-        const div = document.createElement('div');
-        div.className = 'waiver-claim-card';
-        div.innerHTML = `
+      el.innerHTML = claims.map((claim, i) => `
+        <div class="waiver-claim-card">
           <div style="font-weight:bold;font-size:14px;">+ ${claim.addPlayer.firstName} ${claim.addPlayer.lastName}</div>
           <div style="font-size:13px;color:#ef4444;">- ${claim.dropPlayer.firstName} ${claim.dropPlayer.lastName}</div>
           <div class="waiver-claim-details">Submitted: ${new Date(claim.submittedAt).toLocaleString()}</div>
-          <button onclick="cancelWaiverClaim(${i})" style="margin-top:8px;padding:4px 12px;border:1px solid #ef4444;color:#ef4444;background:none;border-radius:6px;cursor:pointer;font-size:12px;">Cancel Claim</button>
-        `;
-        el.appendChild(div);
+          <button class="cancel-claim-btn" data-idx="${i}" style="margin-top:8px;padding:4px 12px;border:1px solid #ef4444;color:#ef4444;background:none;border-radius:6px;cursor:pointer;font-size:12px;">Cancel Claim</button>
+        </div>
+      `).join('');
+
+      el.querySelectorAll('.cancel-claim-btn').forEach(btn => {
+        btn.addEventListener('click', () => cancelWaiverClaim(parseInt(btn.dataset.idx, 10)));
       });
     }
 
-    // Add/Drop Modal
-    window.openAddDropModal = function(player, type) {
+    // ===== Add/Drop Modal =====
+
+    function openAddDropModal(player, type) {
       pendingAddPlayer = player;
       const modal = document.getElementById('add-drop-modal');
       const title = document.getElementById('add-drop-title');
@@ -712,27 +785,28 @@ let faPage = 0;
 
       title.textContent = type === 'waiver' ? `Claim ${player.firstName} ${player.lastName}` : `Add ${player.firstName} ${player.lastName}`;
       subtitle.textContent = 'Select a player from your roster to drop:';
-      list.innerHTML = '';
       pendingDropPlayer = null;
 
-      myRoster.filter(Boolean).forEach(p => {
-        const div = document.createElement('div');
-        div.className = 'drop-select-item';
-        div.innerHTML = `
+      const rosterPlayers = myRoster.filter(Boolean);
+      list.innerHTML = rosterPlayers.map((p, i) => `
+        <div class="drop-select-item" data-idx="${i}">
           <span style="font-size:11px;font-weight:bold;color:#888;min-width:30px;">${p.position}</span>
           <span>${p.firstName} ${p.lastName} — ${p.team}</span>
-        `;
-        div.onclick = () => {
-          document.querySelectorAll('.drop-select-item').forEach(d => d.classList.remove('selected'));
+        </div>
+      `).join('');
+
+      list.querySelectorAll('.drop-select-item').forEach(div => {
+        div.addEventListener('click', () => {
+          list.querySelectorAll('.drop-select-item').forEach(d => d.classList.remove('selected'));
           div.classList.add('selected');
-          pendingDropPlayer = p;
-        };
-        list.appendChild(div);
+          pendingDropPlayer = rosterPlayers[parseInt(div.dataset.idx, 10)];
+        });
       });
 
       modal.classList.add('open');
       window.currentAddType = type;
     }
+    window.openAddDropModal = openAddDropModal;
 
     window.closeAddDropModal = function() {
       document.getElementById('add-drop-modal').classList.remove('open');
@@ -805,28 +879,23 @@ let faPage = 0;
       await logActivity(`${allTeams[myTeamIndex].name} added ${addPlayer.firstName} ${addPlayer.lastName} and dropped ${dropPlayer.firstName} ${dropPlayer.lastName}`);
     }
 
-    window.cancelWaiverClaim = async function(claimIndex) {
+    async function cancelWaiverClaim(claimIndex) {
       const portalData = window.portalData;
       portalData.waiverClaims[claimIndex].status = 'cancelled';
       await setDoc(doc(db, "portal", leagueId), portalData, { merge: true });
       renderMyWaiverClaims();
     }
 
-    // Trades
+    // ===== Trades =====
+
     window.openTradeModal = function() {
       selectedMyTradePlayers = [];
       selectedTheirTradePlayers = [];
       tradeTargetIndex = null;
 
       const select = document.getElementById('trade-target-team');
-      select.innerHTML = '<option value="">Select a team...</option>';
-      allTeams.forEach((t, i) => {
-        if (i === myTeamIndex) return;
-        const opt = document.createElement('option');
-        opt.value = i;
-        opt.textContent = `${t.name} (${t.manager})`;
-        select.appendChild(opt);
-      });
+      select.innerHTML = '<option value="">Select a team...</option>' +
+        allTeams.map((t, i) => i === myTeamIndex ? '' : `<option value="${i}">${t.name} (${t.manager})</option>`).join('');
 
       renderMyTradePlayers();
       document.getElementById('their-trade-players').innerHTML = '<p style="color:#888;font-size:13px;">Select a team first.</p>';
@@ -839,29 +908,34 @@ let faPage = 0;
 
     function renderMyTradePlayers() {
       const el = document.getElementById('my-trade-players');
-      el.innerHTML = '';
-      myRoster.filter(Boolean).forEach(p => {
+      const rosterPlayers = myRoster.filter(Boolean);
+
+      el.innerHTML = rosterPlayers.map((p, i) => {
         const isSelected = selectedMyTradePlayers.some(s => s.firstName === p.firstName && s.lastName === p.lastName);
-        const div = document.createElement('div');
-        div.className = `trade-player-select ${isSelected ? 'selected' : ''}`;
-        div.innerHTML = `
-          <span style="font-size:11px;font-weight:bold;color:#888;min-width:28px;">${p.position}</span>
-          <span style="font-size:13px;">${p.firstName} ${p.lastName}</span>
+        return `
+          <div class="trade-player-select ${isSelected ? 'selected' : ''}" data-idx="${i}">
+            <span style="font-size:11px;font-weight:bold;color:#888;min-width:28px;">${p.position}</span>
+            <span style="font-size:13px;">${p.firstName} ${p.lastName}</span>
+          </div>
         `;
-        div.onclick = () => {
+      }).join('');
+
+      el.querySelectorAll('.trade-player-select').forEach(div => {
+        div.addEventListener('click', () => {
+          const p = rosterPlayers[parseInt(div.dataset.idx, 10)];
+          const isSelected = selectedMyTradePlayers.some(s => s.firstName === p.firstName && s.lastName === p.lastName);
           if (isSelected) {
             selectedMyTradePlayers = selectedMyTradePlayers.filter(s => !(s.firstName === p.firstName && s.lastName === p.lastName));
           } else {
             selectedMyTradePlayers.push(p);
           }
           renderMyTradePlayers();
-        };
-        el.appendChild(div);
+        });
       });
     }
 
     window.loadTradeTargetRoster = function() {
-      const idx = parseInt(document.getElementById('trade-target-team').value);
+      const idx = parseInt(document.getElementById('trade-target-team').value, 10);
       if (isNaN(idx)) return;
       tradeTargetIndex = idx;
       selectedTheirTradePlayers = [];
@@ -873,31 +947,33 @@ let faPage = 0;
         theirRoster = [...theirTeam.lineup.starting.filter(Boolean), ...theirTeam.lineup.bench.filter(Boolean)];
       }
 
+      renderTheirTradePlayers(theirRoster);
+    }
+
+    function renderTheirTradePlayers(theirRoster) {
       const el = document.getElementById('their-trade-players');
-      el.innerHTML = '';
-      theirRoster.forEach(p => {
+
+      el.innerHTML = theirRoster.map((p, i) => {
         const isSelected = selectedTheirTradePlayers.some(s => s.firstName === p.firstName && s.lastName === p.lastName);
-        const div = document.createElement('div');
-        div.className = `trade-player-select ${isSelected ? 'selected' : ''}`;
-        div.innerHTML = `
-          <span style="font-size:11px;font-weight:bold;color:#888;min-width:28px;">${p.position}</span>
-          <span style="font-size:13px;">${p.firstName} ${p.lastName}</span>
+        return `
+          <div class="trade-player-select ${isSelected ? 'selected' : ''}" data-idx="${i}">
+            <span style="font-size:11px;font-weight:bold;color:#888;min-width:28px;">${p.position}</span>
+            <span style="font-size:13px;">${p.firstName} ${p.lastName}</span>
+          </div>
         `;
-        div.onclick = () => {
+      }).join('');
+
+      el.querySelectorAll('.trade-player-select').forEach(div => {
+        div.addEventListener('click', () => {
+          const p = theirRoster[parseInt(div.dataset.idx, 10)];
+          const isSelected = selectedTheirTradePlayers.some(s => s.firstName === p.firstName && s.lastName === p.lastName);
           if (isSelected) {
             selectedTheirTradePlayers = selectedTheirTradePlayers.filter(s => !(s.firstName === p.firstName && s.lastName === p.lastName));
           } else {
             selectedTheirTradePlayers.push(p);
           }
-          window.loadTradeTargetRoster();
-          const updatedEl = document.getElementById('their-trade-players');
-          // re-render with updated selections
-          theirRoster.forEach((pp, i) => {
-            const isSel = selectedTheirTradePlayers.some(s => s.firstName === pp.firstName && s.lastName === pp.lastName);
-            updatedEl.children[i]?.classList.toggle('selected', isSel);
-          });
-        };
-        el.appendChild(div);
+          renderTheirTradePlayers(theirRoster);
+        });
       });
     }
 
@@ -944,52 +1020,57 @@ let faPage = 0;
 
       renderTradeList('incoming-trades', incoming, true);
       renderTradeList('outgoing-trades', outgoing, false);
-      renderTradeList('trade-history', history, false, true);
+      renderTradeList('trade-history', history, false);
     }
 
-    function renderTradeList(elId, trades, canRespond, isHistory = false) {
+    function renderTradeList(elId, trades, canRespond) {
       const el = document.getElementById(elId);
-      el.innerHTML = '';
 
       if (!trades.length) {
         el.innerHTML = '<p style="color:#888;font-size:14px;">None.</p>';
         return;
       }
 
-      trades.forEach(trade => {
+      el.innerHTML = trades.map(trade => {
         const fromTeam = allTeams[trade.fromTeam];
         const toTeam = allTeams[trade.toTeam];
-        const div = document.createElement('div');
-        div.className = 'trade-card';
-        div.innerHTML = `
-          <div class="trade-card-header">
-            <span style="font-size:13px;color:#666;">${fromTeam?.name} → ${toTeam?.name}</span>
-            <span class="trade-status ${trade.status}">${trade.status.charAt(0).toUpperCase() + trade.status.slice(1)}</span>
+        return `
+          <div class="trade-card" data-trade-id="${trade.id}">
+            <div class="trade-card-header">
+              <span style="font-size:13px;color:#666;">${fromTeam?.name} → ${toTeam?.name}</span>
+              <span class="trade-status ${trade.status}">${trade.status.charAt(0).toUpperCase() + trade.status.slice(1)}</span>
+            </div>
+            <div class="trade-teams">
+              <div>
+                <div class="trade-team-label">${fromTeam?.name} sends:</div>
+                ${trade.sendPlayers.map(p => `<div class="trade-team-players">${p.position} ${p.firstName} ${p.lastName}</div>`).join('')}
+              </div>
+              <div class="trade-arrow">⇄</div>
+              <div>
+                <div class="trade-team-label">${toTeam?.name} sends:</div>
+                ${trade.receivePlayers.map(p => `<div class="trade-team-players">${p.position} ${p.firstName} ${p.lastName}</div>`).join('')}
+              </div>
+            </div>
+            ${canRespond ? `
+              <div style="display:flex;gap:8px;margin-top:8px;">
+                <button class="respond-accept-btn" data-trade-id="${trade.id}">Accept</button>
+                <button class="respond-reject-btn" data-trade-id="${trade.id}">Reject</button>
+              </div>
+            ` : ''}
+            <div style="font-size:11px;color:#aaa;margin-top:8px;">${new Date(trade.proposedAt).toLocaleString()}</div>
           </div>
-          <div class="trade-teams">
-            <div>
-              <div class="trade-team-label">${fromTeam?.name} sends:</div>
-              ${trade.sendPlayers.map(p => `<div class="trade-team-players">${p.position} ${p.firstName} ${p.lastName}</div>`).join('')}
-            </div>
-            <div class="trade-arrow">⇄</div>
-            <div>
-              <div class="trade-team-label">${toTeam?.name} sends:</div>
-              ${trade.receivePlayers.map(p => `<div class="trade-team-players">${p.position} ${p.firstName} ${p.lastName}</div>`).join('')}
-            </div>
-          </div>
-          ${canRespond ? `
-            <div style="display:flex;gap:8px;margin-top:8px;">
-              <button class="btn-accept" onclick="respondTrade('${trade.id}', 'accepted')">Accept</button>
-              <button class="btn-reject" onclick="respondTrade('${trade.id}', 'rejected')">Reject</button>
-            </div>
-          ` : ''}
-          <div style="font-size:11px;color:#aaa;margin-top:8px;">${new Date(trade.proposedAt).toLocaleString()}</div>
         `;
-        el.appendChild(div);
+      }).join('');
+
+      el.querySelectorAll('.respond-accept-btn').forEach(btn => {
+        btn.addEventListener('click', () => respondTrade(btn.dataset.tradeId, 'accepted'));
+      });
+      el.querySelectorAll('.respond-reject-btn').forEach(btn => {
+        btn.addEventListener('click', () => respondTrade(btn.dataset.tradeId, 'rejected'));
       });
     }
 
-    window.respondTrade = async function(tradeId, response) {
+    async function respondTrade(tradeId, response) {
       const portalData = window.portalData;
       const tradeIdx = portalData.trades.findIndex(t => t.id === tradeId);
       if (tradeIdx === -1) return;
