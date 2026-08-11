@@ -18,6 +18,9 @@ const SCORING = {
     reception: 0.5,          // half PPR
     twoPointConversion: 2
   },
+  fumbles: {
+    lost: -2
+  },
   kicking: {
     xpMade: 1,
     xpMissed: -1,
@@ -53,7 +56,7 @@ const SCORING = {
 function calculatePlayerScore(stats, position) {
   let points = 0;
 
-  if (position === 'QB') {
+if (position === 'QB') {
     points += (stats.passingYards || 0) / SCORING.passing.yardsPerPoint;
     points += (stats.passingTDs || 0) * SCORING.passing.td;
     points += (stats.interceptions || 0) * SCORING.passing.interception;
@@ -61,6 +64,7 @@ function calculatePlayerScore(stats, position) {
     points += (stats.rushingTDs || 0) * SCORING.rushing.td;
     points += (stats.passingTwoPointConversions || 0) * SCORING.passing.twoPointConversion;
     points += (stats.rushingTwoPointConversions || 0) * SCORING.rushing.twoPointConversion;
+    points += (stats.fumblesLost || 0) * SCORING.fumbles.lost;
   }
 
   if (position === 'RB') {
@@ -71,6 +75,7 @@ function calculatePlayerScore(stats, position) {
     points += (stats.receptions || 0) * SCORING.receiving.reception;
     points += (stats.rushingTwoPointConversions || 0) * SCORING.rushing.twoPointConversion;
     points += (stats.receivingTwoPointConversions || 0) * SCORING.receiving.twoPointConversion;
+    points += (stats.fumblesLost || 0) * SCORING.fumbles.lost;
   }
 
   if (position === 'WR' || position === 'TE') {
@@ -80,6 +85,7 @@ function calculatePlayerScore(stats, position) {
     points += (stats.rushingYards || 0) / SCORING.rushing.yardsPerPoint;
     points += (stats.rushingTDs || 0) * SCORING.rushing.td;
     points += (stats.receivingTwoPointConversions || 0) * SCORING.receiving.twoPointConversion;
+    points += (stats.fumblesLost || 0) * SCORING.fumbles.lost;
   }
 
   if (position === 'K') {

@@ -331,19 +331,6 @@
           <div class="section-header">My Pending Claims</div>
           <div id="my-waiver-claims"></div>
 
-          <div class="section-header">Players on Waivers</div>
-          <div class="filters">
-            <input type="text" id="waiver-search" placeholder="Search players..." oninput="debouncedFilterWaiver()" />
-            <select id="waiver-pos-filter" onchange="filterWaiverPlayers()">
-              <option value="">All Positions</option>
-              <option value="QB">QB</option>
-              <option value="RB">RB</option>
-              <option value="WR">WR</option>
-              <option value="TE">TE</option>
-              <option value="K">K</option>
-            </select>
-          </div>
-          <div id="waiver-player-list"></div>
         </div>
 
         <!-- Trades -->
@@ -384,7 +371,6 @@
     const WAIVER_PROCESS_DAY = 2; // Tuesday
     const WAIVER_PROCESS_HOUR = 7; // 7am MT
     const FA_PAGE_SIZE = 30;
-    const WAIVER_PAGE_SIZE = 30;
 
     let currentUser = null;
     let myTeamIndex = 0;
@@ -403,8 +389,7 @@
 
     let faPage = 0;
     let filteredFAPlayers = [];
-    let waiverPage = 0;
-    let filteredWaiverPlayers = [];
+    let availablePlayers = [];
 
     const leagueRoster = JSON.parse(localStorage.getItem('leagueData'))?.roster || '1QB';
     const startingSlotDefs = leagueRoster === 'Superflex'
@@ -487,7 +472,6 @@
     await loadPortalData();
         renderFAPlayers();
         renderWaiverPriority();
-        renderWaiverPlayers();
         renderMyWaiverClaims();
         renderTrades();
         }
@@ -537,15 +521,26 @@
         return now < processTime;
       });
 
-      // Use a Set for O(1) waiver membership checks instead of
-      // re-scanning the waiverPlayers array for every player in the pool.
-      const waiverIds = new Set(waiverPlayers.map(w => `${w.firstName}-${w.lastName}-${w.team}`));
+    // Use a Set for O(1) waiver membership checks instead of
+        // re-scanning the waiverPlayers array for every player in the pool.
+        const waiverIds = new Set(waiverPlayers.map(w => `${w.firstName}-${w.lastName}-${w.team}`));
 
-      freeAgents = allPlayers.filter(p => {
-        const id = `${p.firstName}-${p.lastName}-${p.team}`;
-        return !draftedPlayerIds.has(id) && !waiverIds.has(id);
-      });
-    }
+        freeAgents = allPlayers.filter(p => {
+            const id = `${p.firstName}-${p.lastName}-${p.team}`;
+            return !draftedPlayerIds.has(id) && !waiverIds.has(id);
+        });
+
+        // Combine both pools for the Free Agency tab — free agents can be
+        // added instantly, waiver players need to be claimed and wait.
+        availablePlayers = [
+            ...freeAgents.map(p => ({ ...p, status: 'free' })),
+            ...waiverPlayers.map(p => ({
+            ...p,
+            status: 'waiver',
+            processTime: getNextWaiverProcessTime(new Date(p.droppedAt))
+            }))
+        ];
+        }
 
     function getNextWaiverProcessTime(fromDate) {
     const mtOffset = 7; // MT is UTC-7
@@ -596,20 +591,26 @@
     }
 
     window.filterFAPlayers = function() {
-      const search = document.getElementById('fa-search').value.toLowerCase();
-      const pos = document.getElementById('fa-pos-filter').value;
-      const conf = document.getElementById('fa-conf-filter').value;
+        const search = document.getElementById('fa-search').value.toLowerCase();
+        const pos = document.getElementById('fa-pos-filter').value;
+        const conf = document.getElementById('fa-conf-filter').value;
 
-      filteredFAPlayers = freeAgents.filter(p => {
-        const name = `${p.firstName} ${p.lastName}`.toLowerCase();
-        return (!search || name.includes(search)) &&
-               (!pos || p.position === pos) &&
-               (!conf || p.conference === conf);
-      });
+        filteredFAPlayers = availablePlayers.filter(p => {
+            const name = `${p.firstName} ${p.lastName}`.toLowerCase();
+            return (!search || name.includes(search)) &&
+                (!pos || p.position === pos) &&
+                (!conf || p.conference === conf);
+        });
 
-      faPage = 0;
-      renderFAPage();
-    }
+        // Instantly-addable free agents first, waiver-locked players after.
+        filteredFAPlayers.sort((a, b) => {
+            if (a.status !== b.status) return a.status === 'free' ? -1 : 1;
+            return `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`);
+        });
+
+        faPage = 0;
+        renderFAPage();
+        }
 
     window.debouncedFilterFA = debounce(() => filterFAPlayers());
 
@@ -627,18 +628,30 @@
 
       // Build one HTML string and set innerHTML once, instead of
       // appendChild-ing a node per card (much cheaper for large pages).
-      const rows = pagePlayers.map((p, i) => `
-        <div class="player-card">
-          <div class="player-card-info">
-            <div class="player-card-name">${p.firstName} ${p.lastName}</div>
-            <div class="player-card-details">${p.position} · ${p.team} · ${p.conference}</div>
-          </div>
-          <span class="fa-badge">Free Agent</span>
-          <div class="player-card-action">
-            <button class="btn-add" data-idx="${start + i}">Add</button>
-          </div>
-        </div>
-      `).join('');
+    const rows = pagePlayers.map((p, i) => {
+            const isWaiver = p.status === 'waiver';
+            const badge = isWaiver
+            ? '<span class="waiver-badge">Waivers</span>'
+            : '<span class="fa-badge">Free Agent</span>';
+            const clearsLine = isWaiver
+            ? `<div style="font-size:11px;color:#f59e0b;margin-top:2px;">Clears waivers: ${p.processTime.toLocaleDateString()}</div>`
+            : '';
+            const btnLabel = isWaiver ? 'Claim' : 'Add';
+
+            return `
+            <div class="player-card">
+                <div class="player-card-info">
+                <div class="player-card-name">${p.firstName} ${p.lastName}</div>
+                <div class="player-card-details">${p.position} · ${p.team} · ${p.conference}</div>
+                ${clearsLine}
+                </div>
+                ${badge}
+                <div class="player-card-action">
+                <button class="btn-add" data-idx="${start + i}">${btnLabel}</button>
+                </div>
+            </div>
+            `;
+        }).join('');
 
       el.innerHTML = rows + `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;font-size:14px;">
@@ -650,18 +663,18 @@
 
       // Event delegation: one listener setup per render instead of an
       // inline onclick (and a JSON.stringify'd player object) per card.
-      el.querySelectorAll('.btn-add').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const player = filteredFAPlayers[parseInt(btn.dataset.idx, 10)];
-          openAddDropModal(player, 'fa');
+    el.querySelectorAll('.btn-add').forEach(btn => {
+            btn.addEventListener('click', () => {
+            const player = filteredFAPlayers[parseInt(btn.dataset.idx, 10)];
+            openAddDropModal(player, player.status === 'waiver' ? 'waiver' : 'fa');
+            });
         });
-      });
 
-      document.getElementById('fa-prev-btn')?.addEventListener('click', () => changeFAPage(-1));
-      document.getElementById('fa-next-btn')?.addEventListener('click', () => changeFAPage(1));
-    }
+        document.getElementById('fa-prev-btn')?.addEventListener('click', () => changeFAPage(-1));
+        document.getElementById('fa-next-btn')?.addEventListener('click', () => changeFAPage(1));
+        }
 
-    function changeFAPage(dir) {
+        function changeFAPage(dir) {
       faPage += dir;
       renderFAPage();
     }
@@ -683,80 +696,6 @@
         `;
       }).join('');
       document.getElementById('waiver-priority-list').innerHTML = rows;
-    }
-
-    function renderWaiverPlayers() {
-      waiverPage = 0;
-      filterWaiverPlayers();
-    }
-
-    window.filterWaiverPlayers = function() {
-      const search = document.getElementById('waiver-search').value.toLowerCase();
-      const pos = document.getElementById('waiver-pos-filter').value;
-
-      filteredWaiverPlayers = waiverPlayers.filter(p => {
-        const name = `${p.firstName} ${p.lastName}`.toLowerCase();
-        return (!search || name.includes(search)) && (!pos || p.position === pos);
-      });
-
-      waiverPage = 0;
-      renderWaiverPage();
-    }
-
-    window.debouncedFilterWaiver = debounce(() => filterWaiverPlayers());
-
-    function renderWaiverPage() {
-      const el = document.getElementById('waiver-player-list');
-
-      if (!filteredWaiverPlayers.length) {
-        el.innerHTML = '<p style="color:#888;">No players currently on waivers.</p>';
-        return;
-      }
-
-      const start = waiverPage * WAIVER_PAGE_SIZE;
-      const end = Math.min(start + WAIVER_PAGE_SIZE, filteredWaiverPlayers.length);
-      const pagePlayers = filteredWaiverPlayers.slice(start, end);
-
-      const rows = pagePlayers.map((p, i) => {
-        const droppedAt = new Date(p.droppedAt);
-        const processTime = getNextWaiverProcessTime(droppedAt);
-        return `
-          <div class="player-card">
-            <div class="player-card-info">
-              <div class="player-card-name">${p.firstName} ${p.lastName}</div>
-              <div class="player-card-details">${p.position} · ${p.team} · ${p.conference}</div>
-              <div style="font-size:11px;color:#f59e0b;margin-top:2px;">Clears waivers: ${processTime.toLocaleDateString()}</div>
-            </div>
-            <span class="waiver-badge">Waivers</span>
-            <div class="player-card-action">
-              <button class="btn-add" data-idx="${start + i}">Claim</button>
-            </div>
-          </div>
-        `;
-      }).join('');
-
-      el.innerHTML = rows + (filteredWaiverPlayers.length > WAIVER_PAGE_SIZE ? `
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;font-size:14px;">
-          <button id="waiver-prev-btn" ${waiverPage === 0 ? 'disabled' : ''} style="padding:6px 14px;border:1px solid #ccc;border-radius:6px;cursor:pointer;background:white;">← Prev</button>
-          <span style="color:#666;">Showing ${start + 1}–${end} of ${filteredWaiverPlayers.length}</span>
-          <button id="waiver-next-btn" ${end >= filteredWaiverPlayers.length ? 'disabled' : ''} style="padding:6px 14px;border:1px solid #ccc;border-radius:6px;cursor:pointer;background:white;">Next →</button>
-        </div>
-      ` : '');
-
-      el.querySelectorAll('.btn-add').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const player = filteredWaiverPlayers[parseInt(btn.dataset.idx, 10)];
-          openAddDropModal(player, 'waiver');
-        });
-      });
-
-      document.getElementById('waiver-prev-btn')?.addEventListener('click', () => changeWaiverPage(-1));
-      document.getElementById('waiver-next-btn')?.addEventListener('click', () => changeWaiverPage(1));
-    }
-
-    function changeWaiverPage(dir) {
-      waiverPage += dir;
-      renderWaiverPage();
     }
 
     function renderMyWaiverClaims() {
@@ -853,10 +792,9 @@
         alert(`${pendingAddPlayer.firstName} ${pendingAddPlayer.lastName} added to your roster!`);
       }
 
-        closeAddDropModal();
+    closeAddDropModal();
         await loadPortalData();
         filterFAPlayers();
-        filterWaiverPlayers();
         renderMyWaiverClaims();
     }
 
