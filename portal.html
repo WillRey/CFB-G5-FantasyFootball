@@ -550,7 +550,12 @@
     }
 
     // Free Agency
+let faPage = 0;
+    const FA_PAGE_SIZE = 30;
+    let filteredFAPlayers = [];
+
     function renderFAPlayers() {
+      faPage = 0;
       filterFAPlayers();
     }
 
@@ -559,22 +564,31 @@
       const pos = document.getElementById('fa-pos-filter').value;
       const conf = document.getElementById('fa-conf-filter').value;
 
-      const filtered = freeAgents.filter(p => {
+      filteredFAPlayers = freeAgents.filter(p => {
         const name = `${p.firstName} ${p.lastName}`.toLowerCase();
         return (!search || name.includes(search)) &&
                (!pos || p.position === pos) &&
                (!conf || p.conference === conf);
       });
 
+      faPage = 0;
+      renderFAPage();
+    }
+
+    function renderFAPage() {
       const el = document.getElementById('fa-player-list');
       el.innerHTML = '';
 
-      if (!filtered.length) {
+      if (!filteredFAPlayers.length) {
         el.innerHTML = '<p style="color:#888;">No players found.</p>';
         return;
       }
 
-      filtered.slice(0, 50).forEach(p => {
+      const start = faPage * FA_PAGE_SIZE;
+      const end = Math.min(start + FA_PAGE_SIZE, filteredFAPlayers.length);
+      const pagePlayers = filteredFAPlayers.slice(start, end);
+
+      pagePlayers.forEach(p => {
         const div = document.createElement('div');
         div.className = 'player-card';
         div.innerHTML = `
@@ -589,6 +603,21 @@
         `;
         el.appendChild(div);
       });
+
+      // Pagination controls
+      const controls = document.createElement('div');
+      controls.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-top:16px;font-size:14px;';
+      controls.innerHTML = `
+        <button onclick="changeFAPage(-1)" ${faPage === 0 ? 'disabled' : ''} style="padding:6px 14px;border:1px solid #ccc;border-radius:6px;cursor:pointer;background:white;">← Prev</button>
+        <span style="color:#666;">Showing ${start + 1}–${end} of ${filteredFAPlayers.length}</span>
+        <button onclick="changeFAPage(1)" ${end >= filteredFAPlayers.length ? 'disabled' : ''} style="padding:6px 14px;border:1px solid #ccc;border-radius:6px;cursor:pointer;background:white;">Next →</button>
+      `;
+      el.appendChild(controls);
+    }
+
+    window.changeFAPage = function(dir) {
+      faPage += dir;
+      renderFAPage();
     }
 
     // Waiver Wire
