@@ -44,22 +44,30 @@ export function initNav(currentPage) {
     const nav = document.querySelector('nav');
     if (!nav) return;
 
-    nav.innerHTML = '';
+nav.innerHTML = '';
 
-    const baseLinks = [
-      { href: 'index.html', label: 'Home' },
-      { href: 'players.html', label: 'Players' },
-      { href: 'scores.html', label: 'Scores' },
-      { href: 'setup.html', label: 'Create A League' },
-    ];
+const linkContainer = document.createElement('div');
+linkContainer.className = 'nav-links';
+nav.appendChild(linkContainer);
 
-    baseLinks.forEach(link => {
-      const a = document.createElement('a');
-      a.href = link.href;
-      a.textContent = link.label;
-      if (currentPage === link.href) a.classList.add('active');
-      nav.appendChild(a);
-    });
+const showScoresOn = ['myteam.html', 'matchup.html', 'schedule.html', 'scores.html'];
+
+const baseLinks = [
+  { href: 'index.html', label: 'Home' },
+  { href: 'setup.html', label: 'Create A League' },
+];
+
+if (showScoresOn.includes(currentPage)) {
+  baseLinks.push({ href: 'scores.html', label: 'Scores' });
+}
+
+baseLinks.forEach(link => {
+  const a = document.createElement('a');
+  a.href = link.href;
+  a.textContent = link.label;
+  if (currentPage === link.href) a.classList.add('active');
+  linkContainer.appendChild(a);
+});
 
     if (user) {
       const leagueId = getLeagueId();
