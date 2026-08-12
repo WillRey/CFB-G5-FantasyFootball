@@ -24,14 +24,21 @@ const SCORING = {
     lost: -2
   },
   kicking: {
-    xpMade: 1,
+    xpMade:   1,
     xpMissed: -1,
-    fg: [
-      { minYds: 0,  maxYds: 39,  made: 3,   missed: -2   },
-      { minYds: 40, maxYds: 49,  made: 4,   missed: -1   },
-      { minYds: 50, maxYds: 59,  made: 5,   missed: -0.5 },
-      { minYds: 60, maxYds: 999, made: 6,   missed: -0.5 }
-    ]
+    // Made FG points by distance tier
+    fgMade: {
+      '0_39':  3,
+      '40_49': 4,
+      '50_59': 5,
+      '60':    6,
+    },
+    // Missed FG penalties by distance tier
+    fgMissed: {
+      '0_39':  -2,
+      '40_49': -1,
+      '50':    -0.5,  // ESPN 50+ bucket — covers both 50-59 and 60+ misses
+    }
   },
   dst: {
     pointsAllowed: [
@@ -90,14 +97,20 @@ function calculatePlayerScore(stats, position) {
   }
 
   if (position === 'K') {
-    points += (stats.xpMade || 0) * SCORING.kicking.xpMade;
+    // Extra points
+    points += (stats.xpMade   || 0) * SCORING.kicking.xpMade;
     points += (stats.xpMissed || 0) * SCORING.kicking.xpMissed;
 
-    const fgAttempts = stats.fgAttempts || [];
-    fgAttempts.forEach(attempt => {
-      const tier = SCORING.kicking.fg.find(t => attempt.yards >= t.minYds && attempt.yards <= t.maxYds);
-      if (tier) points += attempt.made ? tier.made : tier.missed;
-    });
+    // Made field goals — flat fields populated by espn.js kicking parser
+    points += (stats.fgMade0_39  || 0) * SCORING.kicking.fgMade['0_39'];
+    points += (stats.fgMade40_49 || 0) * SCORING.kicking.fgMade['40_49'];
+    points += (stats.fgMade50_59 || 0) * SCORING.kicking.fgMade['50_59'];
+    points += (stats.fgMade60    || 0) * SCORING.kicking.fgMade['60'];
+
+    // Missed field goals
+    points += (stats.fgMissed0_39  || 0) * SCORING.kicking.fgMissed['0_39'];
+    points += (stats.fgMissed40_49 || 0) * SCORING.kicking.fgMissed['40_49'];
+    points += (stats.fgMissed50    || 0) * SCORING.kicking.fgMissed['50'];
   }
 
   return Math.round(points * 100) / 100;
@@ -106,17 +119,17 @@ function calculatePlayerScore(stats, position) {
 function calculateDSTScore(stats) {
   let points = 0;
 
-  const pa = stats.pointsAllowed || 0;
+  const pa   = stats.pointsAllowed || 0;
   const tier = SCORING.dst.pointsAllowed.find(t => pa >= t.min && pa <= t.max);
   if (tier) points += tier.pts;
 
-  points += (stats.sacks || 0) * SCORING.dst.sack;
-  points += (stats.interceptions || 0) * SCORING.dst.interception;
+  points += (stats.sacks            || 0) * SCORING.dst.sack;
+  points += (stats.interceptions    || 0) * SCORING.dst.interception;
   points += (stats.fumblesRecovered || 0) * SCORING.dst.fumbleRecovered;
-  points += (stats.fumblesForced || 0) * SCORING.dst.fumbleForced;
-  points += (stats.touchdowns || 0) * SCORING.dst.td;
-  points += (stats.safeties || 0) * SCORING.dst.safety;
-  points += (stats.blockedKicks || 0) * SCORING.dst.blockedKick;
+  points += (stats.fumblesForced    || 0) * SCORING.dst.fumbleForced;
+  points += (stats.touchdowns       || 0) * SCORING.dst.td;
+  points += (stats.safeties         || 0) * SCORING.dst.safety;
+  points += (stats.blockedKicks     || 0) * SCORING.dst.blockedKick;
 
   return Math.round(points * 100) / 100;
 }
