@@ -130,6 +130,7 @@
   .team-header {
     display: flex;
     align-items: center;
+    justify-content: flex-start;
     gap: 16px;
     margin-bottom: 20px;
   }
@@ -378,18 +379,18 @@
         <a id="signing-day-btn" href="draft.html">Enter Signing Day</a>
       </div>
 
-      <div class="subnav">
-        <a class="subnav-link active" onclick="showPage('roster')" id="tab-roster">My Roster</a>
-        <div class="subnav-dropdown">
-          <a class="subnav-link no-action" id="tab-conference">Conference ▾</a>
-          <div class="subnav-dropdown-menu">
-            <a onclick="showPage('league-settings')">League Settings</a>
-            <a onclick="showPage('scoring')">Scoring System</a>
-            <a onclick="showPage('activity')">Recent Activity</a>
-          </div>
+    <div class="subnav">
+      <a class="subnav-link active" onclick="showPage('roster')" id="tab-roster">My Roster</a>
+      <a class="subnav-link" href="portal.html">Transfer Portal</a>
+      <div class="subnav-dropdown">
+        <a class="subnav-link no-action" id="tab-conference">Conference ▾</a>
+        <div class="subnav-dropdown-menu">
+          <a onclick="showPage('league-settings')">League Settings</a>
+          <a onclick="showPage('scoring')">Scoring System</a>
+          <a onclick="showPage('activity')">Recent Activity</a>
         </div>
-        <a class="subnav-link" href="portal.html">Transfer Portal</a>
       </div>
+    </div>
 
       <div class="conf-page active" id="page-roster">
         <div class="section-title">Starting Lineup</div>
