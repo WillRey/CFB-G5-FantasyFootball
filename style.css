@@ -45,7 +45,7 @@ a:hover { text-decoration: underline; }
 
 /* --- Navigation --- */
 nav {
-  background: #0d0d14;
+  background: transparent;
   padding: 0 1.5rem;
   display: flex;
   align-items: center;
@@ -57,7 +57,7 @@ nav {
 }
 
 .nav-brand {
-  background: linear-gradient(135deg, #6dc7ff, #c822ff);
+  background: linear-gradient(135deg, #1a6dff, #c822ff);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -76,28 +76,26 @@ nav {
 }
 
 .nav-links a {
-  color: rgba(255, 255, 255, 0.55);
+  color: #1a1a2e;
   font-size: 13px;
   font-weight: 500;
-  padding: 6px 10px;
+  padding: 6px 8px;
   border-radius: 6px;
-  transition: color 0.3s ease, background 0.15s;
+  transition: color 0.3s ease;
   text-decoration: none;
-  background: linear-gradient(135deg, rgba(255,255,255,0.55), rgba(255,255,255,0.55));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  background: none;
+  -webkit-text-fill-color: #1a1a2e;
 }
 
 .nav-links a:hover {
-  background: linear-gradient(135deg, #6dc7ff, #e6abff);
+  background: linear-gradient(135deg, #1a6dff, #c822ff);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   text-decoration: none;
 }
 .nav-links a.active {
-  background: linear-gradient(135deg, #6dc7ff, #e6abff);
+  background: linear-gradient(135deg, #1a6dff, #c822ff);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
