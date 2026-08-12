@@ -8,276 +8,299 @@
 <link type="image/png" sizes="32x32" rel="icon" href="/icons8-american-football-gradient-32.png">
 <link type="image/png" sizes="96x96" rel="icon" href="/icons8-american-football-gradient-96.png">
   <link rel="stylesheet" href="style.css" />
-  <style>
-    .subnav {
-      display: flex;
-      gap: 0;
-      border-bottom: 2px solid #eee;
-      margin-bottom: 24px;
-      position: relative;
-    }
-    .subnav-link {
-      padding: 10px 18px;
-      font-size: 14px;
-      font-weight: bold;
-      color: #666;
-      cursor: pointer;
-      border-bottom: 3px solid transparent;
-      margin-bottom: -2px;
-      text-decoration: none;
-      transition: all 0.2s;
-    }
-    .subnav-link:hover { color: #2a7ae2; }
-    .subnav-link.active { color: #2a7ae2; border-bottom-color: #2a7ae2; }
-    .subnav-dropdown { position: relative; }
-    .subnav-dropdown-menu {
-      display: none;
-      position: absolute;
-      top: 100%;
-      left: 0;
-      background: white;
-      border: 1px solid #eee;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      z-index: 100;
-      min-width: 180px;
-    }
-    .subnav-dropdown:hover .subnav-dropdown-menu { display: block; }
-    .subnav-dropdown-menu a {
-      display: block;
-      padding: 10px 16px;
-      font-size: 14px;
-      color: #333;
-      text-decoration: none;
-      cursor: pointer;
-    }
-    .subnav-dropdown-menu a:hover { background: #f0f4ff; color: #2a7ae2; }
+<style>
+  /* --- Subnav --- */
+  .subnav {
+    display: flex;
+    gap: 0;
+    border-bottom: 1.5px solid #e0e4f0;
+    margin-bottom: 24px;
+  }
+  .subnav-link {
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #9ca3af;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    text-decoration: none;
+    transition: color 0.2s;
+    background: none;
+  }
+  .subnav-link:hover {
+    background: linear-gradient(135deg, #1a6dff, #c822ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-decoration: none;
+  }
+  .subnav-link.active {
+    background: linear-gradient(135deg, #1a6dff, #c822ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    border-bottom-color: #1a6dff;
+  }
+  .subnav-link.no-action {
+    color: #9ca3af;
+    cursor: default;
+    background: none;
+    -webkit-text-fill-color: #9ca3af;
+  }
+  .subnav-link.no-action:hover {
+    background: none;
+    -webkit-text-fill-color: #9ca3af;
+    -webkit-background-clip: unset;
+    background-clip: unset;
+  }
 
-    #signing-day-banner {
-      background: #f0f4ff;
-      border: 1px solid #2a7ae2;
-      border-radius: 10px;
-      padding: 20px 24px;
-      margin-bottom: 24px;
-      text-align: center;
-    }
-    #signing-day-banner h2 { margin: 0 0 8px; color: #2a7ae2; }
-    #countdown { font-size: 32px; font-weight: bold; color: #1a5bbf; margin: 8px 0; }
-    #signing-day-btn {
-      display: none;
-      margin-top: 12px;
-      padding: 10px 24px;
-      background: #2a7ae2;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-size: 16px;
-      cursor: pointer;
-      text-decoration: none;
-    }
-    #signing-day-btn:hover { background: #1a5bbf; }
+  /* --- Subnav Dropdown --- */
+  .subnav-dropdown { position: relative; }
+  .subnav-dropdown-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    background: rgba(255,255,255,0.95);
+    border: 1px solid #e8eaf0;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(26,109,255,0.10), 0 2px 6px rgba(200,34,255,0.06);
+    z-index: 100;
+    min-width: 180px;
+    padding: 6px;
+    backdrop-filter: blur(8px);
+  }
+  .subnav-dropdown:hover .subnav-dropdown-menu { display: block; }
+  .subnav-dropdown-menu a {
+    display: block;
+    padding: 9px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+    text-decoration: none;
+    cursor: pointer;
+    border-radius: 7px;
+    transition: background 0.15s;
+  }
+  .subnav-dropdown-menu a:hover {
+    background: linear-gradient(135deg, #eef3ff, #faf0ff);
+    background: rgba(26,109,255,0.07);
+    color: #1a6dff;
+  }
 
-    /* Team header */
-    .team-header {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      margin-bottom: 8px;
-    }
-    .team-logo {
-      width: 72px;
-      height: 72px;
-      border-radius: 50%;
-      object-fit: cover;
-      border: 2px solid #eee;
-      background: #f0f4ff;
-    }
-    .team-logo-placeholder {
-      width: 72px;
-      height: 72px;
-      border-radius: 50%;
-      background: #e0e8ff;
-      border: 2px solid #2a7ae2;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 28px;
-      color: #2a7ae2;
-      font-weight: bold;
-      flex-shrink: 0;
-    }
-    .team-header-info { flex: 1; }
-    .edit-team-btn {
-      font-size: 13px;
-      color: #2a7ae2;
-      cursor: pointer;
-      background: none;
-      border: 1px solid #2a7ae2;
-      border-radius: 6px;
-      padding: 4px 12px;
-      margin-top: 4px;
-      display: inline-block;
-    }
-    .edit-team-btn:hover { background: #f0f4ff; }
+  /* --- Signing Day Banner --- */
+  #signing-day-banner {
+    background: linear-gradient(135deg, rgba(109,199,255,0.15), rgba(230,171,255,0.15));
+    border: 1px solid rgba(26,109,255,0.2);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 24px;
+    text-align: center;
+  }
+  #signing-day-banner h2 { margin: 0 0 8px; background: linear-gradient(135deg,#1a6dff,#c822ff); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+  #countdown { font-size: 32px; font-weight: 700; background: linear-gradient(135deg,#1a6dff,#c822ff); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin: 8px 0; }
+  #signing-day-btn {
+    display: none;
+    margin-top: 12px;
+    padding: 10px 24px;
+    background: linear-gradient(135deg, #1a6dff, #c822ff);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+  }
 
-    /* Team info modal */
-    #team-info-modal {
-      display: none;
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(0,0,0,0.5);
-      z-index: 1000;
-      justify-content: center;
-      align-items: center;
-    }
-    #team-info-modal.open { display: flex; }
-    #team-info-modal-box {
-      background: white;
-      border-radius: 12px;
-      padding: 24px;
-      width: 420px;
-      max-width: 90vw;
-    }
-    #team-info-modal-box h3 { margin: 0 0 16px; }
-    .logo-preview {
-      width: 80px;
-      height: 80px;
-      border-radius: 50%;
-      object-fit: cover;
-      border: 2px solid #eee;
-      margin: 12px 0;
-      display: none;
-    }
-    .upload-area {
-      border: 2px dashed #ccc;
-      border-radius: 8px;
-      padding: 20px;
-      text-align: center;
-      cursor: pointer;
-      margin: 12px 0;
-      transition: all 0.2s;
-    }
-    .upload-area:hover { border-color: #2a7ae2; background: #f0f4ff; }
-    .upload-area input { display: none; }
-    .upload-progress {
-      height: 4px;
-      background: #eee;
-      border-radius: 2px;
-      margin-top: 8px;
-      display: none;
-    }
-    .upload-progress-bar {
-      height: 100%;
-      background: #2a7ae2;
-      border-radius: 2px;
-      width: 0%;
-      transition: width 0.3s;
-    }
-    .modal-actions {
-      display: flex;
-      gap: 10px;
-      margin-top: 16px;
-    }
-    .modal-actions button { flex: 1; padding: 10px; border-radius: 8px; cursor: pointer; font-size: 14px; }
-    .btn-primary { background: #2a7ae2; color: white; border: none; }
-    .btn-primary:hover { background: #1a5bbf; }
-    .btn-secondary { background: #f5f5f5; border: 1px solid #ddd; }
-    .btn-secondary:hover { background: #e5e5e5; }
+  /* --- Team Header --- */
+  .team-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .team-logo {
+    width: 72px; height: 72px;
+    border-radius: 50%; object-fit: cover;
+    border: 2px solid #e8eaf0;
+  }
+  .team-logo-placeholder {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #eef3ff, #faf0ff);
+    border: 2px solid #c8d8ff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; font-weight: 700;
+    color: #1a6dff; flex-shrink: 0;
+  }
+  .team-header-info { flex: 1; }
+  .edit-team-btn {
+    font-size: 12px;
+    font-weight: 600;
+    color: #1a6dff;
+    cursor: pointer;
+    background: none;
+    border: 1px solid #c8d8ff;
+    border-radius: 6px;
+    padding: 4px 12px;
+    margin-top: 6px;
+    display: inline-block;
+    transition: background 0.15s;
+  }
+  .edit-team-btn:hover { background: rgba(26,109,255,0.06); }
 
-    .roster-slot {
-      display: flex;
-      align-items: center;
-      padding: 8px 12px;
-      border-bottom: 1px solid #eee;
-      font-size: 14px;
-      gap: 12px;
-    }
-    .slot-label {
-      min-width: 90px;
-      font-weight: bold;
-      color: white;
-      background: #2a7ae2;
-      padding: 6px 10px;
-      border-radius: 6px;
-      border: 2px solid #2a7ae2;
-      cursor: pointer;
-      transition: all 0.2s;
-      text-align: center;
-    }
-    .slot-label:hover { background: #1a5bbf; border-color: #1a5bbf; }
-    .slot-label.empty-slot { background: #ccc; border-color: #ccc; color: #666; }
-    .slot-player { flex: 1; }
-    .section-title {
-      font-size: 18px;
-      font-weight: bold;
-      margin: 20px 0 8px;
-      padding-bottom: 4px;
-      border-bottom: 2px solid #eee;
-    }
+  /* --- Roster Table --- */
+  .roster-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .roster-table-header {
+    display: grid;
+    grid-template-columns: 90px 1fr 90px 80px 80px;
+    padding: 6px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #9ca3af;
+    border-bottom: 1.5px solid #e8eaf0;
+    margin-bottom: 4px;
+  }
+  .roster-slot {
+    display: grid;
+    grid-template-columns: 90px 1fr 90px 80px 80px;
+    align-items: center;
+    padding: 8px 12px;
+    border-bottom: 1px solid #f0f1f7;
+    font-size: 14px;
+    gap: 0;
+    transition: background 0.15s;
+  }
+  .roster-slot:hover { background: rgba(26,109,255,0.03); }
 
-    #swap-modal {
-      display: none;
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(0,0,0,0.5);
-      z-index: 1000;
-      justify-content: center;
-      align-items: center;
-    }
-    #swap-modal.open { display: flex; }
-    #swap-modal-box {
-      background: white;
-      border-radius: 12px;
-      padding: 24px;
-      width: 420px;
-      max-width: 90vw;
-      max-height: 80vh;
-      overflow-y: auto;
-    }
-    #swap-modal-title { font-size: 16px; font-weight: bold; margin-bottom: 16px; color: #333; }
-    .swap-option {
-      display: flex;
-      align-items: center;
-      padding: 10px 12px;
-      border-radius: 8px;
-      border: 1px solid #eee;
-      margin-bottom: 8px;
-      cursor: pointer;
-      transition: background 0.15s;
-      gap: 12px;
-    }
-    .swap-option:hover { background: #f0f4ff; border-color: #2a7ae2; }
-    .swap-option-slot { font-size: 11px; font-weight: bold; color: #888; min-width: 50px; }
-    .swap-option-name { font-weight: bold; font-size: 14px; }
-    .swap-option-details { font-size: 12px; color: #666; }
-    #swap-modal-cancel {
-      margin-top: 12px;
-      width: 100%;
-      padding: 10px;
-      background: #f5f5f5;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 14px;
-    }
-    #swap-modal-cancel:hover { background: #e5e5e5; }
+  .slot-label {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 52px;
+    max-width: 68px;
+    font-size: 12px;
+    font-weight: 700;
+    color: white;
+    background: linear-gradient(135deg, #1a6dff, #c822ff);
+    padding: 5px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    border: none;
+    transition: opacity 0.15s;
+    text-align: center;
+  }
+  .slot-label:hover { opacity: 0.82; }
+  .slot-label.empty-slot {
+    background: #e8eaf0;
+    color: #9ca3af;
+  }
 
-    .conf-page { display: none; }
-    .conf-page.active { display: block; }
-    .scoring-table { width: 100%; border-collapse: collapse; }
-    .scoring-table th, .scoring-table td {
-      padding: 10px 14px;
-      text-align: left;
-      border-bottom: 1px solid #eee;
-      font-size: 14px;
-    }
-    .scoring-table th { font-weight: bold; color: #666; font-size: 12px; text-transform: uppercase; }
-    .scoring-section-label { font-weight: bold; font-size: 16px; margin: 20px 0 8px; padding-bottom: 4px; border-bottom: 2px solid #eee; }
-    .activity-item { padding: 12px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
-    .activity-item .activity-time { font-size: 12px; color: #aaa; margin-top: 4px; }
-  </style>
+  .slot-player { color: #1a1a2e; font-weight: 500; }
+  .slot-player .player-sub { font-size: 12px; color: #9ca3af; font-weight: 400; }
+  .slot-opponent { font-size: 13px; color: #6b7280; }
+  .slot-proj { font-size: 13px; color: #6b7280; }
+  .slot-score { font-size: 14px; font-weight: 600; color: #1a1a2e; }
+
+  .section-title {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #9ca3af;
+    margin: 20px 0 6px;
+  }
+
+  /* --- Team Info Modal --- */
+  #team-info-modal {
+    display: none; position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(13,13,20,0.5);
+    z-index: 1000; justify-content: center; align-items: center;
+  }
+  #team-info-modal.open { display: flex; }
+  #team-info-modal-box {
+    background: white; border-radius: 14px;
+    padding: 24px; width: 420px; max-width: 90vw;
+    box-shadow: 0 12px 40px rgba(26,109,255,0.15);
+  }
+  #team-info-modal-box h3 { margin: 0 0 16px; font-size: 17px; }
+  .logo-preview {
+    width: 80px; height: 80px; border-radius: 50%;
+    object-fit: cover; border: 2px solid #e8eaf0;
+    margin: 12px 0; display: none;
+  }
+  .upload-area {
+    border: 2px dashed #d0d5e8; border-radius: 8px;
+    padding: 20px; text-align: center; cursor: pointer;
+    margin: 12px 0; transition: all 0.2s; font-size: 14px; color: #6b7280;
+  }
+  .upload-area:hover { border-color: #1a6dff; background: rgba(26,109,255,0.04); }
+  .upload-area input { display: none; }
+  .upload-progress { height: 4px; background: #e8eaf0; border-radius: 2px; margin-top: 8px; display: none; }
+  .upload-progress-bar { height: 100%; background: linear-gradient(135deg,#1a6dff,#c822ff); border-radius: 2px; width: 0%; transition: width 0.3s; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 16px; }
+  .modal-actions button { flex: 1; padding: 10px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; }
+  .btn-primary { background: linear-gradient(135deg,#1a6dff,#c822ff); color: white; border: none; }
+  .btn-secondary { background: #f5f5f8; border: 1px solid #e8eaf0; color: #374151; }
+  .btn-secondary:hover { background: #eceef5; }
+
+  /* --- Swap Modal --- */
+  #swap-modal {
+    display: none; position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(13,13,20,0.5);
+    z-index: 1000; justify-content: center; align-items: center;
+  }
+  #swap-modal.open { display: flex; }
+  #swap-modal-box {
+    background: white; border-radius: 14px;
+    padding: 24px; width: 440px; max-width: 90vw;
+    max-height: 80vh; overflow-y: auto;
+    box-shadow: 0 12px 40px rgba(26,109,255,0.15);
+  }
+  #swap-modal-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; color: #1a1a2e; }
+  .swap-option {
+    display: flex; align-items: center;
+    padding: 10px 12px; border-radius: 8px;
+    border: 1px solid #e8eaf0; margin-bottom: 8px;
+    cursor: pointer; transition: all 0.15s; gap: 12px;
+  }
+  .swap-option:hover {
+    background: rgba(26,109,255,0.05);
+    border-color: #a0b8ff;
+  }
+  .swap-option-slot { font-size: 11px; font-weight: 700; color: #9ca3af; min-width: 50px; }
+  .swap-option-name { font-weight: 600; font-size: 14px; color: #1a1a2e; }
+  .swap-option-details { font-size: 12px; color: #6b7280; }
+  #swap-modal-cancel {
+    margin-top: 12px; width: 100%; padding: 10px;
+    background: #f5f5f8; border: 1px solid #e8eaf0;
+    border-radius: 8px; cursor: pointer; font-size: 14px;
+    font-weight: 600; color: #374151;
+  }
+  #swap-modal-cancel:hover { background: #eceef5; }
+
+  /* --- Conf pages / scoring --- */
+  .conf-page { display: none; }
+  .conf-page.active { display: block; }
+  .scoring-table { width: 100%; border-collapse: collapse; }
+  .scoring-table th, .scoring-table td {
+    padding: 10px 14px; text-align: left;
+    border-bottom: 1px solid #f0f1f7; font-size: 14px;
+  }
+  .scoring-table th { font-weight: 600; color: #9ca3af; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .scoring-section-label { font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.07em; color: #9ca3af; margin: 20px 0 6px; }
+  .activity-item { padding: 12px 0; border-bottom: 1px solid #f0f1f7; font-size: 14px; }
+  .activity-item .activity-time { font-size: 12px; color: #9ca3af; margin-top: 4px; }
+</style>
 </head>
 <body>
   <nav></nav>
@@ -342,22 +365,45 @@
       <div class="subnav">
         <a class="subnav-link active" onclick="showPage('roster')" id="tab-roster">My Roster</a>
         <div class="subnav-dropdown">
-          <a class="subnav-link" id="tab-conference">Conference ▾</a>
-          <a class="subnav-link" href="portal.html">Transfer Portal</a>
+          <a class="subnav-link no-action" id="tab-conference">Conference ▾</a>
           <div class="subnav-dropdown-menu">
             <a onclick="showPage('league-settings')">League Settings</a>
             <a onclick="showPage('scoring')">Scoring System</a>
             <a onclick="showPage('activity')">Recent Activity</a>
           </div>
         </div>
+        <a class="subnav-link" href="portal.html">Transfer Portal</a>
       </div>
 
       <div class="conf-page active" id="page-roster">
         <div class="section-title">Starting Lineup</div>
+        <div class="roster-table-header">
+          <div></div>
+          <div>Player</div>
+          <div>Opponent</div>
+          <div>Projected</div>
+          <div>Score</div>
+        </div>
         <div id="starting-lineup"></div>
+
         <div class="section-title">Bench</div>
+        <div class="roster-table-header">
+          <div></div>
+          <div>Player</div>
+          <div>Opponent</div>
+          <div>Projected</div>
+          <div>Score</div>
+        </div>
         <div id="bench-slots"></div>
+
         <div class="section-title">Medical Redshirt</div>
+        <div class="roster-table-header">
+          <div></div>
+          <div>Player</div>
+          <div>Opponent</div>
+          <div>Projected</div>
+          <div>Score</div>
+        </div>
         <div id="mr-slots"></div>
       </div>
 
@@ -760,50 +806,65 @@
       renderMR();
     }
 
-    function renderStarters() {
-      const el = document.getElementById('starting-lineup');
-      el.innerHTML = '';
-      startingSlotDefs.forEach((slot, i) => {
-        const player = startingLineup[i];
-        const div = document.createElement('div');
-        div.className = 'roster-slot';
-        div.innerHTML = `
-          <span class="slot-label ${!player ? 'empty-slot' : ''}" onclick="openSwapModal(${i})">${slot.label}</span>
-          <span class="slot-player">${player ? `${player.firstName} ${player.lastName} — ${player.position} — ${player.team}` : '—'}</span>
-        `;
-        el.appendChild(div);
-      });
-    }
+function renderStarters() {
+  const el = document.getElementById('starting-lineup');
+  el.innerHTML = '';
+  startingSlotDefs.forEach((slot, i) => {
+    const player = startingLineup[i];
+    const div = document.createElement('div');
+    div.className = 'roster-slot';
+    div.innerHTML = `
+      <span class="slot-label ${!player ? 'empty-slot' : ''}" onclick="openSwapModal(${i})">${slot.label}</span>
+      <div class="slot-player">
+        ${player ? `${player.firstName} ${player.lastName}<div class="player-sub">${player.position} · ${player.team}</div>` : '<span style="color:#9ca3af;">Empty</span>'}
+      </div>
+      <div class="slot-opponent">—</div>
+      <div class="slot-proj">—</div>
+      <div class="slot-score">—</div>
+    `;
+    el.appendChild(div);
+  });
+}
 
-    function renderBench() {
-      const el = document.getElementById('bench-slots');
-      el.innerHTML = '';
-      for (let i = 0; i < 7; i++) {
-        const player = bench[i] || null;
-        const div = document.createElement('div');
-        div.className = 'roster-slot';
-        div.innerHTML = `
-          <span class="slot-label ${!player ? 'empty-slot' : ''}" onclick="openBenchSwapModal(${i})">BE</span>
-          <span class="slot-player">${player ? `${player.firstName} ${player.lastName} — ${player.position} — ${player.team}` : '—'}</span>
-        `;
-        el.appendChild(div);
-      }
-    }
+function renderBench() {
+  const el = document.getElementById('bench-slots');
+  el.innerHTML = '';
+  for (let i = 0; i < 7; i++) {
+    const player = bench[i] || null;
+    const div = document.createElement('div');
+    div.className = 'roster-slot';
+    div.innerHTML = `
+      <span class="slot-label ${!player ? 'empty-slot' : ''}" onclick="openBenchSwapModal(${i})">BE</span>
+      <div class="slot-player">
+        ${player ? `${player.firstName} ${player.lastName}<div class="player-sub">${player.position} · ${player.team}</div>` : '<span style="color:#9ca3af;">Empty</span>'}
+      </div>
+      <div class="slot-opponent">—</div>
+      <div class="slot-proj">—</div>
+      <div class="slot-score">—</div>
+    `;
+    el.appendChild(div);
+  }
+}
 
-    function renderMR() {
-      const el = document.getElementById('mr-slots');
-      el.innerHTML = '';
-      for (let i = 0; i < 2; i++) {
-        const player = mr[i] || null;
-        const div = document.createElement('div');
-        div.className = 'roster-slot';
-        div.innerHTML = `
-          <span class="slot-label ${!player ? 'empty-slot' : ''}">MR</span>
-          <span class="slot-player">${player ? `${player.firstName} ${player.lastName} — ${player.position} — ${player.team}` : '—'}</span>
-        `;
-        el.appendChild(div);
-      }
-    }
+function renderMR() {
+  const el = document.getElementById('mr-slots');
+  el.innerHTML = '';
+  for (let i = 0; i < 2; i++) {
+    const player = mr[i] || null;
+    const div = document.createElement('div');
+    div.className = 'roster-slot';
+    div.innerHTML = `
+      <span class="slot-label ${!player ? 'empty-slot' : ''}">MR</span>
+      <div class="slot-player">
+        ${player ? `${player.firstName} ${player.lastName}<div class="player-sub">${player.position} · ${player.team}</div>` : '<span style="color:#9ca3af;">Empty</span>'}
+      </div>
+      <div class="slot-opponent">—</div>
+      <div class="slot-proj">—</div>
+      <div class="slot-score">—</div>
+    `;
+    el.appendChild(div);
+  }
+}
 
     window.openSwapModal = function(starterIndex) {
       selectedStarterIndex = starterIndex;
