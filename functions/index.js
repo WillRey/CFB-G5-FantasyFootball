@@ -65,17 +65,18 @@ exports.checkLiveScores = onSchedule(
         continue; // one bad game shouldn't block the others
       }
 
-      const boxscorePlayers = parseBoxscorePlayers(summary);
-      const scoredPlayers = {};
+    const boxscorePlayers = parseBoxscorePlayers(summary);
+          const scoredPlayers = {};
 
-      Object.values(boxscorePlayers).forEach(p => {
-        // We don't know position from the boxscore alone — this is a known
-        // gap (see note below the code). For now this scores using a best
-        // guess; exact position matching needs a name+team lookup pass.
-        const position = guessPosition(p.stats);
-        const points = calculatePlayerScore(p.stats, position);
-        scoredPlayers[p.id] = { name: p.name, stats: p.stats, points, position };
-      });
+          Object.values(boxscorePlayers).forEach(p => {
+            const position = lookupPosition(p.name, p.team, positionByPlayer);
+            if (!position) {
+              console.warn(`No CSV match for "${p.name}" (${p.team}) — skipping score.`);
+              return; // unmatched players (e.g. OL, DL who show up in some stat blocks) are skipped, not guessed
+            }
+            const points = calculatePlayerScore(p.stats, position);
+            scoredPlayers[p.id] = { name: p.name, stats: p.stats, points, position };
+          });
 
       await db.collection('liveScores').doc(String(eventId)).set({
         eventId,
@@ -91,11 +92,25 @@ exports.checkLiveScores = onSchedule(
   }
 );
 
-// Placeholder heuristic until boxscore-to-roster position matching is wired up —
-// infers position from which stat categories are populated. Good enough for
-// scoring, but flagged as a known gap below.
-function guessPosition(stats) {
-  if (stats.passingYards) return 'QB';
-  if (stats.rushingYards && !stats.receivingYards) return 'RB';
-  return 'WR';
+// ESPN's boxscore gives a single "Firstname Lastname" string; your CSV
+// stores firstName/lastName separately, with suffixes (Jr., Sr., II, III,
+// IV) kept attached to lastName (e.g. "Engleman Jr."). A plain last-word
+// split would grab just "Jr." as the lastName, so we check for a suffix
+// first and pull two words in that case.
+const NAME_SUFFIXES = new Set(['jr.', 'jr', 'sr.', 'sr', 'ii', 'iii', 'iv']);
+
+function lookupPosition(displayName, team, positionByPlayer) {
+  if (!displayName || !team) return null;
+
+  const parts = displayName.trim().split(' ');
+  let lastName = parts.pop();
+
+  if (NAME_SUFFIXES.has(lastName.toLowerCase()) && parts.length > 1) {
+    const suffix = lastName;
+    lastName = `${parts.pop()} ${suffix}`;
+  }
+
+  const firstName = parts.join(' ');
+  const key = `${firstName}-${lastName}-${team}`.toLowerCase();
+  return positionByPlayer[key] || null;
 }

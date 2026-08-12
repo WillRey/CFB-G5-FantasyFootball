@@ -45,22 +45,25 @@ function parseBoxscorePlayers(summaryData) {
   const players = {};
   const boxscorePlayers = summaryData.boxscore?.players || [];
 
-  boxscorePlayers.forEach(teamBlock => {
-    (teamBlock.statistics || []).forEach(statCategory => {
-      const labels = statCategory.labels || [];
-      const categoryName = (statCategory.name || '').toLowerCase();
+    boxscorePlayers.forEach(teamBlock => {
+        const teamName = teamBlock.team?.displayName || '';
 
-      (statCategory.athletes || []).forEach(athleteEntry => {
-        const id = athleteEntry.athlete?.id;
-        if (!id) return;
+        (teamBlock.statistics || []).forEach(statCategory => {
+        const labels = statCategory.labels || [];
+        const categoryName = (statCategory.name || '').toLowerCase();
 
-        if (!players[id]) {
-          players[id] = {
-            id,
-            name: athleteEntry.athlete?.displayName,
-            stats: {}
-          };
-        }
+        (statCategory.athletes || []).forEach(athleteEntry => {
+            const id = athleteEntry.athlete?.id;
+            if (!id) return;
+
+            if (!players[id]) {
+            players[id] = {
+                id,
+                name: athleteEntry.athlete?.displayName,
+                team: teamName,
+                stats: {}
+            };
+            }
 
         const values = athleteEntry.stats || [];
         labels.forEach((label, i) => {
