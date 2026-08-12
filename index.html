@@ -5,25 +5,123 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Walk-On Fantasy Football</title>
   <link type="image/png" sizes="16x16" rel="icon" href="/icons8-american-football-gradient-16.png">
-<link type="image/png" sizes="32x32" rel="icon" href="/icons8-american-football-gradient-32.png">
-<link type="image/png" sizes="96x96" rel="icon" href="/icons8-american-football-gradient-96.png">
+  <link type="image/png" sizes="32x32" rel="icon" href="/icons8-american-football-gradient-32.png">
+  <link type="image/png" sizes="96x96" rel="icon" href="/icons8-american-football-gradient-96.png">
   <link rel="stylesheet" href="style.css" />
+  <style>
+    .hero {
+      padding: 2.5rem 0 1.5rem;
+    }
+    .hero-eyebrow {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #9ca3af;
+      margin: 0 0 0.5rem;
+    }
+    .hero-tagline {
+      font-size: 15px;
+      color: #6b7280;
+      margin: 0.5rem 0 0;
+      max-width: 560px;
+      line-height: 1.6;
+    }
+    .league-card {
+      background: #fff;
+      border: 1px solid #e8eaf0;
+      border-radius: 14px;
+      padding: 1.5rem;
+      margin-top: 1.5rem;
+    }
+    .league-card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+    .league-card-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: #1a1a2e;
+      margin: 0 0 4px;
+    }
+    .league-card-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 1.25rem;
+      flex-wrap: wrap;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+    }
+    .empty-state-icon {
+      font-size: 48px;
+      margin-bottom: 1rem;
+      display: block;
+    }
+    .empty-state h2 {
+      font-size: 18px;
+      margin-bottom: 0.5rem;
+    }
+    .empty-state p {
+      color: #6b7280;
+      font-size: 15px;
+      margin-bottom: 1.5rem;
+    }
+  </style>
 </head>
 <body>
-  <nav></nav>
+  <nav id="main-nav">
+    <!-- nav.js populates this -->
+  </nav>
 
   <div class="container">
-    <h1>Walk-On Fantasy Football</h1>
-    <p>The only fantasy league built around the Group of 6. For the sicko college football fans that don't tweet at 'croots, reminisce on the Fun-N-Gun offense, and would definitely last a quarter in Ypsilanti.</p>
+    <div class="hero">
+      <p class="hero-eyebrow">Group of 6 Fantasy Football</p>
+      <h1>Walk-On Fantasy Football</h1>
+      <p class="hero-tagline">The only fantasy league built for the sicko college football fan. No blue-blood schools. No 'croots. Just the good stuff.</p>
+    </div>
 
-    <div id="league-info">
-      <p>Loading league info...</p>
+    <div id="league-info" style="display:none;">
+      <div class="league-card">
+        <div class="league-card-header">
+          <div>
+            <h2 class="league-card-title" id="league-name">—</h2>
+            <div id="league-badge"></div>
+          </div>
+        </div>
+        <table class="league-table" id="league-table">
+          <tbody></tbody>
+        </table>
+        <div class="league-card-actions">
+          <a href="myteam.html" class="btn btn-primary">Go to my team</a>
+          <button class="btn btn-secondary" onclick="copyLeagueId()">Copy league ID</button>
+        </div>
+      </div>
     </div>
 
     <div id="no-league-info" style="display:none;">
-      <p>No league found. Ask your Athletic Director for an invite link, or <a href="setup.html">create a league</a>.</p>
+      <div class="league-card empty-state">
+        <span class="empty-state-icon">🏈</span>
+        <h2>No league found</h2>
+        <p>Ask your Athletic Director for an invite link, or start your own league.</p>
+        <a href="setup.html" class="btn btn-primary">Create a league</a>
+      </div>
+    </div>
+
+    <div id="league-loading">
+      <div class="league-card" style="padding:2rem;text-align:center;color:#9ca3af;font-size:14px;">
+        Loading league info…
+      </div>
     </div>
   </div>
+
+  <footer>
+    <a href="https://icons8.com/icons/set/american-football" target="_blank" rel="noopener">American Football icon by Icons8</a>
+  </footer>
 
   <script type="module">
     import { initNav, db, getLeagueId } from './nav.js';
@@ -31,44 +129,69 @@
 
     initNav('index.html');
 
+    function copyLeagueId() {
+      const id = document.getElementById('league-name')?.dataset?.leagueId;
+      if (id) navigator.clipboard.writeText(id).then(() => alert('League ID copied!'));
+    }
+    window.copyLeagueId = copyLeagueId;
+
     async function loadLeague() {
       const leagueId = getLeagueId();
+      const loading = document.getElementById('league-loading');
+      const info = document.getElementById('league-info');
+      const noInfo = document.getElementById('no-league-info');
+
       if (!leagueId) {
-        document.getElementById('league-info').style.display = 'none';
-        document.getElementById('no-league-info').style.display = 'block';
+        loading.style.display = 'none';
+        noInfo.style.display = 'block';
         return;
       }
 
       try {
         const docSnap = await getDoc(doc(db, "leagues", leagueId));
+        loading.style.display = 'none';
+
         if (docSnap.exists()) {
           const league = docSnap.data();
           localStorage.setItem('leagueData', JSON.stringify(league));
-          document.getElementById('league-info').innerHTML = `
-            <h2>${league.name}</h2>
-            <table>
-              <tr><td><strong>League ID</strong></td><td style="font-family:monospace;">${league.leagueId}</td></tr>
-              <tr><td><strong>Teams</strong></td><td>${league.teams}</td></tr>
-              <tr><td><strong>Roster Format</strong></td><td>${league.roster}</td></tr>
-              <tr><td><strong>Signing Day</strong></td><td>${new Date(league.draftTime).toLocaleString()}</td></tr>
-              <tr><td><strong>Draft Order</strong></td><td>${league.orderType === 'random' ? 'Random (set 24hrs before Signing Day)' : 'Manual'}</td></tr>
-            </table>
-            <br>
-            <a href="myteam.html">Go to My Team</a>
-          `;
+
+          document.getElementById('league-name').textContent = league.name;
+          document.getElementById('league-name').dataset.leagueId = league.leagueId;
+
+          const now = new Date();
+          const draft = new Date(league.draftTime);
+          let badgeHtml = '';
+          if (draft > now) {
+            badgeHtml = `<span class="badge badge-active">Signing Day: ${draft.toLocaleDateString('en-US', {month:'short',day:'numeric'})}</span>`;
+          } else {
+            badgeHtml = `<span class="badge badge-success">Draft complete</span>`;
+          }
+          document.getElementById('league-badge').innerHTML = badgeHtml;
+
+          const rows = [
+            ['League ID', `<span style="font-family:monospace;font-size:13px;">${league.leagueId}</span>`],
+            ['Teams', league.teams],
+            ['Roster format', league.roster],
+            ['Signing Day', draft.toLocaleString('en-US', {month:'long',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'})],
+            ['Draft order', league.orderType === 'random' ? 'Random (set 24 hrs before Signing Day)' : 'Manual'],
+          ];
+
+          document.querySelector('#league-table tbody').innerHTML = rows.map(([label, val]) =>
+            `<tr><td>${label}</td><td>${val}</td></tr>`
+          ).join('');
+
+          info.style.display = 'block';
         } else {
-          document.getElementById('league-info').style.display = 'none';
-          document.getElementById('no-league-info').style.display = 'block';
+          noInfo.style.display = 'block';
         }
       } catch (err) {
         console.error("Error loading league:", err);
+        loading.style.display = 'none';
+        noInfo.style.display = 'block';
       }
     }
 
     loadLeague();
   </script>
-<footer>
-  <a href="https://icons8.com/icons/set/american-football" target="_blank">American Football icon by Icons8</a>
-</footer>
 </body>
 </html>
