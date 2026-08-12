@@ -105,14 +105,14 @@ baseLinks.forEach(link => {
       clearLeagueId();
       window.location.href = 'index.html';
     };
-    nav.appendChild(signOutBtn);
+    linkContainer.appendChild(signOutBtn);
 
     } else {
       const loginLink = document.createElement('a');
       loginLink.href = 'login.html';
       loginLink.className = 'nav-auth';  // add here
       if (currentPage === 'login.html') loginLink.classList.add('active');
-      nav.appendChild(loginLink);
+      linkContainer.appendChild(loginLink);
     }
   });
 }
