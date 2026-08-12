@@ -86,7 +86,7 @@ baseLinks.forEach(link => {
               myTeamLink.href = 'myteam.html';
               myTeamLink.textContent = 'My Team';
               if (currentPage === 'myteam.html') myTeamLink.classList.add('active');
-              nav.appendChild(myTeamLink);
+              linkContainer.appendChild(myTeamLink);
             }
           }
         } catch (e) {
@@ -97,6 +97,7 @@ baseLinks.forEach(link => {
     // Sign Out button
     const signOutBtn = document.createElement('a');
     signOutBtn.href = '#';
+    signOutBtn.className = 'nav-auth'; 
     signOutBtn.textContent = 'Sign Out';
     signOutBtn.onclick = async (e) => {
       e.preventDefault();
@@ -109,7 +110,7 @@ baseLinks.forEach(link => {
     } else {
       const loginLink = document.createElement('a');
       loginLink.href = 'login.html';
-      loginLink.textContent = 'Login';
+      loginLink.className = 'nav-auth';  // add here
       if (currentPage === 'login.html') loginLink.classList.add('active');
       nav.appendChild(loginLink);
     }
