@@ -5,46 +5,138 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Scores | Walk-On Fantasy Football</title>
   <link type="image/png" sizes="16x16" rel="icon" href="/icons8-american-football-gradient-16.png">
-<link type="image/png" sizes="32x32" rel="icon" href="/icons8-american-football-gradient-32.png">
-<link type="image/png" sizes="96x96" rel="icon" href="/icons8-american-football-gradient-96.png">
+  <link type="image/png" sizes="32x32" rel="icon" href="/icons8-american-football-gradient-32.png">
+  <link type="image/png" sizes="96x96" rel="icon" href="/icons8-american-football-gradient-96.png">
   <link rel="stylesheet" href="style.css" />
   <style>
-    .week-selector { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+    /* --- Week Selector --- */
+    .week-selector {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 28px;
+    }
     .week-btn {
       padding: 6px 14px;
-      border: 2px solid #ccc;
-      border-radius: 6px;
+      border: 1px solid #d0d5e8;
+      border-radius: 8px;
       cursor: pointer;
-      background: white;
-      font-size: 14px;
-      transition: all 0.2s;
+      background: rgba(255,255,255,0.75);
+      font-size: 13px;
+      font-weight: 600;
+      color: #6b7280;
+      transition: all 0.15s;
+      backdrop-filter: blur(6px);
     }
-    .week-btn:hover { border-color: #2a7ae2; color: #2a7ae2; }
-    .week-btn.active { background: #2a7ae2; border-color: #2a7ae2; color: white; }
-    .week-btn.playoff { border-color: #f59e0b; color: #f59e0b; }
-    .week-btn.playoff.active { background: #f59e0b; color: white; }
+    .week-btn:hover {
+      border-color: #1a6dff;
+      color: #1a6dff;
+    }
+    .week-btn.active {
+      background: linear-gradient(135deg, #1a6dff, #c822ff);
+      border-color: transparent;
+      color: white;
+    }
+    .week-btn.playoff {
+      border-color: #f59e0b;
+      color: #f59e0b;
+    }
+    .week-btn.playoff.active {
+      background: linear-gradient(135deg, #f59e0b, #ef4444);
+      border-color: transparent;
+      color: white;
+    }
+
+    /* --- Week Label --- */
+    .week-label {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: #374151;
+      margin-bottom: 14px;
+    }
+
+    .playoff-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, #f59e0b, #ef4444);
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+      margin-bottom: 12px;
+      letter-spacing: 0.05em;
+    }
+
+    /* --- Matchup Cards --- */
     .matchup-card {
-      border: 1px solid #eee;
-      border-radius: 10px;
-      padding: 16px 20px;
-      margin-bottom: 16px;
+      background: rgba(255,255,255,0.75);
+      border: 1px solid rgba(255,255,255,0.9);
+      border-radius: 12px;
+      padding: 18px 24px;
+      margin-bottom: 12px;
       cursor: pointer;
-      transition: all 0.2s;
       display: flex;
       align-items: center;
       gap: 16px;
+      backdrop-filter: blur(8px);
+      transition: box-shadow 0.15s, transform 0.1s;
     }
-    .matchup-card:hover { border-color: #2a7ae2; box-shadow: 0 2px 8px rgba(42,122,226,0.1); }
+    .matchup-card:hover {
+      box-shadow: 0 8px 24px rgba(26,109,255,0.12), 0 2px 8px rgba(200,34,255,0.06);
+      transform: translateY(-1px);
+    }
+
     .matchup-team { flex: 1; }
     .matchup-team.home { text-align: right; }
-    .matchup-team-name { font-weight: bold; font-size: 16px; }
-    .matchup-team-manager { font-size: 12px; color: #888; }
-    .matchup-score { text-align: center; min-width: 80px; }
-    .matchup-score-value { font-size: 22px; font-weight: bold; color: #2a7ae2; }
-    .matchup-score-vs { font-size: 12px; color: #aaa; }
-    .week-label { font-size: 20px; font-weight: bold; margin-bottom: 16px; }
-    .bye-team { color: #888; font-size: 14px; margin-top: 8px; }
-    .playoff-badge { background: #f59e0b; color: white; font-size: 11px; padding: 2px 8px; border-radius: 4px; margin-bottom: 12px; display: inline-block; }
+    .matchup-team-name {
+      font-weight: 700;
+      font-size: 16px;
+      color: #1a1a2e;
+    }
+    .matchup-team-manager {
+      font-size: 12px;
+      color: #9ca3af;
+      margin-top: 2px;
+    }
+
+    .matchup-score {
+      text-align: center;
+      min-width: 100px;
+    }
+    .matchup-score-value {
+      font-size: 24px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #1a6dff, #c822ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.1;
+    }
+    .matchup-score-final {
+      font-size: 11px;
+      font-weight: 600;
+      color: #22c55e;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-top: 3px;
+    }
+    .matchup-score-vs {
+      font-size: 16px;
+      font-weight: 700;
+      color: #d0d5e8;
+    }
+
+    .bye-team {
+      font-size: 13px;
+      color: #9ca3af;
+      margin-top: 12px;
+      padding: 10px 16px;
+      background: rgba(255,255,255,0.5);
+      border-radius: 8px;
+      display: inline-block;
+    }
   </style>
 </head>
 <body>
@@ -52,13 +144,13 @@
 
   <div class="container">
     <h1>Scores</h1>
-    <div id="loading">Loading schedule...</div>
+    <div id="loading" style="color:#9ca3af;font-size:14px;">Loading schedule...</div>
     <div id="scores-content" style="display:none;">
       <div class="week-selector" id="week-selector"></div>
       <div id="week-display"></div>
     </div>
     <div id="no-schedule" style="display:none;">
-      <p>No schedule found. Ask your Athletic Director to generate one on the <a href="schedule.html">Schedule page</a>.</p>
+      <p style="color:#6b7280;">No schedule found. Ask your Athletic Director to generate one on the <a href="schedule.html">Schedule page</a>.</p>
     </div>
   </div>
 
@@ -142,7 +234,7 @@
       el.innerHTML = `<div class="week-label">${label}</div>`;
 
       if (weekData.playoff) {
-        el.innerHTML += `<span class="playoff-badge">Playoffs</span><p style="color:#888;">Playoff matchups set after regular season.</p>`;
+        el.innerHTML += `<span class="playoff-badge">Playoffs</span><p style="color:#9ca3af;font-size:14px;margin-top:8px;">Playoff matchups set after regular season.</p>`;
         return;
       }
 
@@ -162,7 +254,8 @@
           </div>
           <div class="matchup-score">
             ${hasScores
-              ? `<div class="matchup-score-value">${matchup.homeScore} - ${matchup.awayScore}</div><div style="font-size:11px;color:#22c55e;font-weight:bold;">Final</div>`
+              ? `<div class="matchup-score-value">${matchup.homeScore} – ${matchup.awayScore}</div>
+                 <div class="matchup-score-final">Final</div>`
               : `<div class="matchup-score-vs">vs</div>`}
           </div>
           <div class="matchup-team">
@@ -181,8 +274,9 @@
 
     loadSchedule();
   </script>
-<footer>
-  <a href="https://icons8.com/icons/set/american-football" target="_blank">American Football icon by Icons8</a>
-</footer>
+
+  <footer>
+    <a href="https://icons8.com/icons/set/american-football" target="_blank" rel="noopener">American Football icon by Icons8</a>
+  </footer>
 </body>
 </html>
