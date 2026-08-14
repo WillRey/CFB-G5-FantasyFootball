@@ -42,13 +42,32 @@
     background-clip: text;
     border-bottom-color: #1a6dff;
   }
+
+  a.subnav-link {
+    background: linear-gradient(135deg, #1a6dff, #c822ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  a.subnav-link:hover {
+    opacity: 0.7;
+    background: linear-gradient(135deg, #1a6dff, #c822ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-decoration: none;
+  }
+
   .subnav-link.no-action {
     color: #4b5563;
     cursor: default;
     background: none;
     -webkit-text-fill-color: #4b5563;
     padding: 10px 16px;
-    line-height: 1;
+    line-height: 1.5;
+    display: flex;
+    align-items: center;
   }
   .subnav-link.no-action:hover {
     background: none;
@@ -383,7 +402,7 @@
       <a class="subnav-link active" onclick="showPage('roster')" id="tab-roster">My Roster</a>
       <a class="subnav-link" href="portal.html">Transfer Portal</a>
       <div class="subnav-dropdown">
-        <a class="subnav-link no-action" id="tab-conference">Conference ▾</a>
+        <a class="subnav-link no-action" id="tab-conference">Conference Rules ▾</a>
         <div class="subnav-dropdown-menu">
           <a onclick="showPage('league-settings')">League Settings</a>
           <a onclick="showPage('scoring')">Scoring System</a>
