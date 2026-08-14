@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Create A League | Walk-On Fantasy Football</title>
   <link type="image/png" sizes="16x16" rel="icon" href="/icons8-american-football-gradient-16.png">
-<link type="image/png" sizes="32x32" rel="icon" href="/icons8-american-football-gradient-32.png">
-<link type="image/png" sizes="96x96" rel="icon" href="/icons8-american-football-gradient-96.png">
+  <link type="image/png" sizes="32x32" rel="icon" href="/icons8-american-football-gradient-32.png">
+  <link type="image/png" sizes="96x96" rel="icon" href="/icons8-american-football-gradient-96.png">
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -110,13 +110,20 @@
   </div>
 
   <script type="module">
-    import { initNav, db, generateLeagueId, setLeagueId } from './nav.js';
+    import { initNav, db, auth, generateLeagueId, setLeagueId } from './nav.js';
     import { doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
     initNav('setup.html');
 
     let selectedRoster = '1QB';
     let createdLeagueId = null;
+    let currentUser = null;
+
+    // Capture the logged-in user so saveLeague() can reference their email
+    onAuthStateChanged(auth, user => {
+      currentUser = user;
+    });
 
     window.selectRoster = function(format) {
       selectedRoster = format;
@@ -168,6 +175,11 @@
         return;
       }
 
+      if (!currentUser) {
+        alert('You must be logged in to create a league.');
+        return;
+      }
+
       const leagueId = generateLeagueId();
       createdLeagueId = leagueId;
 
@@ -178,6 +190,7 @@
         roster: selectedRoster,
         draftTime,
         orderType,
+        adminEmail: currentUser.email,   // ← NEW: store who created this league
         createdAt: new Date().toISOString()
       };
 
@@ -192,7 +205,6 @@
       try {
         await setDoc(doc(db, "leagues", leagueId), leagueData);
 
-        // Save league ID and data locally
         setLeagueId(leagueId);
         localStorage.setItem('leagueData', JSON.stringify(leagueData));
 
@@ -217,8 +229,9 @@
       alert('Invite link copied!');
     }
   </script>
-<footer>
-  <a href="https://icons8.com/icons/set/american-football" target="_blank">American Football icon by Icons8</a>
-</footer>
+
+  <footer>
+    <a href="https://icons8.com/icons/set/american-football" target="_blank" rel="noopener">American Football icon by Icons8</a>
+  </footer>
 </body>
 </html>
