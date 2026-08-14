@@ -5,74 +5,180 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Join League | Walk-On Fantasy Football</title>
   <link type="image/png" sizes="16x16" rel="icon" href="/icons8-american-football-gradient-16.png">
-<link type="image/png" sizes="32x32" rel="icon" href="/icons8-american-football-gradient-32.png">
-<link type="image/png" sizes="96x96" rel="icon" href="/icons8-american-football-gradient-96.png">
+  <link type="image/png" sizes="32x32" rel="icon" href="/icons8-american-football-gradient-32.png">
+  <link type="image/png" sizes="96x96" rel="icon" href="/icons8-american-football-gradient-96.png">
   <link rel="stylesheet" href="style.css" />
+  <style>
+    .auth-wrap {
+      max-width: 440px;
+      margin: 1.5rem auto 0;
+    }
+    .auth-card {
+      background: rgba(255,255,255,0.75);
+      border: 1px solid rgba(255,255,255,0.9);
+      border-radius: 14px;
+      padding: 2rem;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 8px 32px rgba(26,109,255,0.10), 0 2px 8px rgba(200,34,255,0.06);
+    }
+    .auth-card h2 {
+      margin: 0 0 1.5rem;
+      font-size: 20px;
+      font-weight: 700;
+      color: #1a1a2e;
+    }
+    .league-invite-card {
+      background: rgba(255,255,255,0.75);
+      border: 1px solid rgba(255,255,255,0.9);
+      border-radius: 14px;
+      padding: 1.25rem 1.5rem;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 8px 32px rgba(26,109,255,0.10), 0 2px 8px rgba(200,34,255,0.06);
+      margin-bottom: 1.25rem;
+    }
+    .league-invite-card h3 {
+      margin: 0 0 6px;
+      font-size: 18px;
+      font-weight: 700;
+      color: #1a1a2e;
+    }
+    .league-invite-card p {
+      margin: 0;
+      font-size: 14px;
+      color: #6b7280;
+    }
+    .form-group { margin-bottom: 16px; }
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 6px;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid #d0d5e8;
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.15s;
+      background: rgba(255,255,255,0.9);
+      box-sizing: border-box;
+    }
+    .form-group input:focus { border-color: #1a6dff; }
+    .btn-auth {
+      width: 100%;
+      padding: 11px;
+      background: linear-gradient(135deg, #1a6dff, #c822ff);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      margin-top: 4px;
+    }
+    .btn-auth:hover { opacity: 0.88; }
+    .auth-error {
+      color: #ef4444;
+      font-size: 13px;
+      margin-top: 10px;
+      display: none;
+    }
+    .auth-toggle {
+      margin-top: 16px;
+      font-size: 14px;
+      color: #6b7280;
+      text-align: center;
+    }
+    .auth-toggle a {
+      font-weight: 600;
+      background: linear-gradient(135deg, #1a6dff, #c822ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .already-joined {
+      text-align: center;
+      padding: 1rem 0;
+    }
+    .already-joined h2 { margin-bottom: 8px; }
+    .already-joined p { color: #6b7280; margin-bottom: 1.5rem; }
+  </style>
 </head>
 <body>
   <nav></nav>
 
   <div class="container">
-    <div id="loading">Loading league info...</div>
+    <div style="text-align:center;padding:2rem 0 0.5rem;">
+      <h1>You've Been Invited!</h1>
+    </div>
+
+    <div id="loading" style="text-align:center;color:#9ca3af;font-size:14px;padding:2rem 0;">Loading league info...</div>
 
     <div id="join-content" style="display:none;">
-      <h1>You've Been Invited!</h1>
-      <div id="league-details" style="margin-bottom:24px;padding:16px;background:#f0f4ff;border-radius:8px;border:1px solid #2a7ae2;"></div>
+      <div class="auth-wrap">
+        <div class="league-invite-card" id="league-details"></div>
 
-      <div id="auth-section">
-        <div id="login-box">
-          <h2>Sign In</h2>
-          <div class="form-group">
-            <label>Email</label>
-            <input type="email" id="login-email" placeholder="Enter your email" />
+        <div id="auth-section">
+          <div class="auth-card" id="login-box">
+            <h2>Sign in to join</h2>
+            <div class="form-group">
+              <label>Email</label>
+              <input type="email" id="login-email" placeholder="your@email.com" />
+            </div>
+            <div class="form-group">
+              <label>Password</label>
+              <input type="password" id="login-password" placeholder="Your password" />
+            </div>
+            <button class="btn-auth" onclick="signIn()">Sign in & join league</button>
+            <p class="auth-error" id="login-error"></p>
+            <p class="auth-toggle">New here? <a href="#" onclick="toggleRegister()">Create an account</a></p>
           </div>
-          <div class="form-group">
-            <label>Password</label>
-            <input type="password" id="login-password" placeholder="Enter your password" />
+
+          <div class="auth-card" id="register-box" style="display:none;">
+            <h2>Create your account</h2>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <div class="form-group">
+                <label>First name</label>
+                <input type="text" id="register-first" placeholder="First" />
+              </div>
+              <div class="form-group">
+                <label>Last name</label>
+                <input type="text" id="register-last" placeholder="Last" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Email</label>
+              <input type="email" id="register-email" placeholder="your@email.com" />
+            </div>
+            <div class="form-group">
+              <label>Password</label>
+              <input type="password" id="register-password" placeholder="Choose a password" />
+            </div>
+            <div class="form-group">
+              <label>Confirm password</label>
+              <input type="password" id="register-confirm" placeholder="Confirm your password" />
+            </div>
+            <button class="btn-auth" onclick="register()">Create account & join league</button>
+            <p class="auth-error" id="register-error"></p>
+            <p class="auth-toggle">Already have an account? <a href="#" onclick="toggleRegister()">Sign in</a></p>
           </div>
-          <button onclick="signIn()">Sign In & Join League</button>
-          <p id="login-error" style="color:red;display:none;"></p>
-          <p style="margin-top:12px;font-size:14px;">New here? <a href="#" onclick="toggleRegister()">Create an account</a></p>
         </div>
 
-        <div id="register-box" style="display:none;">
-          <h2>Create Your Account</h2>
-          <div class="form-group">
-            <label>First Name</label>
-            <input type="text" id="register-first" placeholder="First name" />
-          </div>
-          <div class="form-group">
-            <label>Last Name</label>
-            <input type="text" id="register-last" placeholder="Last name" />
-          </div>
-          <div class="form-group">
-            <label>Email</label>
-            <input type="email" id="register-email" placeholder="Enter your email" />
-          </div>
-          <div class="form-group">
-            <label>Password</label>
-            <input type="password" id="register-password" placeholder="Choose a password" />
-          </div>
-          <div class="form-group">
-            <label>Confirm Password</label>
-            <input type="password" id="register-confirm" placeholder="Confirm your password" />
-          </div>
-          <button onclick="register()">Create Account & Join League</button>
-          <p id="register-error" style="color:red;display:none;"></p>
-          <p style="margin-top:12px;font-size:14px;">Already have an account? <a href="#" onclick="toggleRegister()">Sign in</a></p>
+        <div id="already-joined" class="auth-card already-joined" style="display:none;">
+          <h2>You're in!</h2>
+          <p>You've already joined this league.</p>
+          <a href="myteam.html" class="btn btn-primary" style="display:inline-block;">Go to my team</a>
         </div>
-      </div>
-
-      <div id="already-joined" style="display:none;">
-        <h2>You're In!</h2>
-        <p>You've already joined this league.</p>
-        <a href="myteam.html">Go to My Team</a>
       </div>
     </div>
 
-    <div id="no-league" style="display:none;">
-      <h2>League Not Found</h2>
-      <p>This invite link may be invalid or expired. Contact your Athletic Director.</p>
+    <div id="no-league" style="display:none;text-align:center;padding:3rem 0;">
+      <h2 style="color:#1a1a2e;">League not found</h2>
+      <p style="color:#6b7280;">This invite link may be invalid or expired. Contact your Athletic Director.</p>
     </div>
   </div>
 
@@ -105,8 +211,8 @@
       document.getElementById('loading').style.display = 'none';
       document.getElementById('join-content').style.display = 'block';
       document.getElementById('league-details').innerHTML = `
-        <h3 style="margin:0 0 8px;">${leagueData.name}</h3>
-        <p style="margin:0;font-size:14px;color:#555;">${leagueData.teams} Teams · ${leagueData.roster} · Signing Day: ${new Date(leagueData.draftTime).toLocaleString()}</p>
+        <h3>${leagueData.name}</h3>
+        <p>${leagueData.teams} teams · ${leagueData.roster} · Signing Day: ${new Date(leagueData.draftTime).toLocaleString('en-US', {month:'long',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'})}</p>
       `;
 
       onAuthStateChanged(auth, user => {
@@ -171,8 +277,9 @@
 
     init();
   </script>
-<footer>
-  <a href="https://icons8.com/icons/set/american-football" target="_blank">American Football icon by Icons8</a>
-</footer>
+
+  <footer>
+    <a href="https://icons8.com/icons/set/american-football" target="_blank" rel="noopener">American Football icon by Icons8</a>
+  </footer>
 </body>
 </html>
