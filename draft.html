@@ -5,15 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Signing Day | Walk-On Fantasy Football</title>
   <link type="image/png" sizes="16x16" rel="icon" href="/icons8-american-football-gradient-16.png">
-<link type="image/png" sizes="32x32" rel="icon" href="/icons8-american-football-gradient-32.png">
-<link type="image/png" sizes="96x96" rel="icon" href="/icons8-american-football-gradient-96.png">
+  <link type="image/png" sizes="32x32" rel="icon" href="/icons8-american-football-gradient-32.png">
+  <link type="image/png" sizes="96x96" rel="icon" href="/icons8-american-football-gradient-96.png">
   <link rel="stylesheet" href="style.css" />
   <style>
+    /* --- Draft Order Strip --- */
     #draft-order-strip {
       overflow-x: auto;
       white-space: nowrap;
-      padding: 10px 0;
-      border-bottom: 2px solid #ccc;
+      padding: 12px 0;
+      border-bottom: 1.5px solid #e8eaf0;
       margin-bottom: 20px;
     }
     #pick-list { display: inline-flex; gap: 8px; }
@@ -21,38 +22,250 @@
       display: inline-flex;
       flex-direction: column;
       align-items: center;
-      padding: 6px 12px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
+      padding: 6px 14px;
+      border: 1px solid #e8eaf0;
+      border-radius: 8px;
       font-size: 12px;
       min-width: 80px;
+      background: rgba(255,255,255,0.75);
+      backdrop-filter: blur(6px);
     }
-    .pick-chip.current { background: #2a7ae2; color: white; border-color: #2a7ae2; }
-    .pick-label { font-weight: bold; }
-    .pick-team { font-size: 11px; }
-    #draft-main { display: flex; gap: 24px; margin-top: 20px; }
-    #player-pool { flex: 2; }
-    #my-roster-panel { min-width: 220px; flex: 1; }
+    .pick-chip.current {
+      background: linear-gradient(135deg, #1a6dff, #c822ff);
+      color: white;
+      border-color: transparent;
+    }
+    .pick-label { font-weight: 700; }
+    .pick-team { font-size: 11px; opacity: 0.85; }
+
+    /* --- Draft Status --- */
     #draft-status {
-      background: #f0f4ff;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      padding: 16px;
+      background: rgba(255,255,255,0.75);
+      border: 1px solid rgba(255,255,255,0.9);
+      border-radius: 12px;
+      padding: 20px 24px;
       margin-bottom: 20px;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 4px 16px rgba(26,109,255,0.08);
     }
-    #timer-display { font-size: 48px; font-weight: bold; color: #2a7ae2; }
-    #draft-player-table { width: 100%; margin-top: 10px; }
-    #team-rosters { margin-top: 30px; }
-    #roster-display { display: flex; flex-wrap: wrap; gap: 16px; }
+    #draft-status h2 {
+      margin: 0 0 4px;
+      font-size: 16px;
+      font-weight: 700;
+      color: #1a1a2e;
+    }
+    #draft-status p {
+      margin: 0 0 8px;
+      font-size: 14px;
+      color: #6b7280;
+    }
+    #timer-display {
+      font-size: 48px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #1a6dff, #c822ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1;
+    }
+
+    /* --- Draft Layout --- */
+    #draft-main {
+      display: flex;
+      gap: 24px;
+      margin-top: 20px;
+    }
+    #player-pool { flex: 2; }
+    #my-roster-panel {
+      min-width: 220px;
+      flex: 1;
+    }
+
+    /* --- Filters --- */
+    .draft-filters {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .draft-filters input,
+    .draft-filters select {
+      padding: 7px 12px;
+      border: 1px solid #d0d5e8;
+      border-radius: 8px;
+      font-size: 13px;
+      background: rgba(255,255,255,0.8);
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .draft-filters input:focus,
+    .draft-filters select:focus { border-color: #1a6dff; }
+
+    /* --- Player Table --- */
+    #draft-player-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    #draft-player-table thead th {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #4b5563;
+      padding: 8px 12px;
+      border-bottom: 1.5px solid #e8eaf0;
+      text-align: left;
+    }
+    #draft-player-table tbody tr {
+      border-bottom: 1px solid #f0f1f7;
+      transition: background 0.12s;
+    }
+    #draft-player-table tbody tr:hover { background: rgba(26,109,255,0.03); }
+    #draft-player-table tbody td {
+      padding: 8px 12px;
+      color: #1a1a2e;
+    }
+
+    .btn-sign {
+      padding: 5px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+      border: none;
+      background: linear-gradient(135deg, #1a6dff, #c822ff);
+      color: white;
+      transition: opacity 0.15s;
+    }
+    .btn-sign:hover { opacity: 0.85; }
+
+    /* --- My Roster Panel --- */
+    #my-roster-panel h3 {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: #374151;
+      margin: 0 0 10px;
+      padding-bottom: 8px;
+      border-bottom: 1.5px solid #e8eaf0;
+    }
     .roster-slot {
       display: flex;
       justify-content: space-between;
-      padding: 6px 10px;
-      border-bottom: 1px solid #eee;
+      align-items: center;
+      padding: 7px 0;
+      border-bottom: 1px solid #f0f1f7;
+      font-size: 13px;
     }
-    .roster-slot.empty .slot-player { color: #aaa; }
-    .roster-slot.filled .slot-player { font-weight: bold; }
-    .slot-label { color: #666; min-width: 90px; }
+    .slot-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: white;
+      background: linear-gradient(135deg, #1a6dff, #c822ff);
+      padding: 3px 8px;
+      border-radius: 5px;
+      min-width: 60px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .roster-slot.empty .slot-player { color: #9ca3af; }
+    .roster-slot.filled .slot-player { font-weight: 600; color: #1a1a2e; }
+    .slot-player { margin-left: 10px; flex: 1; }
+
+    /* --- All Rosters --- */
+    #team-rosters { margin-top: 30px; }
+    #team-rosters h3 {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: #374151;
+      margin: 0 0 12px;
+    }
+    #roster-display { display: flex; flex-wrap: wrap; gap: 16px; }
+    .roster-card {
+      background: rgba(255,255,255,0.75);
+      border: 1px solid rgba(255,255,255,0.9);
+      border-radius: 12px;
+      padding: 14px 18px;
+      min-width: 180px;
+      backdrop-filter: blur(6px);
+    }
+    .roster-card h4 {
+      margin: 0 0 10px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #1a1a2e;
+    }
+    .roster-card ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .roster-card ul li {
+      font-size: 12px;
+      color: #6b7280;
+      padding: 3px 0;
+      border-bottom: 1px solid #f0f1f7;
+    }
+    .roster-card ul li:last-child { border-bottom: none; }
+
+    /* --- Setup Form --- */
+    #draft-setup {
+      max-width: 680px;
+    }
+    #draft-setup h2 {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    #draft-setup p {
+      color: #6b7280;
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+    .team-input-row {
+      background: rgba(255,255,255,0.75);
+      border: 1px solid rgba(255,255,255,0.9);
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      backdrop-filter: blur(6px);
+    }
+    .team-input-row strong {
+      font-size: 13px;
+      font-weight: 700;
+      color: #374151;
+      display: block;
+      margin-bottom: 8px;
+    }
+    .team-input-row input {
+      padding: 7px 12px;
+      border: 1px solid #d0d5e8;
+      border-radius: 8px;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.15s;
+      margin-right: 8px;
+      margin-bottom: 4px;
+    }
+    .team-input-row input:focus { border-color: #1a6dff; }
+
+    .btn-start {
+      margin-top: 16px;
+      padding: 11px 28px;
+      background: linear-gradient(135deg, #1a6dff, #c822ff);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .btn-start:hover { opacity: 0.88; }
   </style>
 </head>
 <body>
@@ -65,7 +278,7 @@
       <h2>Team Setup</h2>
       <p>Enter each team name, manager name, and email before starting Signing Day.</p>
       <div id="team-inputs"></div>
-      <button onclick="startDraft()">Start Signing Day</button>
+      <button class="btn-start" onclick="startDraft()">Start Signing Day</button>
     </div>
 
     <div id="draft-board" style="display:none;">
@@ -75,34 +288,35 @@
 
       <div id="draft-status">
         <h2 id="current-pick-label">Round 1 | Pick 1</h2>
-        <p id="current-team-label">On the clock: </p>
+        <p id="current-team-label">On the clock:</p>
         <div id="timer-display">2:00</div>
       </div>
 
       <div id="draft-main">
         <div id="player-pool">
-          <h3>Available Players</h3>
-          <input type="text" id="draft-search" placeholder="Search players..." oninput="filterDraftPlayers()" />
-          <select id="draft-pos-filter" onchange="filterDraftPlayers()">
-            <option value="">All Positions</option>
-            <option value="QB">QB</option>
-            <option value="RB">RB</option>
-            <option value="WR">WR</option>
-            <option value="TE">TE</option>
-            <option value="K">K</option>
-          </select>
-          <select id="draft-conf-filter" onchange="filterDraftPlayers()">
-            <option value="">All Conferences</option>
-            <option value="AAC">AAC</option>
-            <option value="CUSA">C-USA</option>
-            <option value="MAC">MAC</option>
-            <option value="MWC">Mountain West</option>
-            <option value="Pac-12">Pac-12</option>
-            <option value="Sun Belt">Sun Belt</option>
-          </select>
-          <select id="draft-team-filter" onchange="filterDraftPlayers()">
-            <option value="">All Teams</option>
-          </select>
+          <div class="draft-filters">
+            <input type="text" id="draft-search" placeholder="Search players..." oninput="filterDraftPlayers()" />
+            <select id="draft-pos-filter" onchange="filterDraftPlayers()">
+              <option value="">All Positions</option>
+              <option value="QB">QB</option>
+              <option value="RB">RB</option>
+              <option value="WR">WR</option>
+              <option value="TE">TE</option>
+              <option value="K">K</option>
+            </select>
+            <select id="draft-conf-filter" onchange="filterDraftPlayers()">
+              <option value="">All Conferences</option>
+              <option value="AAC">AAC</option>
+              <option value="CUSA">C-USA</option>
+              <option value="MAC">MAC</option>
+              <option value="MWC">Mountain West</option>
+              <option value="Pac-12">Pac-12</option>
+              <option value="Sun Belt">Sun Belt</option>
+            </select>
+            <select id="draft-team-filter" onchange="filterDraftPlayers()">
+              <option value="">All Teams</option>
+            </select>
+          </div>
           <table id="draft-player-table">
             <thead>
               <tr>
@@ -110,7 +324,7 @@
                 <th>Position</th>
                 <th>Team</th>
                 <th>Conference</th>
-                <th>Pick</th>
+                <th></th>
               </tr>
             </thead>
             <tbody id="draft-player-body"></tbody>
@@ -157,21 +371,19 @@
     let secondsLeft = 120;
     let draftData = null;
 
-    // Build team input fields
     const teamInputs = document.getElementById('team-inputs');
     for (let i = 0; i < teamCount; i++) {
       const div = document.createElement('div');
-      div.style.marginBottom = '10px';
+      div.className = 'team-input-row';
       div.innerHTML = `
-        <strong>Team ${i + 1}</strong><br>
-        <input type="text" id="team-name-${i}" placeholder="Team name" style="margin-right:10px;" />
-        <input type="text" id="manager-name-${i}" placeholder="Manager name" style="margin-right:10px;" />
+        <strong>Team ${i + 1}</strong>
+        <input type="text" id="team-name-${i}" placeholder="Team name" />
+        <input type="text" id="manager-name-${i}" placeholder="Manager name" />
         <input type="email" id="manager-email-${i}" placeholder="Manager email" />
       `;
       teamInputs.appendChild(div);
     }
 
-    // Load players
     fetch('g6_players_2026.csv')
       .then(res => res.text())
       .then(csv => {
@@ -391,11 +603,11 @@
         const actualIndex = availablePlayers.indexOf(p);
         const row = document.createElement('tr');
         row.innerHTML = `
-          <td>${p.firstName} ${p.lastName}</td>
-          <td>${p.position}</td>
-          <td>${p.team}</td>
-          <td>${p.conference}</td>
-          <td><button onclick="draftPlayer(${actualIndex})">Sign</button></td>
+          <td style="font-weight:600;">${p.firstName} ${p.lastName}</td>
+          <td style="color:#6b7280;">${p.position}</td>
+          <td style="color:#6b7280;">${p.team}</td>
+          <td style="color:#6b7280;">${p.conference}</td>
+          <td><button class="btn-sign" onclick="draftPlayer(${actualIndex})">Sign</button></td>
         `;
         tbody.appendChild(row);
       });
@@ -424,7 +636,7 @@
       const myTeamIndex = 0;
       const team = teams[myTeamIndex];
       if (!team) return;
-      document.getElementById('my-roster-title').textContent = `${team.name} (${team.manager})`;
+      document.getElementById('my-roster-title').textContent = `${team.name}`;
 
       const slots = league.roster === 'Superflex'
         ? [
@@ -440,7 +652,7 @@
             { label: 'K', positions: ['K'] },
             { label: 'D/ST', positions: ['DST'] },
             ...Array(7).fill(null).map(() => ({ label: 'Bench', positions: ['QB', 'RB', 'WR', 'TE', 'K'] })),
-            ...Array(2).fill(null).map(() => ({ label: 'Medical Redshirt', positions: ['QB', 'RB', 'WR', 'TE', 'K'] })),
+            ...Array(2).fill(null).map(() => ({ label: 'MR', positions: ['QB', 'RB', 'WR', 'TE', 'K'] })),
           ]
         : [
             { label: 'QB', positions: ['QB'] },
@@ -454,7 +666,7 @@
             { label: 'K', positions: ['K'] },
             { label: 'D/ST', positions: ['DST'] },
             ...Array(7).fill(null).map(() => ({ label: 'Bench', positions: ['QB', 'RB', 'WR', 'TE', 'K'] })),
-            ...Array(2).fill(null).map(() => ({ label: 'Medical Redshirt', positions: ['QB', 'RB', 'WR', 'TE', 'K'] })),
+            ...Array(2).fill(null).map(() => ({ label: 'MR', positions: ['QB', 'RB', 'WR', 'TE', 'K'] })),
           ];
 
       const roster = [...team.roster];
@@ -485,18 +697,19 @@
         const div = document.createElement('div');
         div.className = 'roster-card';
         div.innerHTML = `
-          <h4>${team.name} <span style="font-weight:normal;font-size:13px;">(${team.manager})</span></h4>
+          <h4>${team.name} <span style="font-weight:400;font-size:12px;color:#9ca3af;">${team.manager}</span></h4>
           <ul>
             ${team.roster.map(p => `<li>${p.firstName} ${p.lastName} — ${p.position}</li>`).join('')}
-            ${team.roster.length === 0 ? '<li>No players yet</li>' : ''}
+            ${team.roster.length === 0 ? '<li style="color:#9ca3af;">No players yet</li>' : ''}
           </ul>
         `;
         container.appendChild(div);
       });
     }
   </script>
-<footer>
-  <a href="https://icons8.com/icons/set/american-football" target="_blank">American Football icon by Icons8</a>
-</footer>
+
+  <footer>
+    <a href="https://icons8.com/icons/set/american-football" target="_blank" rel="noopener">American Football icon by Icons8</a>
+  </footer>
 </body>
 </html>
