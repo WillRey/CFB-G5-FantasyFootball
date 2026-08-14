@@ -5,38 +5,182 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Matchup | Walk-On Fantasy Football</title>
   <link type="image/png" sizes="16x16" rel="icon" href="/icons8-american-football-gradient-16.png">
-<link type="image/png" sizes="32x32" rel="icon" href="/icons8-american-football-gradient-32.png">
-<link type="image/png" sizes="96x96" rel="icon" href="/icons8-american-football-gradient-96.png">
+  <link type="image/png" sizes="32x32" rel="icon" href="/icons8-american-football-gradient-32.png">
+  <link type="image/png" sizes="96x96" rel="icon" href="/icons8-american-football-gradient-96.png">
   <link rel="stylesheet" href="style.css" />
   <style>
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      background: linear-gradient(135deg, #1a6dff, #c822ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      transition: opacity 0.15s;
+    }
+    .back-link:hover { opacity: 0.7; }
+
+    .week-label {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #9ca3af;
+      margin-bottom: 10px;
+    }
+
+    /* --- Matchup Header Card --- */
     .matchup-header {
       display: flex;
       align-items: center;
       gap: 16px;
-      margin-bottom: 24px;
-      padding: 20px;
-      background: #f8f9ff;
-      border-radius: 10px;
-      border: 1px solid #eee;
+      margin-bottom: 28px;
+      padding: 24px;
+      background: rgba(255,255,255,0.75);
+      border: 1px solid rgba(255,255,255,0.9);
+      border-radius: 14px;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 8px 32px rgba(26,109,255,0.10), 0 2px 8px rgba(200,34,255,0.06);
     }
     .matchup-header-team { flex: 1; }
     .matchup-header-team.home { text-align: right; }
-    .matchup-header-team-name { font-size: 20px; font-weight: bold; }
-    .matchup-header-team-manager { font-size: 13px; color: #888; }
-    .matchup-header-score { text-align: center; min-width: 120px; }
-    .matchup-header-score-value { font-size: 32px; font-weight: bold; color: #2a7ae2; }
-    .matchup-header-score-label { font-size: 12px; color: #aaa; }
-    .rosters-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-    .roster-section h3 { font-size: 16px; font-weight: bold; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid #eee; }
-    .player-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f5f5f5; font-size: 14px; }
-    .player-row-slot { font-size: 11px; font-weight: bold; color: white; background: #2a7ae2; padding: 2px 8px; border-radius: 4px; min-width: 50px; text-align: center; margin-right: 10px; }
-    .player-row-info { flex: 1; }
-    .player-row-name { font-weight: bold; }
-    .player-row-details { font-size: 12px; color: #888; }
-    .player-row-points { font-weight: bold; color: #2a7ae2; min-width: 50px; text-align: right; }
-    .total-row { display: flex; justify-content: space-between; font-weight: bold; margin-top: 12px; padding-top: 8px; border-top: 2px solid #eee; }
-    .back-link { display: inline-block; margin-bottom: 16px; color: #2a7ae2; cursor: pointer; font-size: 14px; }
-    .back-link:hover { text-decoration: underline; }
+    .matchup-header-team-name {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1a1a2e;
+    }
+    .matchup-header-team-manager {
+      font-size: 13px;
+      color: #9ca3af;
+      margin-top: 2px;
+    }
+    .matchup-header-score {
+      text-align: center;
+      min-width: 140px;
+    }
+    .matchup-header-score-value {
+      font-size: 36px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #1a6dff, #c822ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.1;
+    }
+    .matchup-header-score-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #9ca3af;
+      margin-top: 4px;
+    }
+    .matchup-vs {
+      font-size: 22px;
+      font-weight: 700;
+      color: #d0d5e8;
+    }
+
+    /* --- Rosters Grid --- */
+    .rosters-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    .roster-section h3 {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: #374151;
+      margin: 0 0 10px;
+      padding-bottom: 8px;
+      border-bottom: 1.5px solid #e8eaf0;
+    }
+
+    .player-row {
+      display: flex;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid #f0f1f7;
+      font-size: 14px;
+      gap: 10px;
+    }
+    .player-row-slot {
+      font-size: 11px;
+      font-weight: 700;
+      color: white;
+      background: linear-gradient(135deg, #1a6dff, #c822ff);
+      padding: 3px 8px;
+      border-radius: 5px;
+      min-width: 50px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .player-row-slot.bench {
+      background: #e8eaf0;
+      color: #9ca3af;
+    }
+    .player-row-info { flex: 1; min-width: 0; }
+    .player-row-name {
+      font-weight: 600;
+      color: #1a1a2e;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .player-row-details { font-size: 12px; color: #9ca3af; margin-top: 1px; }
+    .player-row-points {
+      font-weight: 700;
+      font-size: 14px;
+      background: linear-gradient(135deg, #1a6dff, #c822ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      min-width: 40px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+    .player-row-points.empty { color: #d0d5e8; -webkit-text-fill-color: #d0d5e8; background: none; }
+
+    .bench-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: #9ca3af;
+      padding: 10px 0 4px;
+    }
+    .bench-row { opacity: 0.65; }
+
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 700;
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1.5px solid #e8eaf0;
+      font-size: 15px;
+    }
+    .total-row-score {
+      background: linear-gradient(135deg, #1a6dff, #c822ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    @media (max-width: 640px) {
+      .rosters-grid { grid-template-columns: 1fr; }
+      .matchup-header { flex-direction: column; text-align: center; }
+      .matchup-header-team.home { text-align: center; }
+    }
   </style>
 </head>
 <body>
@@ -44,7 +188,7 @@
 
   <div class="container">
     <div class="back-link" onclick="history.back()">← Back to Scores</div>
-    <div id="loading">Loading matchup...</div>
+    <div id="loading" style="color:#9ca3af;font-size:14px;">Loading matchup...</div>
     <div id="matchup-content" style="display:none;"></div>
   </div>
 
@@ -113,7 +257,6 @@
 
     function buildLineup(team, picks) {
       if (team.lineup) return { starting: team.lineup.starting, bench: team.lineup.bench, mr: team.lineup.mr };
-
       const roster = [...picks];
       const starting = new Array(startingSlotDefs.length).fill(null);
       startingSlotDefs.forEach((slot, i) => {
@@ -128,7 +271,7 @@
       const hasScores = matchup.homeScore !== null && matchup.awayScore !== null;
 
       el.innerHTML = `
-        <div style="font-size:13px;color:#888;margin-bottom:8px;">Week ${week}</div>
+        <div class="week-label">Week ${week}</div>
         <div class="matchup-header">
           <div class="matchup-header-team home">
             <div class="matchup-header-team-name">${homeTeam.name}</div>
@@ -136,8 +279,10 @@
           </div>
           <div class="matchup-header-score">
             ${hasScores
-              ? `<div class="matchup-header-score-value">${matchup.homeScore} - ${matchup.awayScore}</div><div class="matchup-header-score-label">Final</div>`
-              : `<div class="matchup-header-score-value" style="font-size:20px;color:#aaa;">vs</div><div class="matchup-header-score-label">Upcoming</div>`}
+              ? `<div class="matchup-header-score-value">${matchup.homeScore} – ${matchup.awayScore}</div>
+                 <div class="matchup-header-score-label">Final</div>`
+              : `<div class="matchup-vs">vs</div>
+                 <div class="matchup-header-score-label">Upcoming</div>`}
           </div>
           <div class="matchup-header-team">
             <div class="matchup-header-team-name">${awayTeam.name}</div>
@@ -172,34 +317,40 @@
               <div class="player-row-name">${player ? `${player.firstName} ${player.lastName}` : '—'}</div>
               <div class="player-row-details">${player ? `${player.position} · ${player.team}` : ''}</div>
             </div>
-            <div class="player-row-points">${pts !== null ? pts.toFixed(1) : '—'}</div>
+            <div class="player-row-points ${pts === null ? 'empty' : ''}">${pts !== null ? pts.toFixed(1) : '—'}</div>
           </div>
         `;
       });
 
-      html += `<div style="margin-top:12px;font-size:12px;font-weight:bold;color:#888;padding:4px 0;">BENCH</div>`;
+      html += `<div class="bench-label">Bench</div>`;
       bench?.forEach(player => {
         if (!player) return;
         html += `
-          <div class="player-row" style="opacity:0.6;">
-            <span class="player-row-slot" style="background:#aaa;">BE</span>
+          <div class="player-row bench-row">
+            <span class="player-row-slot bench">BE</span>
             <div class="player-row-info">
               <div class="player-row-name">${player.firstName} ${player.lastName}</div>
               <div class="player-row-details">${player.position} · ${player.team}</div>
             </div>
-            <div class="player-row-points">—</div>
+            <div class="player-row-points empty">—</div>
           </div>
         `;
       });
 
-      html += `<div class="total-row"><span>Total</span><span style="color:#2a7ae2;">${totalPoints > 0 ? totalPoints.toFixed(1) : '—'}</span></div>`;
+      html += `
+        <div class="total-row">
+          <span>Total</span>
+          <span class="total-row-score">${totalPoints > 0 ? totalPoints.toFixed(1) : '—'}</span>
+        </div>
+      `;
       return html;
     }
 
     loadMatchup();
   </script>
-<footer>
-  <a href="https://icons8.com/icons/set/american-football" target="_blank">American Football icon by Icons8</a>
-</footer>
+
+  <footer>
+    <a href="https://icons8.com/icons/set/american-football" target="_blank" rel="noopener">American Football icon by Icons8</a>
+  </footer>
 </body>
 </html>
