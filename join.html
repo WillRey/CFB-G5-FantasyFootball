@@ -184,8 +184,13 @@
 
   <script type="module">
     import { initNav, db, auth, setLeagueId } from './nav.js';
-    import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-    import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import {
+      onAuthStateChanged,
+      signInWithEmailAndPassword,
+      createUserWithEmailAndPassword,
+      updateProfile
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
     initNav('join.html');
 
@@ -215,19 +220,25 @@
         <p>${leagueData.teams} teams · ${leagueData.roster} · Signing Day: ${new Date(leagueData.draftTime).toLocaleString('en-US', {month:'long',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'})}</p>
       `;
 
-      onAuthStateChanged(auth, user => {
+      onAuthStateChanged(auth, async user => {
         if (user) {
-          setLeagueId(leagueId);
-          localStorage.setItem('leagueData', JSON.stringify(leagueData));
+          // User is already logged in — persist league to their Firestore record
+          await persistLeagueToUser(user.uid);
           document.getElementById('auth-section').style.display = 'none';
           document.getElementById('already-joined').style.display = 'block';
         }
       });
     }
 
-    async function joinLeague() {
+    // Write leagueId to both localStorage AND users/{uid} in Firestore
+    async function persistLeagueToUser(uid) {
       setLeagueId(leagueId);
       localStorage.setItem('leagueData', JSON.stringify(leagueData));
+      await setDoc(doc(db, "users", uid), { leagueId }, { merge: true });
+    }
+
+    async function joinLeague(user) {
+      await persistLeagueToUser(user.uid);
       window.location.href = 'myteam.html';
     }
 
@@ -236,8 +247,8 @@
       const password = document.getElementById('login-password').value;
       const errorEl = document.getElementById('login-error');
       try {
-        await signInWithEmailAndPassword(auth, email, password);
-        await joinLeague();
+        const credential = await signInWithEmailAndPassword(auth, email, password);
+        await joinLeague(credential.user);
       } catch (err) {
         errorEl.textContent = 'Invalid email or password.';
         errorEl.style.display = 'block';
@@ -261,7 +272,7 @@
       try {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         await updateProfile(userCredential.user, { displayName: `${firstName} ${lastName}` });
-        await joinLeague();
+        await joinLeague(userCredential.user);
       } catch (err) {
         errorEl.textContent = err.message;
         errorEl.style.display = 'block';

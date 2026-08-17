@@ -26,7 +26,7 @@
       <div class="form-group">
         <label>Number of Teams</label>
         <select id="team-count">
-          <option value="2">2 Teams (Testing)</option>
+          <option value="1">1 Team (Testing)</option>
           <option value="4">4 Teams</option>
           <option value="6">6 Teams</option>
           <option value="8" selected>8 Teams</option>
@@ -111,7 +111,7 @@
 
   <script type="module">
     import { initNav, db, auth, generateLeagueId, setLeagueId } from './nav.js';
-    import { doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { doc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
     import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
     initNav('setup.html');
@@ -204,6 +204,9 @@
 
       try {
         await setDoc(doc(db, "leagues", leagueId), leagueData);
+
+        // Store leagueId on the user's Firestore record so it roams across devices
+        await setDoc(doc(db, "users", currentUser.uid), { leagueId }, { merge: true });
 
         setLeagueId(leagueId);
         localStorage.setItem('leagueData', JSON.stringify(leagueData));

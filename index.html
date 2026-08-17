@@ -20,7 +20,6 @@
       text-transform: uppercase;
       color: #9ca3af;
       margin: 0 0 0.5rem;
-      
     }
     .hero-tagline {
       font-size: 16px;
@@ -79,9 +78,7 @@
   </style>
 </head>
 <body>
-  <nav id="main-nav">
-    <!-- nav.js populates this -->
-  </nav>
+  <nav id="main-nav"></nav>
 
   <div class="container">
     <div class="hero">
@@ -128,8 +125,9 @@
   </footer>
 
   <script type="module">
-    import { initNav, db, getLeagueId } from './nav.js';
+    import { initNav, db, auth, getLeagueId, setLeagueId } from './nav.js';
     import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
     initNav('index.html');
 
@@ -139,11 +137,34 @@
     }
     window.copyLeagueId = copyLeagueId;
 
-    async function loadLeague() {
-      const leagueId = getLeagueId();
+    async function resolveLeagueId(user) {
+      // 1. Try localStorage first (fast path — already on this device)
+      const local = getLeagueId();
+      if (local) return local;
+
+      // 2. No localStorage — look up from Firestore user record (cross-device)
+      if (user) {
+        try {
+          const userSnap = await getDoc(doc(db, "users", user.uid));
+          if (userSnap.exists() && userSnap.data().leagueId) {
+            const id = userSnap.data().leagueId;
+            setLeagueId(id); // cache it locally for next time
+            return id;
+          }
+        } catch (e) {
+          console.error("Error fetching user league:", e);
+        }
+      }
+
+      return null;
+    }
+
+    async function loadLeague(user) {
       const loading = document.getElementById('league-loading');
       const info = document.getElementById('league-info');
       const noInfo = document.getElementById('no-league-info');
+
+      const leagueId = await resolveLeagueId(user);
 
       if (!leagueId) {
         loading.style.display = 'none';
@@ -164,12 +185,9 @@
 
           const now = new Date();
           const draft = new Date(league.draftTime);
-          let badgeHtml = '';
-          if (draft > now) {
-            badgeHtml = `<span class="badge badge-active">Signing Day: ${draft.toLocaleDateString('en-US', {month:'short',day:'numeric'})}</span>`;
-          } else {
-            badgeHtml = `<span class="badge badge-success">Draft complete</span>`;
-          }
+          const badgeHtml = draft > now
+            ? `<span class="badge badge-active">Signing Day: ${draft.toLocaleDateString('en-US', {month:'short',day:'numeric'})}</span>`
+            : `<span class="badge badge-success">Draft complete</span>`;
           document.getElementById('league-badge').innerHTML = badgeHtml;
 
           const rows = [
@@ -195,7 +213,11 @@
       }
     }
 
-    loadLeague();
+    // Wait for auth state before attempting league lookup —
+    // this ensures the Firestore fallback has a user to query against
+    onAuthStateChanged(auth, user => {
+      loadLeague(user);
+    });
   </script>
 </body>
 </html>
