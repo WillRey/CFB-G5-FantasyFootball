@@ -212,6 +212,28 @@
       line-height: 1;
     }
 
+    /* ─── Turn Banner ─────────────────────────────────────────────────── */
+    #turn-banner {
+      margin-top: 12px;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 8px 14px;
+      border-radius: 8px;
+      display: none;
+    }
+    #turn-banner.my-turn {
+      display: block;
+      background: linear-gradient(135deg, rgba(26,109,255,0.12), rgba(200,34,255,0.12));
+      border: 1px solid rgba(26,109,255,0.3);
+      color: #1a6dff;
+    }
+    #turn-banner.waiting {
+      display: block;
+      background: rgba(0,0,0,0.03);
+      border: 1px solid #e8eaf0;
+      color: #9ca3af;
+    }
+
     /* ─── Draft Layout ────────────────────────────────────────────────── */
     #draft-main {
       display: flex;
@@ -281,6 +303,12 @@
       transition: opacity 0.15s;
     }
     .btn-sign:hover { opacity: 0.85; }
+    .btn-sign:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+      background: #d0d5e8;
+    }
+    .btn-sign:disabled:hover { opacity: 0.3; }
 
     /* ─── My Roster Panel ────────────────────────────────────────────── */
     #my-roster-panel h3 {
@@ -335,6 +363,10 @@
       min-width: 180px;
       backdrop-filter: blur(6px);
     }
+    .roster-card.is-me {
+      border: 1px solid rgba(26,109,255,0.35);
+      box-shadow: 0 4px 16px rgba(26,109,255,0.12);
+    }
     .roster-card h4 {
       margin: 0 0 10px;
       font-size: 14px;
@@ -370,7 +402,7 @@
     <div id="waiting-room">
       <div class="wr-badge">Signing Day</div>
       <h2>Draft Room is Open</h2>
-      <p class="wr-sub" id="wr-draft-time-label">Waiting for the Athletic Director to start the draft…</p>
+      <p class="wr-sub" id="wr-draft-time-label">The draft will begin automatically at the scheduled time.</p>
 
       <div class="countdown-grid">
         <div class="countdown-unit">
@@ -392,16 +424,16 @@
         <!-- populated dynamically -->
       </div>
 
-      <!-- Only rendered for the AD, hidden for everyone else -->
+      <!-- AD-only manual override; draft otherwise auto-starts -->
       <div id="ad-start-section" style="display:none;">
-        <button class="btn-start-draft" id="btn-start-signing-day" onclick="kickOffDraft()" disabled>
-          Start Signing Day
+        <button class="btn-start-draft" id="btn-start-signing-day" onclick="kickOffDraft()">
+          Start Signing Day Now
         </button>
-        <p class="wr-draft-time" id="ad-timer-note">Button unlocks at draft time</p>
+        <p class="wr-draft-time" id="ad-timer-note">AD override — the draft starts automatically at the scheduled time.</p>
       </div>
 
       <p id="member-waiting-note" style="font-size:13px;color:#9ca3af;display:none;">
-        The draft will begin automatically once the Athletic Director starts it.
+        The draft begins automatically at the scheduled time. Keep this page open.
       </p>
     </div>
 
@@ -415,6 +447,7 @@
         <h2 id="current-pick-label">Round 1 | Pick 1</h2>
         <p id="current-team-label">On the clock:</p>
         <div id="timer-display">2:00</div>
+        <div id="turn-banner"></div>
       </div>
 
       <div id="draft-main">
@@ -469,10 +502,10 @@
     </div>
   </div>
 
-  <script type="module">
+<script type="module">
     import { initNav, db, auth, getLeagueId } from './nav.js';
     import {
-      doc, setDoc, getDoc, onSnapshot, updateDoc
+      doc, setDoc, getDoc, onSnapshot, runTransaction
     } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
     import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
@@ -481,18 +514,16 @@
     const leagueId = getLeagueId();
     if (!leagueId) window.location.href = 'index.html';
 
+    const PICK_SECONDS = 120;
+    const AUTOPICK_GRACE_MS = 10000; // AD fallback delay if on-clock manager is absent
+
     // ─── State ──────────────────────────────────────────────────────────
     const leagueCache = JSON.parse(localStorage.getItem('leagueData')) || {};
     let teamCount = parseInt(leagueCache.teams) || 8;
-    const rosterFormat = leagueCache.roster || '1QB';
+    let rosterFormat = leagueCache.roster || '1QB';
 
-    const rosterSlots = rosterFormat === 'Superflex'
-      ? ['QB','RB','RB','WR','WR','TE','Flex','Flex','Superflex','K','DST',
-         'Bench','Bench','Bench','Bench','Bench','Bench','Bench','MR','MR']
-      : ['QB','RB','RB','WR','WR','TE','Flex','Flex','K','DST',
-         'Bench','Bench','Bench','Bench','Bench','Bench','Bench','MR','MR'];
-
-    const totalRounds = rosterSlots.length;
+    let rosterSlots = [];
+    let totalRounds = 0;
     let teams = [];
     let allPlayers = [];
     let availablePlayers = [];
@@ -500,14 +531,28 @@
     let currentPick = 0;
     let totalPicks = 0;
     let pickTimerInterval = null;
-    let secondsLeft = 120;
+    let secondsLeft = PICK_SECONDS;
     let draftData = null;
     let countdownInterval = null;
+    let autoStartInterval = null;
+    let autoPickTimeout = null;
     let draftStarted = false;
+    let boardReady = false;
+    let listenerAttached = false;
     let currentUser = null;
     let isAD = false;
     let leagueAdminEmail = null;
-    let draftTimestamp = null; // ms since epoch
+    let draftTimestamp = null;
+
+    function computeRosterSlots() {
+      rosterSlots = rosterFormat === 'Superflex'
+        ? ['QB','RB','RB','WR','WR','TE','Flex','Flex','Superflex','K','DST',
+           'Bench','Bench','Bench','Bench','Bench','Bench','Bench','MR','MR']
+        : ['QB','RB','RB','WR','WR','TE','Flex','Flex','K','DST',
+           'Bench','Bench','Bench','Bench','Bench','Bench','Bench','MR','MR'];
+      totalRounds = rosterSlots.length;
+    }
+    computeRosterSlots();
 
     // ─── Auth gate — wait for user before doing anything ────────────────
     onAuthStateChanged(auth, async user => {
@@ -519,12 +564,9 @@
       await bootstrap();
     });
 
-    // ─── Bootstrap: load league + draft docs, then decide which screen ──
+    // ─── Bootstrap: load league, register team, decide which screen ─────
     async function bootstrap() {
-      const [leagueSnap, draftSnap] = await Promise.all([
-        getDoc(doc(db, "leagues", leagueId)),
-        getDoc(doc(db, "drafts", leagueId))
-      ]);
+      const leagueSnap = await getDoc(doc(db, "leagues", leagueId));
 
       if (!leagueSnap.exists()) {
         alert("League not found.");
@@ -535,43 +577,127 @@
       const leagueDoc = leagueSnap.data();
       leagueAdminEmail = leagueDoc.adminEmail || null;
       teamCount = parseInt(leagueDoc.teams) || teamCount;
+      rosterFormat = leagueDoc.roster || rosterFormat;
+      computeRosterSlots();
 
-      // Parse draftTime — stored as "YYYY-MM-DDTHH:mm" (local time, no tz)
-      // Treat it as local time by appending no zone suffix (Date() behaviour)
       draftTimestamp = leagueDoc.draftTime
         ? new Date(leagueDoc.draftTime).getTime()
         : null;
 
-      // Determine if this user is the AD
       isAD = leagueAdminEmail
         ? currentUser.email.toLowerCase() === leagueAdminEmail.toLowerCase()
         : false;
 
-      // Check if draft is already started
-      if (draftSnap.exists() && draftSnap.data().started === true) {
-        // Already started — go straight to draft board
-        await initDraftBoard(draftSnap.data());
-        return;
-      }
-
-      // Draft not started — check time gate
       const now = Date.now();
       const sixtyMinMs = 60 * 60 * 1000;
 
-      if (!draftTimestamp) {
-        // No draft time set — AD-only fallback, show waiting room
-        showWaitingRoom(draftSnap.exists() ? draftSnap.data() : null);
-        return;
-      }
-
-      if (now < draftTimestamp - sixtyMinMs) {
-        // Too early — show locked screen
+      // Too early — locked screen, and auto-reload when the room opens.
+      if (draftTimestamp && now < draftTimestamp - sixtyMinMs) {
         showLockedScreen(draftTimestamp);
+        const msUntilOpen = (draftTimestamp - sixtyMinMs) - now;
+        if (msUntilOpen < 24 * 60 * 60 * 1000) {
+          setTimeout(() => window.location.reload(), msUntilOpen + 1000);
+        }
         return;
       }
 
-      // Within the window — show waiting room
-      showWaitingRoom(draftSnap.exists() ? draftSnap.data() : null);
+      // Room is open (or no time set) — register this user's team first.
+      const draftDocData = await registerMyTeam();
+
+      if (draftDocData && draftDocData.started === true) {
+        attachDraftListener();
+        await enterDraftBoard(draftDocData);
+        return;
+      }
+
+      showWaitingRoom(draftDocData);
+      attachDraftListener();
+    }
+
+    // ─── Register this user as a team in drafts/{leagueId} ──────────────
+    // Transactional so simultaneous arrivals don't overwrite each other.
+    async function registerMyTeam() {
+      const ref = doc(db, "drafts", leagueId);
+      const firstName = (currentUser.displayName || currentUser.email).split(' ')[0];
+      const defaultName = `${firstName}'s Team`;
+
+      // Pull the custom team name the user set on myteam.html, if any
+      let customName = null;
+      try {
+        const userSnap = await getDoc(doc(db, "users", currentUser.uid));
+        if (userSnap.exists()) customName = userSnap.data().teamName || null;
+      } catch (e) { /* non-fatal */ }
+
+      const myTeam = {
+        name: customName || defaultName,
+        defaultName,
+        manager: currentUser.displayName || currentUser.email,
+        email: currentUser.email,
+        uid: currentUser.uid,
+        roster: [],
+        joinedAt: new Date().toISOString()
+      };
+
+      let result = null;
+
+      try {
+        await runTransaction(db, async tx => {
+          const snap = await tx.get(ref);
+
+          if (!snap.exists()) {
+            const fresh = {
+              leagueId,
+              teams: [myTeam],
+              picks: [],
+              currentPick: 0,
+              started: false,
+              createdAt: new Date().toISOString()
+            };
+            tx.set(ref, fresh);
+            result = fresh;
+            return;
+          }
+
+          const d = snap.data();
+          const existing = d.teams || [];
+          const myIdx = existing.findIndex(t =>
+            (t.uid && t.uid === currentUser.uid) ||
+            (t.email && t.email.toLowerCase() === currentUser.email.toLowerCase())
+          );
+
+          // Already registered — refresh the name in case it changed, then bail.
+          if (myIdx !== -1) {
+            const stored = existing[myIdx];
+            if (stored.name !== myTeam.name || !stored.defaultName) {
+              const refreshed = [...existing];
+              refreshed[myIdx] = { ...stored, name: myTeam.name, defaultName };
+              tx.update(ref, { teams: refreshed });
+              result = { ...d, teams: refreshed };
+            } else {
+              result = d;
+            }
+            return;
+          }
+
+          // Draft already running, or league full — don't add.
+          if (d.started === true || existing.length >= teamCount) {
+            result = d;
+            return;
+          }
+
+          const updated = [...existing, myTeam].sort((a, b) =>
+            (a.joinedAt || '').localeCompare(b.joinedAt || '')
+          );
+          tx.update(ref, { teams: updated });
+          result = { ...d, teams: updated };
+        });
+      } catch (err) {
+        console.error('registerMyTeam failed:', err);
+        const snap = await getDoc(ref);
+        result = snap.exists() ? snap.data() : null;
+      }
+
+      return result;
     }
 
     // ─── Locked Screen ───────────────────────────────────────────────────
@@ -590,189 +716,152 @@
     function showWaitingRoom(existingDraftData) {
       document.getElementById('waiting-room').style.display = 'block';
 
-      // Show draft time label
       if (draftTimestamp) {
         const draftDate = new Date(draftTimestamp).toLocaleString(undefined, {
           weekday: 'short', month: 'short', day: 'numeric',
           hour: 'numeric', minute: '2-digit'
         });
         document.getElementById('wr-draft-time-label').textContent =
-          `Scheduled for ${draftDate}`;
+          `Draft starts automatically at ${draftDate}`;
       }
 
-      // Render teams list in waiting room
       if (existingDraftData && existingDraftData.teams) {
         renderWaitingRoomTeams(existingDraftData.teams);
       } else {
-        // No draft doc yet — show placeholder
-        const container = document.getElementById('wr-teams-list');
-        container.innerHTML = '<h4>Teams in the Room</h4><p style="font-size:13px;color:#9ca3af;margin:0;">Waiting for teams to join…</p>';
+        document.getElementById('wr-teams-list').innerHTML =
+          '<h4>Teams in the Room</h4><p style="font-size:13px;color:#9ca3af;margin:0;">Waiting for teams to join…</p>';
       }
 
-      // AD controls
       if (isAD) {
         document.getElementById('ad-start-section').style.display = 'block';
-        setupADStartButton();
       } else {
         document.getElementById('member-waiting-note').style.display = 'block';
       }
 
-      // Live countdown to draftTime
       if (draftTimestamp) {
         updateCountdown();
         countdownInterval = setInterval(updateCountdown, 1000);
+        scheduleAutoStart();
       } else {
-        // No time set — hide countdown
         document.querySelector('.countdown-grid').style.display = 'none';
       }
-
-      // onSnapshot — auto-transition when AD starts the draft
-      listenForDraftStart();
     }
 
     function renderWaitingRoomTeams(teamsArr) {
       const container = document.getElementById('wr-teams-list');
-      container.innerHTML = '<h4>Teams in the Room</h4>';
+      container.innerHTML = `<h4>Teams in the Room (${teamsArr.length} of ${teamCount})</h4>`;
       teamsArr.forEach(t => {
+        const isMe = (t.uid && t.uid === currentUser.uid) ||
+                     (t.email && t.email.toLowerCase() === currentUser.email.toLowerCase());
         const row = document.createElement('div');
         row.className = 'wr-team-row';
         row.innerHTML = `<div class="wr-team-dot"></div>
-          <span><strong>${t.name}</strong> — ${t.manager}</span>`;
+          <span><strong>${t.name}</strong> — ${t.manager}${isMe ? ' <em style="color:#1a6dff;">(you)</em>' : ''}</span>`;
         container.appendChild(row);
       });
     }
 
     function updateCountdown() {
-      const now = Date.now();
-      const diff = draftTimestamp - now;
+      const diff = draftTimestamp - Date.now();
 
       if (diff <= 0) {
-        // Draft time has passed — unlock the AD button if applicable
         clearInterval(countdownInterval);
         document.getElementById('cd-hours').textContent = '00';
         document.getElementById('cd-minutes').textContent = '00';
         document.getElementById('cd-seconds').textContent = '00';
-        if (isAD) unlockADButton();
         return;
       }
 
       const totalSeconds = Math.floor(diff / 1000);
-      const h = Math.floor(totalSeconds / 3600);
-      const m = Math.floor((totalSeconds % 3600) / 60);
-      const s = totalSeconds % 60;
-
-      document.getElementById('cd-hours').textContent = String(h).padStart(2, '0');
-      document.getElementById('cd-minutes').textContent = String(m).padStart(2, '0');
-      document.getElementById('cd-seconds').textContent = String(s).padStart(2, '0');
+      document.getElementById('cd-hours').textContent =
+        String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+      document.getElementById('cd-minutes').textContent =
+        String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+      document.getElementById('cd-seconds').textContent =
+        String(totalSeconds % 60).padStart(2, '0');
     }
 
-    function setupADStartButton() {
-      const btn = document.getElementById('btn-start-signing-day');
-      const note = document.getElementById('ad-timer-note');
-      const now = Date.now();
+    // ─── Auto-start at scheduled time ────────────────────────────────────
+    function scheduleAutoStart() {
+      if (!draftTimestamp) return;
+      autoStartInterval = setInterval(async () => {
+        if (draftStarted) { clearInterval(autoStartInterval); return; }
+        if (Date.now() >= draftTimestamp) {
+          clearInterval(autoStartInterval);
+          await attemptStartDraft();
+        }
+      }, 1000);
+    }
 
-      if (!draftTimestamp || now >= draftTimestamp) {
-        unlockADButton();
-      } else {
-        // Check every second until draftTime is reached
-        const checkInterval = setInterval(() => {
-          if (Date.now() >= draftTimestamp) {
-            clearInterval(checkInterval);
-            unlockADButton();
-          }
-        }, 1000);
+    // Any client can trigger this; the transaction makes it idempotent.
+    async function attemptStartDraft() {
+      const ref = doc(db, "drafts", leagueId);
+      try {
+        await runTransaction(db, async tx => {
+          const snap = await tx.get(ref);
+          if (!snap.exists()) return;
+          const d = snap.data();
+          if (d.started === true) return;
+
+          const teamsArr = (d.teams || []).map(t => ({ ...t, roster: t.roster || [] }));
+          if (teamsArr.length === 0) return;
+
+          tx.update(ref, {
+            teams: teamsArr,
+            started: true,
+            startedAt: new Date().toISOString(),
+            pickStartedAt: new Date().toISOString(),
+            currentPick: d.currentPick || 0,
+            picks: d.picks || []
+          });
+        });
+      } catch (err) {
+        console.error('attemptStartDraft failed:', err);
       }
     }
 
-    function unlockADButton() {
-      const btn = document.getElementById('btn-start-signing-day');
-      const note = document.getElementById('ad-timer-note');
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = 'Start Signing Day 🏈';
-      }
-      if (note) note.style.display = 'none';
-    }
-
-    // Real-time listener — transitions all members when draft starts
-    function listenForDraftStart() {
-      onSnapshot(doc(db, "drafts", leagueId), async (snapshot) => {
-        if (!snapshot.exists()) return;
-        const data = snapshot.data();
-
-        // Sync teams list in waiting room
-        if (!draftStarted && data.teams) {
-          renderWaitingRoomTeams(data.teams);
-        }
-
-        if (data.started === true && !draftStarted) {
-          draftStarted = true;
-          clearInterval(countdownInterval);
-          // Hide waiting room, show draft board
-          document.getElementById('waiting-room').style.display = 'none';
-          document.getElementById('locked-screen').style.display = 'none';
-          await initDraftBoard(data);
-        } else if (data.started === true && draftStarted) {
-          // Draft is running — handle pick updates
-          handlePickUpdate(data);
-        }
-      });
-    }
-
-    // ─── AD kicks off the draft ──────────────────────────────────────────
+    // AD manual override
     window.kickOffDraft = async function() {
       const btn = document.getElementById('btn-start-signing-day');
       btn.disabled = true;
       btn.textContent = 'Starting…';
-
-      // Load existing draft doc to get registered teams
-      const draftSnap = await getDoc(doc(db, "drafts", leagueId));
-
-      let registeredTeams = [];
-      if (draftSnap.exists() && draftSnap.data().teams) {
-        registeredTeams = draftSnap.data().teams;
-      }
-
-      // If no teams registered yet (edge case), seed with AD's own team
-      if (registeredTeams.length === 0) {
-        const firstName = (currentUser.displayName || currentUser.email).split(' ')[0];
-        registeredTeams = [{
-          name: `${firstName}'s Team`,
-          manager: currentUser.displayName || currentUser.email,
-          email: currentUser.email,
-          roster: []
-        }];
-      }
-
-      // Ensure all teams have a roster array
-      registeredTeams = registeredTeams.map(t => ({
-        ...t,
-        roster: t.roster || []
-      }));
-
-      const newDraftData = {
-        teams: registeredTeams,
-        picks: draftSnap.exists() ? (draftSnap.data().picks || []) : [],
-        currentPick: draftSnap.exists() ? (draftSnap.data().currentPick || 0) : 0,
-        started: true,
-        leagueId,
-        startedAt: new Date().toISOString(),
-        createdAt: draftSnap.exists()
-          ? draftSnap.data().createdAt
-          : new Date().toISOString()
-      };
-
-      await setDoc(doc(db, "drafts", leagueId), newDraftData);
-      // onSnapshot will fire and transition everyone automatically
+      await attemptStartDraft();
     };
 
+    // ─── Single live listener for the whole page lifecycle ──────────────
+    function attachDraftListener() {
+      if (listenerAttached) return;
+      listenerAttached = true;
+
+      onSnapshot(doc(db, "drafts", leagueId), async (snapshot) => {
+        if (!snapshot.exists()) return;
+        const data = snapshot.data();
+
+        if (data.started !== true) {
+          if (data.teams) renderWaitingRoomTeams(data.teams);
+          return;
+        }
+
+        if (!draftStarted) {
+          draftStarted = true;
+          clearInterval(countdownInterval);
+          clearInterval(autoStartInterval);
+          document.getElementById('waiting-room').style.display = 'none';
+          document.getElementById('locked-screen').style.display = 'none';
+          await enterDraftBoard(data);
+          return;
+        }
+
+        if (boardReady) handlePickUpdate(data);
+      });
+    }
+
     // ─── Load players CSV then init draft board ──────────────────────────
-    async function initDraftBoard(draftDocData) {
-      // Load CSV first if not already loaded
-      if (allPlayers.length === 0) {
-        await loadPlayers();
-      }
+    async function enterDraftBoard(draftDocData) {
+      draftStarted = true;
+      if (allPlayers.length === 0) await loadPlayers();
       setupDraftBoard(draftDocData);
+      boardReady = true;
     }
 
     function loadPlayers() {
@@ -797,13 +886,10 @@
       teamCount = teams.length;
 
       draftedPlayers = data.picks || [];
-      availablePlayers = [...allPlayers];
-
+      availablePlayers = allPlayers.filter(p =>
+        !draftedPlayers.find(d => samePlayer(d, p))
+      );
       draftedPlayers.forEach(pick => {
-        const idx = availablePlayers.findIndex(p =>
-          p.firstName === pick.firstName && p.lastName === pick.lastName && p.team === pick.team
-        );
-        if (idx !== -1) availablePlayers.splice(idx, 1);
         if (teams[pick.teamIndex]) teams[pick.teamIndex].roster.push(pick);
       });
 
@@ -813,17 +899,28 @@
 
       document.getElementById('draft-board').style.display = 'block';
 
+      populateTeamFilter();
       renderPickList();
       renderRosters();
-      renderAvailablePlayers();
-      populateTeamFilter();
       startTurn();
+    }
 
-      // Start live pick listener if not already listening
-      if (!draftStarted) {
-        draftStarted = true;
-        listenForDraftStart();
-      }
+    function samePlayer(a, b) {
+      return a.firstName === b.firstName && a.lastName === b.lastName && a.team === b.team;
+    }
+
+    // ─── Who am I? ──────────────────────────────────────────────────────
+    function getMyTeamIndex() {
+      return teams.findIndex(t =>
+        (t.uid && t.uid === currentUser.uid) ||
+        (t.email && t.email.toLowerCase() === currentUser.email.toLowerCase())
+      );
+    }
+
+    function isMyTurn() {
+      if (currentPick >= totalPicks) return false;
+      const myIdx = getMyTeamIndex();
+      return myIdx !== -1 && myIdx === window.draftOrder[currentPick];
     }
 
     // ─── Handle incoming pick updates via onSnapshot ─────────────────────
@@ -833,9 +930,7 @@
 
       draftedPlayers = data.picks || [];
       availablePlayers = allPlayers.filter(p =>
-        !draftedPlayers.find(d =>
-          d.firstName === p.firstName && d.lastName === p.lastName && d.team === p.team
-        )
+        !draftedPlayers.find(d => samePlayer(d, p))
       );
       teams.forEach(t => t.roster = []);
       draftedPlayers.forEach(pick => {
@@ -845,13 +940,13 @@
       currentPick = newPickCount;
       draftData = data;
       clearInterval(pickTimerInterval);
+      clearTimeout(autoPickTimeout);
       renderPickList();
       renderRosters();
-      renderAvailablePlayers();
       startTurn();
     }
 
-    // ─── Draft logic (unchanged from original) ───────────────────────────
+    // ─── Draft logic ─────────────────────────────────────────────────────
     function buildSnakeOrder(teamCount, totalRounds) {
       const order = [];
       for (let r = 0; r < totalRounds; r++) {
@@ -863,11 +958,15 @@
     }
 
     function startTurn() {
+      clearInterval(pickTimerInterval);
+      clearTimeout(autoPickTimeout);
+
       if (currentPick >= totalPicks) {
         document.getElementById('current-pick-label').textContent = 'Signing Day Complete!';
         document.getElementById('current-team-label').textContent = 'Redirecting to your team...';
         document.getElementById('timer-display').textContent = '';
-        clearInterval(pickTimerInterval);
+        document.getElementById('turn-banner').style.display = 'none';
+        renderAvailablePlayers();
         setTimeout(() => { window.location.href = 'myteam.html'; }, 3000);
         return;
       }
@@ -875,24 +974,47 @@
       const teamIndex = window.draftOrder[currentPick];
       const round = Math.floor(currentPick / teamCount) + 1;
       const pick = (currentPick % teamCount) + 1;
+      const mine = isMyTurn();
 
       document.getElementById('current-pick-label').textContent = `Round ${round} | Pick ${pick}`;
       document.getElementById('current-team-label').textContent =
         `On the clock: ${teams[teamIndex].name} (${teams[teamIndex].manager})`;
 
-      secondsLeft = 120;
-      clearInterval(pickTimerInterval);
-      updateTimerDisplay();
-      pickTimerInterval = setInterval(() => {
-        secondsLeft--;
+      const banner = document.getElementById('turn-banner');
+      if (mine) {
+        banner.className = 'my-turn';
+        banner.textContent = "🏈 You're on the clock — make your pick.";
+      } else {
+        banner.className = 'waiting';
+        banner.textContent = `Waiting on ${teams[teamIndex].manager}…`;
+      }
+
+      renderAvailablePlayers();
+
+      // Shared clock: derived from pickStartedAt so all clients agree.
+      const pickStart = draftData && draftData.pickStartedAt
+        ? new Date(draftData.pickStartedAt).getTime()
+        : Date.now();
+
+      const tick = () => {
+        secondsLeft = Math.max(0, PICK_SECONDS - Math.floor((Date.now() - pickStart) / 1000));
         updateTimerDisplay();
         if (secondsLeft <= 0) {
           clearInterval(pickTimerInterval);
-          autoPick(teamIndex);
+          if (mine) {
+            autoPick(teamIndex, currentPick);
+          } else if (isAD) {
+            // Fallback: if the on-clock manager isn't connected, AD's client picks.
+            const stalePick = currentPick;
+            autoPickTimeout = setTimeout(() => {
+              if (currentPick === stalePick) autoPick(teamIndex, stalePick);
+            }, AUTOPICK_GRACE_MS);
+          }
         }
-      }, 1000);
+      };
 
-      renderPickList();
+      tick();
+      pickTimerInterval = setInterval(tick, 1000);
     }
 
     function updateTimerDisplay() {
@@ -901,33 +1023,64 @@
       document.getElementById('timer-display').textContent = `${m}:${s.toString().padStart(2, '0')}`;
     }
 
+    // ─── Making a pick ───────────────────────────────────────────────────
     window.draftPlayer = async function(playerIndex) {
-      const teamIndex = window.draftOrder[currentPick];
+      if (!isMyTurn()) {
+        alert("It's not your turn to pick.");
+        return;
+      }
       const player = availablePlayers[playerIndex];
-      const pick = { ...player, teamIndex, pickNumber: currentPick };
+      if (!player) return;
+      await commitPick(player, window.draftOrder[currentPick], currentPick);
+    };
 
+    async function commitPick(player, teamIndex, expectedPick) {
+      const ref = doc(db, "drafts", leagueId);
       clearInterval(pickTimerInterval);
+      clearTimeout(autoPickTimeout);
 
-      const draftDoc = await getDoc(doc(db, "drafts", leagueId));
-      const existingPicks = draftDoc.data().picks || [];
-      await setDoc(doc(db, "drafts", leagueId), {
-        ...draftDoc.data(),
-        picks: [...existingPicks, pick],
-        currentPick: currentPick + 1
-      });
+      try {
+        await runTransaction(db, async tx => {
+          const snap = await tx.get(ref);
+          if (!snap.exists()) throw new Error('NO_DRAFT');
+          const d = snap.data();
+          const picks = d.picks || [];
+
+          // Someone else already made this pick — bail out.
+          if (picks.length !== expectedPick) throw new Error('STALE');
+          // Player already gone.
+          if (picks.some(p => samePlayer(p, player))) throw new Error('TAKEN');
+
+          tx.update(ref, {
+            picks: [...picks, { ...player, teamIndex, pickNumber: expectedPick }],
+            currentPick: expectedPick + 1,
+            pickStartedAt: new Date().toISOString()
+          });
+        });
+      } catch (err) {
+        if (err.message === 'STALE' || err.message === 'TAKEN') {
+          console.warn('Pick rejected:', err.message);
+        } else {
+          console.error('commitPick failed:', err);
+          alert('Could not submit that pick. Try again.');
+        }
+      }
     }
 
-    async function autoPick(teamIndex) {
+    async function autoPick(teamIndex, expectedPick) {
       const positionNeeds = ['QB','RB','WR','TE','K'];
       for (const pos of positionNeeds) {
-        const idx = availablePlayers.findIndex(p => p.position === pos);
-        if (idx !== -1) { await window.draftPlayer(idx); return; }
+        const player = availablePlayers.find(p => p.position === pos);
+        if (player) { await commitPick(player, teamIndex, expectedPick); return; }
       }
-      if (availablePlayers.length > 0) await window.draftPlayer(0);
+      if (availablePlayers.length > 0) {
+        await commitPick(availablePlayers[0], teamIndex, expectedPick);
+      }
     }
 
+    // ─── Filters + rendering ─────────────────────────────────────────────
     function populateTeamFilter() {
-      const teamNames = [...new Set(availablePlayers.map(p => p.team))].sort();
+      const teamNames = [...new Set(allPlayers.map(p => p.team))].sort();
       const select = document.getElementById('draft-team-filter');
       select.innerHTML = '<option value="">All Teams</option>';
       teamNames.forEach(t => {
@@ -943,6 +1096,7 @@
       const pos = document.getElementById('draft-pos-filter')?.value || '';
       const conf = document.getElementById('draft-conf-filter')?.value || '';
       const team = document.getElementById('draft-team-filter')?.value || '';
+      const mine = isMyTurn();
 
       const filtered = availablePlayers.filter(p => {
         const name = `${p.firstName} ${p.lastName}`.toLowerCase();
@@ -964,11 +1118,11 @@
           <td style="color:#6b7280;">${p.position}</td>
           <td style="color:#6b7280;">${p.team}</td>
           <td style="color:#6b7280;">${p.conference}</td>
-          <td><button class="btn-sign" onclick="draftPlayer(${actualIndex})">Sign</button></td>
+          <td><button class="btn-sign" onclick="draftPlayer(${actualIndex})" ${mine ? '' : 'disabled'}>Sign</button></td>
         `;
         tbody.appendChild(row);
       });
-    }
+    };
 
     function renderAvailablePlayers() { window.filterDraftPlayers(); }
 
@@ -990,19 +1144,8 @@
       }
     }
 
-    function renderMyRoster() {
-      // Find this user's team index by email
-      let myTeamIndex = teams.findIndex(
-        t => t.email && t.email.toLowerCase() === currentUser.email.toLowerCase()
-      );
-      // Fall back to index 0 if not found (e.g. AD in solo test)
-      if (myTeamIndex === -1) myTeamIndex = 0;
-
-      const team = teams[myTeamIndex];
-      if (!team) return;
-      document.getElementById('my-roster-title').textContent = team.name;
-
-      const slots = rosterFormat === 'Superflex'
+    function buildSlotDefinitions() {
+      return rosterFormat === 'Superflex'
         ? [
             { label: 'QB', positions: ['QB'] },
             { label: 'RB', positions: ['RB'] },
@@ -1032,7 +1175,24 @@
             ...Array(7).fill(null).map(() => ({ label: 'Bench', positions: ['QB','RB','WR','TE','K'] })),
             ...Array(2).fill(null).map(() => ({ label: 'MR', positions: ['QB','RB','WR','TE','K'] })),
           ];
+    }
 
+    function renderMyRoster() {
+      const myTeamIndex = getMyTeamIndex();
+      const titleEl = document.getElementById('my-roster-title');
+      const container = document.getElementById('my-roster-slots');
+
+      if (myTeamIndex === -1) {
+        titleEl.textContent = 'My Roster';
+        container.innerHTML =
+          '<p style="font-size:13px;color:#9ca3af;">You are not registered in this draft.</p>';
+        return;
+      }
+
+      const team = teams[myTeamIndex];
+      titleEl.textContent = team.name;
+
+      const slots = buildSlotDefinitions();
       const roster = [...team.roster];
       const filled = new Array(slots.length).fill(null);
       slots.forEach((slot, i) => {
@@ -1040,7 +1200,6 @@
         if (idx !== -1) { filled[i] = roster[idx]; roster.splice(idx, 1); }
       });
 
-      const container = document.getElementById('my-roster-slots');
       container.innerHTML = '';
       slots.forEach((slot, i) => {
         const div = document.createElement('div');
@@ -1057,14 +1216,17 @@
 
     function renderRosters() {
       renderMyRoster();
+      const myTeamIndex = getMyTeamIndex();
       const container = document.getElementById('roster-display');
       container.innerHTML = '';
-      teams.forEach(team => {
+      teams.forEach((team, i) => {
         const div = document.createElement('div');
-        div.className = 'roster-card';
+        div.className = i === myTeamIndex ? 'roster-card is-me' : 'roster-card';
         div.innerHTML = `
           <h4>${team.name}
-            <span style="font-weight:400;font-size:12px;color:#9ca3af;">${team.manager}</span>
+            <div style="font-weight:400;font-size:11px;color:#9ca3af;margin-top:2px;">
+              ${team.defaultName && team.defaultName !== team.name ? team.defaultName : team.manager}
+            </div>
           </h4>
           <ul>
             ${team.roster.map(p =>
