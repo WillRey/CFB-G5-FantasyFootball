@@ -412,6 +412,7 @@
               <option value="WR">WR</option>
               <option value="TE">TE</option>
               <option value="K">K</option>
+              <option value="DST">D/ST</option>
             </select>
             <select id="fa-conf-filter" onchange="filterFAPlayers()">
               <option value="">All Conferences</option>
@@ -421,6 +422,9 @@
               <option value="MWC">Mountain West</option>
               <option value="Pac-12">Pac-12</option>
               <option value="Sun Belt">Sun Belt</option>
+            </select>
+            <select id="fa-team-filter" onchange="filterFAPlayers()">
+              <option value="">All Teams</option>
             </select>
           </div>
           <div id="fa-player-list"></div>
@@ -585,7 +589,19 @@
         parsed.push(obj);
       }
       allPlayers = parsed;
+      populateFATeamFilter();
     }
+
+function populateFATeamFilter() {
+  const teams = [...new Set(allPlayers.map(p => p.team))].sort();
+  const select = document.getElementById('fa-team-filter');
+  teams.forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t;
+    opt.textContent = t;
+    select.appendChild(opt);
+  });
+}
 
     async function loadPortalData() {
       const portalDoc = await getDoc(doc(db, "portal", leagueId));
@@ -659,11 +675,14 @@
       const pos = document.getElementById('fa-pos-filter').value;
       const conf = document.getElementById('fa-conf-filter').value;
 
+      const team = document.getElementById('fa-team-filter').value;
+
       filteredFAPlayers = availablePlayers.filter(p => {
         const name = `${p.firstName} ${p.lastName}`.toLowerCase();
         return (!search || name.includes(search)) &&
           (!pos || p.position === pos) &&
-          (!conf || p.conference === conf);
+          (!conf || p.conference === conf) &&
+          (!team || p.team === team);
       });
 
       filteredFAPlayers.sort((a, b) => {
