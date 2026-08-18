@@ -310,6 +310,24 @@
     }
     .btn-sign:disabled:hover { opacity: 0.3; }
 
+    /* ─── 2025 Points Column ─────────────────────────────────────────── */
+    .pts-val { font-weight: 700; color: #1a1a2e; }
+    .pts-rank {
+      font-size: 10px;
+      font-weight: 700;
+      color: #6b7280;
+      background: rgba(26,109,255,0.08);
+      padding: 2px 5px;
+      border-radius: 4px;
+      margin-left: 5px;
+    }
+    .pts-nr {
+      font-size: 11px;
+      font-weight: 600;
+      color: #c4c8d4;
+      letter-spacing: 0.04em;
+    }
+
     /* ─── My Roster Panel ────────────────────────────────────────────── */
     #my-roster-panel h3 {
       font-size: 13px;
@@ -474,6 +492,10 @@
             <select id="draft-team-filter" onchange="filterDraftPlayers()">
               <option value="">All Teams</option>
             </select>
+            <select id="draft-sort" onchange="filterDraftPlayers()">
+              <option value="pts">Best Available</option>
+              <option value="name">Name (A–Z)</option>
+            </select>
           </div>
           <table id="draft-player-table">
             <thead>
@@ -482,6 +504,7 @@
                 <th>Position</th>
                 <th>Team</th>
                 <th>Conference</th>
+                <th>2025 Pts</th>
                 <th></th>
               </tr>
             </thead>
@@ -502,7 +525,7 @@
     </div>
   </div>
 
-<script type="module">
+  <script type="module">
     import { initNav, db, auth, getLeagueId } from './nav.js';
     import {
       doc, setDoc, getDoc, onSnapshot, runTransaction
@@ -865,7 +888,7 @@
     }
 
     function loadPlayers() {
-      return fetch('g6_players_2026.csv')
+      return fetch('g6_players_2026_ranked.csv')
         .then(res => res.text())
         .then(csv => {
           const lines = csv.trim().split('\n');
@@ -874,10 +897,29 @@
             const vals = line.split(',');
             const obj = {};
             headers.forEach((h, i) => obj[h.trim()] = (vals[i] || '').trim());
+            // Numeric coercion; blank stays null so "no data" ≠ "scored zero"
+            obj.pts2025 = obj.pts2025 === '' ? null : parseFloat(obj.pts2025);
+            obj.posRank = obj.posRank === '' ? null : parseInt(obj.posRank);
+            obj.ovrRank = obj.ovrRank === '' ? null : parseInt(obj.ovrRank);
             return obj;
           }).filter(p => ['QB','RB','WR','TE','K','PK'].includes(p.position))
             .map(p => ({ ...p, position: p.position === 'PK' ? 'K' : p.position }));
+
+          sortPlayerPool();
         });
+    }
+
+    // Best available first; unranked players fall to the bottom of the pool
+    // but are labeled NR rather than shown as zero-point players.
+    function sortPlayerPool() {
+      allPlayers.sort((a, b) => {
+        if (a.pts2025 === null && b.pts2025 === null) {
+          return `${a.lastName}${a.firstName}`.localeCompare(`${b.lastName}${b.firstName}`);
+        }
+        if (a.pts2025 === null) return 1;
+        if (b.pts2025 === null) return -1;
+        return b.pts2025 - a.pts2025;
+      });
     }
 
     function setupDraftBoard(data) {
@@ -1067,6 +1109,8 @@
       }
     }
 
+    // availablePlayers is sorted best-first, so find() returns the top
+    // remaining player at each position rather than an alphabetical accident.
     async function autoPick(teamIndex, expectedPick) {
       const positionNeeds = ['QB','RB','WR','TE','K'];
       for (const pos of positionNeeds) {
@@ -1096,6 +1140,7 @@
       const pos = document.getElementById('draft-pos-filter')?.value || '';
       const conf = document.getElementById('draft-conf-filter')?.value || '';
       const team = document.getElementById('draft-team-filter')?.value || '';
+      const sortBy = document.getElementById('draft-sort')?.value || 'pts';
       const mine = isMyTurn();
 
       const filtered = availablePlayers.filter(p => {
@@ -1108,16 +1153,29 @@
         );
       });
 
+      if (sortBy === 'name') {
+        filtered.sort((a, b) =>
+          `${a.lastName}${a.firstName}`.localeCompare(`${b.lastName}${b.firstName}`)
+        );
+      }
+      // 'pts' needs no work — availablePlayers already carries pool order
+
       const tbody = document.getElementById('draft-player-body');
       tbody.innerHTML = '';
       filtered.slice(0, 100).forEach(p => {
         const actualIndex = availablePlayers.indexOf(p);
+        const ptsCell = p.pts2025 === null
+          ? '<span class="pts-nr" title="No 2025 production on record">NR</span>'
+          : `<span class="pts-val">${p.pts2025.toFixed(1)}</span>
+             <span class="pts-rank">${p.position}${p.posRank}</span>`;
+
         const row = document.createElement('tr');
         row.innerHTML = `
           <td style="font-weight:600;">${p.firstName} ${p.lastName}</td>
           <td style="color:#6b7280;">${p.position}</td>
           <td style="color:#6b7280;">${p.team}</td>
           <td style="color:#6b7280;">${p.conference}</td>
+          <td>${ptsCell}</td>
           <td><button class="btn-sign" onclick="draftPlayer(${actualIndex})" ${mine ? '' : 'disabled'}>Sign</button></td>
         `;
         tbody.appendChild(row);
