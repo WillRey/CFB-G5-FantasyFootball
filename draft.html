@@ -479,6 +479,7 @@
               <option value="WR">WR</option>
               <option value="TE">TE</option>
               <option value="K">K</option>
+              <option value="DST">D/ST</option>
             </select>
             <select id="draft-conf-filter" onchange="filterDraftPlayers()">
               <option value="">All Conferences</option>
@@ -887,6 +888,30 @@
       boardReady = true;
     }
 
+    function generateDSTEntries(players) {
+      const seen = new Set();
+      const dsts = [];
+      for (const p of players) {
+        if (!p.team || seen.has(p.team)) continue;
+        seen.add(p.team);
+        dsts.push({
+          id: `dst-${p.team.toLowerCase().replace(/\s+/g, '-')}`,
+          firstName: '',
+          lastName: p.team,
+          position: 'DST',
+          team: p.team,
+          conference: p.conference,
+          jersey: '',
+          year: '',
+          pts2025: null,
+          ovrRank: 9999,
+          posRank: null,
+        });
+      }
+      dsts.sort((a, b) => a.lastName.localeCompare(b.lastName));
+      return dsts;
+    }
+
     function loadPlayers() {
       return fetch('g6_players_2026_ranked.csv')
         .then(res => res.text())
@@ -897,13 +922,16 @@
             const vals = line.split(',');
             const obj = {};
             headers.forEach((h, i) => obj[h.trim()] = (vals[i] || '').trim());
-            // Numeric coercion; blank stays null so "no data" ≠ "scored zero"
             obj.pts2025 = obj.pts2025 === '' ? null : parseFloat(obj.pts2025);
             obj.posRank = obj.posRank === '' ? null : parseInt(obj.posRank);
             obj.ovrRank = obj.ovrRank === '' ? null : parseInt(obj.ovrRank);
             return obj;
           }).filter(p => ['QB','RB','WR','TE','K','PK'].includes(p.position))
             .map(p => ({ ...p, position: p.position === 'PK' ? 'K' : p.position }));
+
+          // Append synthetic D/ST entries derived from teams already in the pool
+          const dsts = generateDSTEntries(allPlayers);
+          allPlayers = [...allPlayers, ...dsts];
 
           sortPlayerPool();
         });
@@ -1112,11 +1140,28 @@
     // availablePlayers is sorted best-first, so find() returns the top
     // remaining player at each position rather than an alphabetical accident.
     async function autoPick(teamIndex, expectedPick) {
-      const positionNeeds = ['QB','RB','WR','TE','K'];
-      for (const pos of positionNeeds) {
-        const player = availablePlayers.find(p => p.position === pos);
-        if (player) { await commitPick(player, teamIndex, expectedPick); return; }
-      }
+      // Determine what slot this pick is filling
+      const slotIndex = Math.floor(expectedPick / teamCount); // round index
+      const currentSlot = rosterSlots[slotIndex];
+
+      const slotPositionMap = {
+        QB:        ['QB'],
+        RB:        ['RB'],
+        WR:        ['WR'],
+        TE:        ['TE'],
+        Flex:      ['RB','WR','TE'],
+        Superflex: ['QB','RB','WR','TE'],
+        K:         ['K'],
+        DST:       ['DST'],
+        Bench:     ['QB','RB','WR','TE','K','DST'],
+        MR:        ['QB','RB','WR','TE','K'],
+      };
+
+      const eligible = slotPositionMap[currentSlot] || ['QB','RB','WR','TE','K'];
+      const player = availablePlayers.find(p => eligible.includes(p.position));
+      if (player) { await commitPick(player, teamIndex, expectedPick); return; }
+
+      // Fallback: best available overall
       if (availablePlayers.length > 0) {
         await commitPick(availablePlayers[0], teamIndex, expectedPick);
       }
@@ -1164,15 +1209,20 @@
       tbody.innerHTML = '';
       filtered.slice(0, 100).forEach(p => {
         const actualIndex = availablePlayers.indexOf(p);
-        const ptsCell = p.pts2025 === null
-          ? '<span class="pts-nr" title="No 2025 production on record">NR</span>'
-          : `<span class="pts-val">${p.pts2025.toFixed(1)}</span>
-             <span class="pts-rank">${p.position}${p.posRank}</span>`;
+        const isDST = p.position === 'DST';
+        const displayName = isDST ? p.lastName : `${p.firstName} ${p.lastName}`;
+        const ptsCell = isDST
+          ? '<span class="pts-nr">—</span>'
+          : p.pts2025 === null
+            ? '<span class="pts-nr" title="No 2025 production on record">NR</span>'
+            : `<span class="pts-val">${p.pts2025.toFixed(1)}</span>
+               <span class="pts-rank">${p.position}${p.posRank}</span>`;
+        const posDisplay = isDST ? 'D/ST' : p.position;
 
         const row = document.createElement('tr');
         row.innerHTML = `
-          <td style="font-weight:600;">${p.firstName} ${p.lastName}</td>
-          <td style="color:#6b7280;">${p.position}</td>
+          <td style="font-weight:600;">${displayName}</td>
+          <td style="color:#6b7280;">${posDisplay}</td>
           <td style="color:#6b7280;">${p.team}</td>
           <td style="color:#6b7280;">${p.conference}</td>
           <td>${ptsCell}</td>
@@ -1265,7 +1315,9 @@
         div.innerHTML = `
           <span class="slot-label">${slot.label}</span>
           <span class="slot-player">${filled[i]
-            ? `${filled[i].firstName} ${filled[i].lastName}`
+            ? (filled[i].position === 'DST'
+                ? filled[i].lastName
+                : `${filled[i].firstName} ${filled[i].lastName}`)
             : '—'}</span>
         `;
         container.appendChild(div);
@@ -1288,7 +1340,7 @@
           </h4>
           <ul>
             ${team.roster.map(p =>
-              `<li>${p.firstName} ${p.lastName} — ${p.position}</li>`
+              `<li>${p.position === 'DST' ? p.lastName : `${p.firstName} ${p.lastName}`} — ${p.position === 'DST' ? 'D/ST' : p.position}</li>`
             ).join('')}
             ${team.roster.length === 0
               ? '<li style="color:#9ca3af;">No players yet</li>'

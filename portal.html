@@ -700,8 +700,8 @@
         return `
           <div class="player-card">
             <div class="player-card-info">
-              <div class="player-card-name">${p.firstName} ${p.lastName}</div>
-              <div class="player-card-details">${p.position} · ${p.team} · ${p.conference}</div>
+            <div class="player-card-name">${p.position === 'DST' ? p.lastName : `${p.firstName} ${p.lastName}`}</div>
+            <div class="player-card-details">${p.position === 'DST' ? 'D/ST' : p.position} · ${p.team} · ${p.conference}</div>
               ${clearsLine}
             </div>
             <div class="player-card-action">
@@ -794,7 +794,7 @@
       list.innerHTML = rosterPlayers.map((p, i) => `
         <div class="drop-select-item" data-idx="${i}">
           <span style="font-size:11px;font-weight:700;color:#9ca3af;min-width:30px;">${p.position}</span>
-          <span>${p.firstName} ${p.lastName} — ${p.team}</span>
+          <span>${p.position === 'DST' ? p.lastName : `${p.firstName} ${p.lastName}`} — ${p.team}</span>
         </div>
       `).join('');
 
@@ -906,7 +906,7 @@
         return `
           <div class="trade-player-select ${isSelected ? 'selected' : ''}" data-idx="${i}">
             <span style="font-size:11px;font-weight:700;color:#9ca3af;min-width:28px;">${p.position}</span>
-            <span style="font-size:13px;">${p.firstName} ${p.lastName}</span>
+            <span style="font-size:13px;">${p.position === 'DST' ? p.lastName : `${p.firstName} ${p.lastName}`}</span>
           </div>
         `;
       }).join('');
@@ -947,7 +947,7 @@
         return `
           <div class="trade-player-select ${isSelected ? 'selected' : ''}" data-idx="${i}">
             <span style="font-size:11px;font-weight:700;color:#9ca3af;min-width:28px;">${p.position}</span>
-            <span style="font-size:13px;">${p.firstName} ${p.lastName}</span>
+            <span style="font-size:13px;">${p.position === 'DST' ? p.lastName : `${p.firstName} ${p.lastName}`}</span>
           </div>
         `;
       }).join('');

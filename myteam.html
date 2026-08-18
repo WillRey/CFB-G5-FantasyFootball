@@ -852,7 +852,7 @@ function renderStarters() {
     div.innerHTML = `
       <span class="slot-label ${!player ? 'empty-slot' : ''}" onclick="openSwapModal(${i})">${slot.label}</span>
       <div class="slot-player">
-        ${player ? `${player.firstName} ${player.lastName}<div class="player-sub">${player.position} · ${player.team}</div>` : '<span style="color:#9ca3af;">Empty</span>'}
+        ${player ? `${player.position === 'DST' ? player.lastName : `${player.firstName} ${player.lastName}`}<div class="player-sub">${player.position === 'DST' ? 'D/ST' : player.position} · ${player.team}</div>` : '<span style="color:#9ca3af;">Empty</span>'}
       </div>
       <div class="slot-opponent">—</div>
       <div class="slot-proj">—</div>
@@ -872,7 +872,7 @@ function renderBench() {
     div.innerHTML = `
       <span class="slot-label ${!player ? 'empty-slot' : ''}" onclick="openBenchSwapModal(${i})">BE</span>
       <div class="slot-player">
-        ${player ? `${player.firstName} ${player.lastName}<div class="player-sub">${player.position} · ${player.team}</div>` : '<span style="color:#9ca3af;">Empty</span>'}
+        ${player ? `${player.position === 'DST' ? player.lastName : `${player.firstName} ${player.lastName}`}<div class="player-sub">${player.position === 'DST' ? 'D/ST' : player.position} · ${player.team}</div>` : '<span style="color:#9ca3af;">Empty</span>'}
       </div>
       <div class="slot-opponent">—</div>
       <div class="slot-proj">—</div>
@@ -892,7 +892,7 @@ function renderMR() {
     div.innerHTML = `
       <span class="slot-label ${!player ? 'empty-slot' : ''}">MR</span>
       <div class="slot-player">
-        ${player ? `${player.firstName} ${player.lastName}<div class="player-sub">${player.position} · ${player.team}</div>` : '<span style="color:#9ca3af;">Empty</span>'}
+        ${player ? `${player.position === 'DST' ? player.lastName : `${player.firstName} ${player.lastName}`}<div class="player-sub">${player.position === 'DST' ? 'D/ST' : player.position} · ${player.team}</div>` : '<span style="color:#9ca3af;">Empty</span>'}
       </div>
       <div class="slot-opponent">—</div>
       <div class="slot-proj">—</div>
@@ -918,7 +918,7 @@ function renderMR() {
         div.innerHTML = `
           <span class="swap-option-slot">${otherSlot.label}</span>
           <div>
-            <div class="swap-option-name">${player.firstName} ${player.lastName}</div>
+            <div class="swap-option-name">${player.position === 'DST' ? player.lastName : `${player.firstName} ${player.lastName}`}</div>
             <div class="swap-option-details">${player.position} — ${player.team} — ${player.conference}</div>
           </div>
         `;
@@ -933,7 +933,7 @@ function renderMR() {
         div.innerHTML = `
           <span class="swap-option-slot">BE</span>
           <div>
-            <div class="swap-option-name">${player.firstName} ${player.lastName}</div>
+            <div class="swap-option-name">${player.position === 'DST' ? player.lastName : `${player.firstName} ${player.lastName}`}</div>
             <div class="swap-option-details">${player.position} — ${player.team} — ${player.conference}</div>
           </div>
         `;
