@@ -253,9 +253,12 @@ footer a { color: #9ca3af; }
     position: absolute;
     top: 56px;
     left: 0; right: 0;
-    background: #0d0d14;
+    background: rgba(255,255,255,0.97);
+    border-bottom: 1px solid #e8eaf0;
+    backdrop-filter: blur(8px);
     padding: 0.75rem 1rem 1rem;
     gap: 2px;
+    z-index: 99;
   }
   .nav-hamburger { display: block; }
 }

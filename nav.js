@@ -46,6 +46,16 @@ export function initNav(currentPage) {
 
     nav.innerHTML = '';
 
+    // Hamburger button (mobile only)
+    const hamburger = document.createElement('button');
+    hamburger.className = 'nav-hamburger';
+    hamburger.innerHTML = '☰';
+    hamburger.onclick = () => {
+      linkContainer.classList.toggle('open');
+      hamburger.innerHTML = linkContainer.classList.contains('open') ? '✕' : '☰';
+    };
+    nav.appendChild(hamburger);
+
     const linkContainer = document.createElement('div');
     linkContainer.className = 'nav-links';
     nav.appendChild(linkContainer);
@@ -113,5 +123,13 @@ export function initNav(currentPage) {
       if (currentPage === 'login.html') loginLink.classList.add('active');
       linkContainer.appendChild(loginLink);
     }
+
+    // Close menu on link click (mobile)
+    linkContainer.querySelectorAll('a').forEach(a => {
+      a.addEventListener('click', () => {
+        linkContainer.classList.remove('open');
+        hamburger.innerHTML = '☰';
+      });
+    });
   });
 }
