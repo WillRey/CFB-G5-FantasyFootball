@@ -571,9 +571,9 @@
     function computeRosterSlots() {
       rosterSlots = rosterFormat === 'Superflex'
         ? ['QB','RB','RB','WR','WR','TE','Flex','Flex','Superflex','K','DST',
-           'Bench','Bench','Bench','Bench','Bench','Bench','Bench','MR','MR']
+           'Bench','Bench','Bench','Bench','Bench','Bench','Bench']
         : ['QB','RB','RB','WR','WR','TE','Flex','Flex','K','DST',
-           'Bench','Bench','Bench','Bench','Bench','Bench','Bench','MR','MR'];
+           'Bench','Bench','Bench','Bench','Bench','Bench','Bench'];
       totalRounds = rosterSlots.length;
     }
     computeRosterSlots();
@@ -1267,7 +1267,6 @@
             { label: 'K', positions: ['K'] },
             { label: 'D/ST', positions: ['DST'] },
             ...Array(7).fill(null).map(() => ({ label: 'Bench', positions: ['QB','RB','WR','TE','K'] })),
-            ...Array(2).fill(null).map(() => ({ label: 'MR', positions: ['QB','RB','WR','TE','K'] })),
           ]
         : [
             { label: 'QB', positions: ['QB'] },
@@ -1281,7 +1280,6 @@
             { label: 'K', positions: ['K'] },
             { label: 'D/ST', positions: ['DST'] },
             ...Array(7).fill(null).map(() => ({ label: 'Bench', positions: ['QB','RB','WR','TE','K'] })),
-            ...Array(2).fill(null).map(() => ({ label: 'MR', positions: ['QB','RB','WR','TE','K'] })),
           ];
     }
 

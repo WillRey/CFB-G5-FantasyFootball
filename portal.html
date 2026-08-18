@@ -557,7 +557,7 @@
       const myPicks = picks.filter(p => p.teamIndex === myTeamIndex);
       const myTeam = allTeams[myTeamIndex];
       if (myTeam.lineup) {
-        myRoster = [...myTeam.lineup.starting.filter(Boolean), ...myTeam.lineup.bench.filter(Boolean), ...myTeam.lineup.mr.filter(Boolean)];
+              myRoster = [...myTeam.lineup.starting.filter(Boolean), ...myTeam.lineup.bench.filter(Boolean)];
       } else {
         myRoster = myPicks;
       }

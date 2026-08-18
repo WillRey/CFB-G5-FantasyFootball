@@ -256,7 +256,7 @@
     }
 
     function buildLineup(team, picks) {
-      if (team.lineup) return { starting: team.lineup.starting, bench: team.lineup.bench, mr: team.lineup.mr };
+           if (team.lineup) return { starting: team.lineup.starting, bench: team.lineup.bench };
       const roster = [...picks];
       const starting = new Array(startingSlotDefs.length).fill(null);
       startingSlotDefs.forEach((slot, i) => {

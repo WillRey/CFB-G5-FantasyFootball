@@ -431,16 +431,6 @@
           <div>Score</div>
         </div>
         <div id="bench-slots"></div>
-
-        <div class="section-title">Medical Redshirt</div>
-        <div class="roster-table-header">
-          <div></div>
-          <div>Player</div>
-          <div>Opponent</div>
-          <div>Projected</div>
-          <div>Score</div>
-        </div>
-        <div id="mr-slots"></div>
       </div>
 
       <div class="conf-page" id="page-league-settings">
@@ -830,7 +820,7 @@
           if (idx !== -1) { startingLineup[i] = roster[idx]; roster.splice(idx, 1); }
         });
         bench = roster.slice(0, 7);
-        mr = roster.slice(7, 9);
+        mr = [];
       }
 
       renderLineup();
