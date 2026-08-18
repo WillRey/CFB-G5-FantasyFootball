@@ -265,7 +265,7 @@
             <div class="matchup-team-name">${homeTeam.name}</div>
             <div class="matchup-team-manager">${homeTeam.manager}</div>
           </div>
-          ${homeLogo ? `<img src="${homeLogo}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1px solid #e8eaf0;order:-1;" />` : '<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#eef3ff,#faf0ff);border:1px solid #c8d8ff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#1a6dff;order:-1;">' + (homeTeam.name?.[0] || '?') + '</div>'}
+          ${homeLogo ? `<img src="${homeLogo}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1px solid #e8eaf0;;" />` : '<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#eef3ff,#faf0ff);border:1px solid #c8d8ff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#1a6dff;">' + (homeTeam.name?.[0] || '?') + '</div>'}
           <div class="matchup-score">
             ${hasScores
               ? `<div class="matchup-score-value">${matchup.homeScore} – ${matchup.awayScore}</div>
