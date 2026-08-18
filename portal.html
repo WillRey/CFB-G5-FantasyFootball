@@ -724,8 +724,7 @@ function populateFATeamFilter() {
       });
 
       filteredFAPlayers.sort((a, b) => {
-        if (a.status !== b.status) return a.status === 'free' ? -1 : 1;
-        return `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`);
+        return (b.weekPoints ?? -Infinity) - (a.weekPoints ?? -Infinity);
       });
 
       faPage = 0;
