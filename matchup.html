@@ -287,10 +287,10 @@
           <div class="matchup-header-team home">
             <div class="matchup-header-team-name">${homeTeam.name}</div>
             <div class="matchup-header-team-manager">${homeTeam.manager}</div>
-            ${window.logoMap?.[homeTeam.uid]
-              ? `<img src="${window.logoMap[homeTeam.uid]}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:1px solid #e8eaf0;margin-top:10px;" />`
-              : `<div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#eef3ff,#faf0ff);border:1px solid #c8d8ff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;color:#1a6dff;margin:10px auto 0;">${homeTeam.name?.[0] || '?'}</div>`}
           </div>
+          ${window.logoMap?.[homeTeam.uid]
+            ? `<img src="${window.logoMap[homeTeam.uid]}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:1px solid #e8eaf0;flex-shrink:0;" />`
+            : `<div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#eef3ff,#faf0ff);border:1px solid #c8d8ff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;color:#1a6dff;flex-shrink:0;">${homeTeam.name?.[0] || '?'}</div>`}
           <div class="matchup-header-score">
             ${hasScores
               ? `<div class="matchup-header-score-value">${matchup.homeScore} – ${matchup.awayScore}</div>
@@ -298,12 +298,12 @@
               : `<div class="matchup-vs">vs</div>
                  <div class="matchup-header-score-label">Upcoming</div>`}
           </div>
+          ${window.logoMap?.[awayTeam.uid]
+            ? `<img src="${window.logoMap[awayTeam.uid]}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:1px solid #e8eaf0;flex-shrink:0;" />`
+            : `<div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#eef3ff,#faf0ff);border:1px solid #c8d8ff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;color:#1a6dff;flex-shrink:0;">${awayTeam.name?.[0] || '?'}</div>`}
           <div class="matchup-header-team">
             <div class="matchup-header-team-name">${awayTeam.name}</div>
             <div class="matchup-header-team-manager">${awayTeam.manager}</div>
-            ${window.logoMap?.[awayTeam.uid]
-              ? `<img src="${window.logoMap[awayTeam.uid]}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:1px solid #e8eaf0;margin-top:10px;" />`
-              : `<div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#eef3ff,#faf0ff);border:1px solid #c8d8ff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;color:#1a6dff;margin:10px auto 0;">${awayTeam.name?.[0] || '?'}</div>`}
           </div>
         </div>
         <div class="rosters-grid">
