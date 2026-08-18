@@ -506,7 +506,7 @@
 
   <script type="module">
     import { initNav, db, auth, storage, getLeagueId } from './nav.js';
-    import { doc, getDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { doc, getDoc, setDoc, updateDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
     import { ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
     import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
@@ -518,7 +518,6 @@
     let myTeamIndex = 0;
     let startingLineup = [];
     let bench = [];
-    let mr = [];
     let selectedStarterIndex = null;
     let draftData = null;
     let countdownInterval = null;
@@ -652,7 +651,6 @@
       countdownInterval = setInterval(update, 1000);
     }
 
-    // Team info modal
     window.openTeamInfoModal = function() {
       document.getElementById('edit-team-name').value =
         document.getElementById('team-heading').textContent || '';
@@ -670,7 +668,6 @@
       const file = event.target.files[0];
       if (!file) return;
 
-      // Client-side 5MB check
       if (file.size > 5 * 1024 * 1024) {
         document.getElementById('upload-status').textContent = 'File too large. Please choose an image under 5MB.';
         document.getElementById('upload-status').style.color = 'red';
@@ -681,7 +678,6 @@
       document.getElementById('upload-status').textContent = `Selected: ${file.name}`;
       document.getElementById('upload-status').style.color = '#666';
 
-      // Show preview
       const reader = new FileReader();
       reader.onload = e => {
         const preview = document.getElementById('logo-preview');
@@ -697,7 +693,6 @@
 
       let logoUrl = currentLogoUrl;
 
-      // Upload logo if a new one was selected
       if (pendingLogoFile && currentUser) {
         try {
           document.getElementById('upload-progress').style.display = 'block';
@@ -730,7 +725,6 @@
         }
       }
 
-      // Save to Firestore under users collection
       await setDoc(doc(db, "users", currentUser.uid), {
         teamName: newName,
         logoUrl: logoUrl || null,
@@ -739,7 +733,6 @@
         updatedAt: new Date().toISOString()
       }, { merge: true });
 
-      // Update display
       currentLogoUrl = logoUrl;
       document.getElementById('team-heading').textContent = newName;
       updateLogoDisplay(logoUrl, newName);
@@ -775,7 +768,6 @@
         if (league.draftTime && !draftDone) startSigningDayCountdown(league.draftTime);
       }
 
-      // Load user's team info
       let teamName = '';
       let logoUrl = null;
       if (userDoc.exists()) {
@@ -810,7 +802,6 @@
       if (myTeam.lineup) {
         startingLineup = myTeam.lineup.starting;
         bench = myTeam.lineup.bench;
-        mr = myTeam.lineup.mr;
       } else {
         const roster = [...myPicks];
         startingLineup = new Array(startingSlotDefs.length).fill(null);
@@ -819,77 +810,98 @@
           if (idx !== -1) { startingLineup[i] = roster[idx]; roster.splice(idx, 1); }
         });
         bench = roster.slice(0, 7);
-        mr = [];
       }
 
       renderLineup();
+      await loadWeeklyScores();
+    }
+
+    async function loadWeeklyScores() {
+      try {
+        const liveSnap = await getDocs(collection(db, 'liveScores'));
+        if (liveSnap.empty) return;
+
+        const playerPoints = {};
+        const dstPoints = {};
+
+        liveSnap.forEach(doc => {
+          const data = doc.data();
+          Object.entries(data.players || {}).forEach(([espnId, p]) => {
+            playerPoints[espnId] = (playerPoints[espnId] || 0) + (p.points || 0);
+          });
+          Object.values(data.dst || {}).forEach(d => {
+            dstPoints[d.teamName?.toLowerCase()] = (dstPoints[d.teamName?.toLowerCase()] || 0) + (d.points || 0);
+          });
+        });
+
+        startingLineup.forEach(player => {
+          if (!player) return;
+          if (player.position === 'DST') {
+            player.weekPoints = dstPoints[player.team?.toLowerCase()] ?? null;
+          } else {
+            player.weekPoints = player.id ? (playerPoints[player.id] ?? null) : null;
+          }
+        });
+
+        bench.forEach(player => {
+          if (!player) return;
+          if (player.position === 'DST') {
+            player.weekPoints = dstPoints[player.team?.toLowerCase()] ?? null;
+          } else {
+            player.weekPoints = player.id ? (playerPoints[player.id] ?? null) : null;
+          }
+        });
+
+        renderLineup();
+      } catch (e) {
+        console.error('loadWeeklyScores failed:', e);
+      }
     }
 
     function renderLineup() {
       renderStarters();
       renderBench();
-      renderMR();
     }
 
-function renderStarters() {
-  const el = document.getElementById('starting-lineup');
-  el.innerHTML = '';
-  startingSlotDefs.forEach((slot, i) => {
-    const player = startingLineup[i];
-    const div = document.createElement('div');
-    div.className = 'roster-slot';
-    div.innerHTML = `
-      <span class="slot-label ${!player ? 'empty-slot' : ''}" onclick="openSwapModal(${i})">${slot.label}</span>
-      <div class="slot-player">
-        ${player ? `${player.position === 'DST' ? player.lastName : `${player.firstName} ${player.lastName}`}<div class="player-sub">${player.position === 'DST' ? 'D/ST' : player.position} · ${player.team}</div>` : '<span style="color:#9ca3af;">Empty</span>'}
-      </div>
-      <div class="slot-opponent">—</div>
-      <div class="slot-proj">—</div>
-      <div class="slot-score">—</div>
-    `;
-    el.appendChild(div);
-  });
-}
+    function renderStarters() {
+      const el = document.getElementById('starting-lineup');
+      el.innerHTML = '';
+      startingSlotDefs.forEach((slot, i) => {
+        const player = startingLineup[i];
+        const div = document.createElement('div');
+        div.className = 'roster-slot';
+        div.innerHTML = `
+          <span class="slot-label ${!player ? 'empty-slot' : ''}" onclick="openSwapModal(${i})">${slot.label}</span>
+          <div class="slot-player">
+            ${player ? `${player.position === 'DST' ? player.lastName : `${player.firstName} ${player.lastName}`}<div class="player-sub">${player.position === 'DST' ? 'D/ST' : player.position} · ${player.team}</div>` : '<span style="color:#9ca3af;">Empty</span>'}
+          </div>
+          <div class="slot-opponent">—</div>
+          <div class="slot-proj">—</div>
+          <div class="slot-score">${player?.weekPoints != null ? player.weekPoints.toFixed(1) : '—'}</div>
+        `;
+        el.appendChild(div);
+      });
+    }
 
-function renderBench() {
-  const el = document.getElementById('bench-slots');
-  el.innerHTML = '';
-  for (let i = 0; i < 7; i++) {
-    const player = bench[i] || null;
-    const div = document.createElement('div');
-    div.className = 'roster-slot';
-    div.innerHTML = `
-      <span class="slot-label ${!player ? 'empty-slot' : ''}" onclick="openBenchSwapModal(${i})">BE</span>
-      <div class="slot-player">
-        ${player ? `${player.position === 'DST' ? player.lastName : `${player.firstName} ${player.lastName}`}<div class="player-sub">${player.position === 'DST' ? 'D/ST' : player.position} · ${player.team}</div>` : '<span style="color:#9ca3af;">Empty</span>'}
-      </div>
-      <div class="slot-opponent">—</div>
-      <div class="slot-proj">—</div>
-      <div class="slot-score">—</div>
-    `;
-    el.appendChild(div);
-  }
-}
-
-function renderMR() {
-  const el = document.getElementById('mr-slots');
-  el.innerHTML = '';
-  for (let i = 0; i < 2; i++) {
-    const player = mr[i] || null;
-    const div = document.createElement('div');
-    div.className = 'roster-slot';
-    div.innerHTML = `
-      <span class="slot-label ${!player ? 'empty-slot' : ''}">MR</span>
-      <div class="slot-player">
-        ${player ? `${player.position === 'DST' ? player.lastName : `${player.firstName} ${player.lastName}`}<div class="player-sub">${player.position === 'DST' ? 'D/ST' : player.position} · ${player.team}</div>` : '<span style="color:#9ca3af;">Empty</span>'}
-      </div>
-      <div class="slot-opponent">—</div>
-      <div class="slot-proj">—</div>
-      <div class="slot-score">—</div>
-    `;
-    el.appendChild(div);
-  }
-}
+    function renderBench() {
+      const el = document.getElementById('bench-slots');
+      el.innerHTML = '';
+      for (let i = 0; i < 7; i++) {
+        const player = bench[i] || null;
+        const div = document.createElement('div');
+        div.className = 'roster-slot';
+        div.innerHTML = `
+          <span class="slot-label ${!player ? 'empty-slot' : ''}" onclick="openBenchSwapModal(${i})">BE</span>
+          <div class="slot-player">
+            ${player ? `${player.position === 'DST' ? player.lastName : `${player.firstName} ${player.lastName}`}<div class="player-sub">${player.position === 'DST' ? 'D/ST' : player.position} · ${player.team}</div>` : '<span style="color:#9ca3af;">Empty</span>'}
+          </div>
+          <div class="slot-opponent">—</div>
+          <div class="slot-proj">—</div>
+          <div class="slot-score">${player?.weekPoints != null ? player.weekPoints.toFixed(1) : '—'}</div>
+        `;
+        el.appendChild(div);
+      }
+    }
 
     window.openSwapModal = function(starterIndex) {
       selectedStarterIndex = starterIndex;
@@ -940,7 +952,7 @@ function renderMR() {
       const benchPlayer = bench[benchIndex];
       if (!benchPlayer) return;
       document.getElementById('swap-modal-title').textContent =
-        `Move ${benchPlayer.firstName} ${benchPlayer.lastName} to starting lineup`;
+        `Move ${benchPlayer.position === 'DST' ? benchPlayer.lastName : `${benchPlayer.firstName} ${benchPlayer.lastName}`} to starting lineup`;
       const optionsEl = document.getElementById('swap-options');
       optionsEl.innerHTML = '';
 
@@ -952,8 +964,8 @@ function renderMR() {
         div.innerHTML = `
           <span class="swap-option-slot">${slot.label}</span>
           <div>
-            <div class="swap-option-name">${currentStarter ? `${currentStarter.firstName} ${currentStarter.lastName}` : 'Empty slot'}</div>
-            <div class="swap-option-details">${currentStarter ? `${currentStarter.position} — ${currentStarter.team}` : ''}</div>
+            <div class="swap-option-name">${currentStarter ? (currentStarter.position === 'DST' ? currentStarter.lastName : `${currentStarter.firstName} ${currentStarter.lastName}`) : 'Empty slot'}</div>
+            <div class="swap-option-details">${currentStarter ? `${currentStarter.position === 'DST' ? 'D/ST' : currentStarter.position} — ${currentStarter.team}` : ''}</div>
           </div>
         `;
         div.onclick = () => swapWithBench(i, benchIndex);
@@ -992,7 +1004,7 @@ function renderMR() {
     async function saveLineup() {
       const updatedTeams = draftData.teams.map((t, i) => {
         if (i === myTeamIndex) {
-          return { ...t, lineup: { starting: startingLineup, bench, mr } };
+          return { ...t, lineup: { starting: startingLineup, bench } };
         }
         return t;
       });

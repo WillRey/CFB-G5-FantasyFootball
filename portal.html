@@ -464,7 +464,7 @@
 
   <script type="module">
     import { initNav, db, auth, getLeagueId } from './nav.js';
-    import { doc, getDoc, setDoc, updateDoc, arrayUnion, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+        import { doc, getDoc, setDoc, updateDoc, arrayUnion, serverTimestamp, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
     import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
     initNav('portal.html');
@@ -570,6 +570,7 @@
       }
 
       await loadPortalData();
+      await loadWeeklyScores();
       renderFAPlayers();
       renderWaiverPriority();
       renderMyWaiverClaims();
@@ -641,6 +642,38 @@ function populateFATeamFilter() {
           processTime: getNextWaiverProcessTime(new Date(p.droppedAt))
         }))
       ];
+    }
+
+      async function loadWeeklyScores() {
+      try {
+        const liveSnap = await getDocs(collection(db, 'liveScores'));
+        if (liveSnap.empty) return;
+
+        const playerPoints = {};
+        const dstPoints = {};
+
+        liveSnap.forEach(doc => {
+          const data = doc.data();
+          Object.entries(data.players || {}).forEach(([espnId, p]) => {
+            playerPoints[espnId] = (playerPoints[espnId] || 0) + (p.points || 0);
+          });
+          Object.values(data.dst || {}).forEach(d => {
+            dstPoints[d.teamName?.toLowerCase()] = (dstPoints[d.teamName?.toLowerCase()] || 0) + (d.points || 0);
+          });
+        });
+
+        // Stamp weekPoints onto every player in the pool
+        availablePlayers.forEach(player => {
+          if (player.position === 'DST') {
+            player.weekPoints = dstPoints[player.team?.toLowerCase()] ?? null;
+          } else {
+            player.weekPoints = player.id ? (playerPoints[player.id] ?? null) : null;
+          }
+        });
+
+      } catch (e) {
+        console.error('loadWeeklyScores failed:', e);
+      }
     }
 
     function getNextWaiverProcessTime(fromDate) {
@@ -721,11 +754,15 @@ function populateFATeamFilter() {
         const btnClass = isWaiver ? 'btn-claim' : 'btn-add';
         const btnLabel = isWaiver ? 'Claim' : 'Add';
 
+        const weekPts = p.weekPoints != null
+          ? `<div class="player-card-sub" style="color:#1a6dff;">Week: ${p.weekPoints.toFixed(1)} pts</div>`
+          : '';
         return `
           <div class="player-card">
             <div class="player-card-info">
-            <div class="player-card-name">${p.position === 'DST' ? p.lastName : `${p.firstName} ${p.lastName}`}</div>
-            <div class="player-card-details">${p.position === 'DST' ? 'D/ST' : p.position} · ${p.team} · ${p.conference}</div>
+              <div class="player-card-name">${p.position === 'DST' ? p.lastName : `${p.firstName} ${p.lastName}`}</div>
+              <div class="player-card-details">${p.position === 'DST' ? 'D/ST' : p.position} · ${p.team} · ${p.conference}</div>
+              ${weekPts}
               ${clearsLine}
             </div>
             <div class="player-card-action">
@@ -817,8 +854,9 @@ function populateFATeamFilter() {
       const rosterPlayers = myRoster.filter(Boolean);
       list.innerHTML = rosterPlayers.map((p, i) => `
         <div class="drop-select-item" data-idx="${i}">
-          <span style="font-size:11px;font-weight:700;color:#9ca3af;min-width:30px;">${p.position}</span>
+          <span style="font-size:11px;font-weight:700;color:#9ca3af;min-width:30px;">${p.position === 'DST' ? 'D/ST' : p.position}</span>
           <span>${p.position === 'DST' ? p.lastName : `${p.firstName} ${p.lastName}`} — ${p.team}</span>
+          ${p.weekPoints != null ? `<span style="font-size:11px;font-weight:700;color:#1a6dff;margin-left:auto;">${p.weekPoints.toFixed(1)}</span>` : ''}
         </div>
       `).join('');
 
