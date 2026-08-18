@@ -40,6 +40,10 @@
       border-bottom-color: #1a6dff;
     }
 
+    .portal-tabs a.portal-tab {
+      text-decoration: none;
+    }
+
     .portal-page { display: none; }
     .portal-page.active { display: block; }
 
@@ -396,6 +400,7 @@
 
       <div id="portal-main" style="display:none;">
         <div class="portal-tabs">
+          <a class="portal-tab" href="myteam.html">My Roster</a>
           <div class="portal-tab active" onclick="showPortalPage('free-agency')" id="tab-fa">Free Agency</div>
           <div class="portal-tab" onclick="showPortalPage('waivers')" id="tab-waivers">Waiver Wire</div>
           <div class="portal-tab" onclick="showPortalPage('trades')" id="tab-trades">Trades</div>
