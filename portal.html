@@ -403,7 +403,9 @@
           <a class="portal-tab" href="myteam.html">My Roster</a>
           <div class="portal-tab active" onclick="showPortalPage('free-agency')" id="tab-fa">Free Agency</div>
           <div class="portal-tab" onclick="showPortalPage('waivers')" id="tab-waivers">Waiver Wire</div>
-          <div class="portal-tab" onclick="showPortalPage('trades')" id="tab-trades">Trades</div>
+          <div class="portal-tab" onclick="showPortalPage('trades')" id="tab-trades">
+            Trades <span id="trades-badge" style="display:none;background:linear-gradient(135deg,#1a6dff,#c822ff);color:white;font-size:10px;font-weight:700;padding:1px 6px;border-radius:20px;margin-left:4px;-webkit-text-fill-color:white;">0</span>
+          </div>
         </div>
 
         <!-- Free Agency -->
@@ -1070,6 +1072,20 @@ function populateFATeamFilter() {
       renderTradeList('incoming-trades', incoming, true);
       renderTradeList('outgoing-trades', outgoing, false);
       renderTradeList('trade-history', history, false);
+      updateTradesBadge();
+    }
+
+    function updateTradesBadge() {
+      const trades = window.portalData?.trades || [];
+      const incomingCount = trades.filter(t => t.toTeam === myTeamIndex && t.status === 'pending').length;
+      const badge = document.getElementById('trades-badge');
+      if (!badge) return;
+      if (incomingCount > 0) {
+        badge.textContent = incomingCount;
+        badge.style.display = 'inline';
+      } else {
+        badge.style.display = 'none';
+      }
     }
 
     function renderTradeList(elId, trades, canRespond) {
