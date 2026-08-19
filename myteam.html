@@ -780,10 +780,10 @@
       document.getElementById('loading').style.display = 'none';
       document.getElementById('team-content').style.display = 'block';
       document.getElementById('team-heading').textContent = teamName || 'Set Your Team Name';
-      document.getElementById('manager-name').textContent = `${user.displayName || user.email} · ${wins}-${losses}`;
       updateLogoDisplay(logoUrl, teamName);
 
       if (!draftDoc.exists()) {
+        document.getElementById('manager-name').textContent = user.displayName || user.email;
         document.getElementById('page-roster').innerHTML =
           '<p style="color:#888;margin-top:16px;">Your roster will appear here after Signing Day.</p>';
         return;
@@ -815,6 +815,8 @@
           });
         });
       }
+
+      document.getElementById('manager-name').textContent = `${user.displayName || user.email} · ${wins}-${losses}`;
 
       if (myTeam.lineup) {
         startingLineup = myTeam.lineup.starting;
