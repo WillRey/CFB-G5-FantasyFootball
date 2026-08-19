@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Schedule | Walk-On Fantasy Football</title>
   <link type="image/png" sizes="16x16" rel="icon" href="/icons8-american-football-gradient-16.png">
-<link type="image/png" sizes="32x32" rel="icon" href="/icons8-american-football-gradient-32.png">
-<link type="image/png" sizes="96x96" rel="icon" href="/icons8-american-football-gradient-96.png">
+  <link type="image/png" sizes="32x32" rel="icon" href="/icons8-american-football-gradient-32.png">
+  <link type="image/png" sizes="96x96" rel="icon" href="/icons8-american-football-gradient-96.png">
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -16,9 +16,14 @@
     <h1>Season Schedule</h1>
 
     <div id="schedule-controls">
-      <p>Generate a random schedule for the season. This will create matchups for all 11 regular season weeks plus playoffs.</p>
+      <p>Generate a random schedule for the season. This will create matchups for all 11 regular season weeks plus playoff placeholders.</p>
       <button onclick="generateSchedule()">Generate Schedule</button>
       <button onclick="clearSchedule()" style="margin-left:10px;background:#e55;color:white;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;">Clear Schedule</button>
+    </div>
+
+    <div id="playoff-controls" style="margin-top:16px;display:none;">
+      <p style="color:#6b7280;font-size:14px;">After Week 11 is complete, set the playoff matchups based on final standings.</p>
+      <button onclick="setPlayoffMatchups()" style="background:linear-gradient(135deg,#1a6dff,#c822ff);color:white;border:none;padding:9px 20px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">Set Playoff Matchups from Standings</button>
     </div>
 
     <div id="schedule-output" style="margin-top:24px;"></div>
@@ -47,6 +52,7 @@
       if (scheduleDoc.exists()) {
         existingSchedule = scheduleDoc.data().weeks;
         renderSchedule(existingSchedule);
+        document.getElementById('playoff-controls').style.display = 'block';
       }
     }
 
@@ -72,6 +78,7 @@
       });
 
       renderSchedule(schedule);
+      document.getElementById('playoff-controls').style.display = 'block';
     }
 
     window.clearSchedule = async function() {
@@ -79,6 +86,76 @@
       await setDoc(doc(db, "schedule", leagueId), { weeks: [], cleared: true });
       existingSchedule = null;
       document.getElementById('schedule-output').innerHTML = '<p>Schedule cleared.</p>';
+      document.getElementById('playoff-controls').style.display = 'none';
+    }
+
+    window.setPlayoffMatchups = async function() {
+      if (!existingSchedule) { alert('No schedule found.'); return; }
+      if (!confirm('Set playoff matchups based on current standings? This will overwrite any existing playoff matchups.')) return;
+
+      // Compute standings from regular season
+      const records = teams.map((t, i) => ({
+        teamIndex: i, wins: 0, losses: 0, pointsFor: 0
+      }));
+
+      existingSchedule.filter(w => !w.playoff && w.week <= 11).forEach(week => {
+        (week.matchups || []).forEach(m => {
+          if (m.homeScore === null || m.awayScore === null) return;
+          records[m.home].pointsFor += m.homeScore;
+          records[m.away].pointsFor += m.awayScore;
+          if (m.homeScore > m.awayScore) {
+            records[m.home].wins++;
+            records[m.away].losses++;
+          } else {
+            records[m.away].wins++;
+            records[m.home].losses++;
+          }
+        });
+      });
+
+      const sorted = records.sort((a, b) =>
+        b.wins !== a.wins ? b.wins - a.wins : b.pointsFor - a.pointsFor
+      );
+
+      const seed1 = sorted[0].teamIndex;
+      const seed2 = sorted[1].teamIndex;
+      const seed3 = sorted[2].teamIndex;
+      const seed4 = sorted[3].teamIndex;
+
+      // Week 12: #1 vs #4 (home/away), #2 vs #3
+      // Week 13: championship + 3rd place
+      const updatedWeeks = existingSchedule.map(w => {
+        if (w.week === 12) {
+          return {
+            ...w,
+            matchups: [
+              { home: seed1, away: seed4, homeScore: null, awayScore: null },
+              { home: seed2, away: seed3, homeScore: null, awayScore: null },
+            ]
+          };
+        }
+        if (w.week === 13) {
+          return {
+            ...w,
+            matchups: [
+              { home: seed1, away: seed2, homeScore: null, awayScore: null, thirdPlace: false },
+              { home: seed3, away: seed4, homeScore: null, awayScore: null, thirdPlace: true },
+            ]
+          };
+        }
+        return w;
+      });
+
+      await setDoc(doc(db, "schedule", leagueId), {
+        weeks: updatedWeeks,
+        generatedAt: new Date().toISOString(),
+        teamCount: teams.length,
+        leagueId
+      });
+
+      existingSchedule = updatedWeeks;
+      renderSchedule(updatedWeeks);
+      alert('Playoff matchups set! Week 12 and 13 are now populated.');
     }
 
     function buildSchedule(teams, regularSeasonWeeks) {
@@ -106,11 +183,21 @@
         }
 
         const byeTeam = [...Array(n).keys()].find(i => !teamsScheduled.has(i));
-        weeks.push({ week, type: 'regular', matchups: weekMatchups, bye: byeTeam !== undefined ? byeTeam : null });
+        weeks.push({
+          week,
+          type: 'regular',
+          matchups: weekMatchups,
+          bye: byeTeam !== undefined ? byeTeam : null
+        });
       }
 
       PLAYOFF_WEEKS.forEach((week, i) => {
-        weeks.push({ week, type: i === 0 ? 'semifinals' : 'championship', matchups: [], playoff: true });
+        weeks.push({
+          week,
+          type: i === 0 ? 'semifinals' : 'championship',
+          matchups: [],
+          playoff: true
+        });
       });
 
       return weeks;
@@ -126,22 +213,25 @@
 
         const label = weekData.type === 'regular'
           ? `Week ${weekData.week}`
-          : weekData.type === 'semifinals' ? 'Week 12 — Semifinals' : 'Week 13 — Championship';
+          : weekData.type === 'semifinals'
+            ? 'Week 12 — Semifinals'
+            : 'Week 13 — Championship';
 
         section.innerHTML = `<h3 style="border-bottom:2px solid #eee;padding-bottom:6px;">${label}</h3>`;
 
-        if (weekData.playoff) {
-          section.innerHTML += `<p style="color:#888;">Playoff matchups set after regular season.</p>`;
+        if (weekData.playoff && !weekData.matchups?.length) {
+          section.innerHTML += `<p style="color:#888;">Playoff matchups not yet set.</p>`;
         } else {
           weekData.matchups.forEach(m => {
             const home = teams[m.home]?.name || `Team ${m.home + 1}`;
             const away = teams[m.away]?.name || `Team ${m.away + 1}`;
+            const tag = m.thirdPlace ? ' <em style="color:#f59e0b;font-size:12px;">(3rd Place)</em>' : '';
             const row = document.createElement('div');
             row.style.cssText = 'display:flex;gap:16px;padding:8px 0;border-bottom:1px solid #f0f0f0;align-items:center;';
             row.innerHTML = `
               <span style="flex:1;text-align:right;font-weight:bold;">${home}</span>
               <span style="color:#888;">vs</span>
-              <span style="flex:1;font-weight:bold;">${away}</span>
+              <span style="flex:1;font-weight:bold;">${away}${tag}</span>
             `;
             section.appendChild(row);
           });
@@ -160,8 +250,8 @@
       });
     }
   </script>
-<footer>
-  <a href="https://icons8.com/icons/set/american-football" target="_blank">American Football icon by Icons8</a>
-</footer>
+  <footer>
+    <a href="https://icons8.com/icons/set/american-football" target="_blank">American Football icon by Icons8</a>
+  </footer>
 </body>
 </html>
