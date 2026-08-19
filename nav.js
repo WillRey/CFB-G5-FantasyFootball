@@ -49,10 +49,10 @@ export function initNav(currentPage) {
     // Hamburger button (mobile only)
     const hamburger = document.createElement('button');
     hamburger.className = 'nav-hamburger';
-    hamburger.innerHTML = '☰';
+    hamburger.textContent = '\u2630';
     hamburger.onclick = () => {
       linkContainer.classList.toggle('open');
-      hamburger.innerHTML = linkContainer.classList.contains('open') ? '✕' : '☰';
+      hamburger.textContent = linkContainer.classList.contains('open') ? '\u2715' : '\u2630';
     };
     nav.appendChild(hamburger);
 
@@ -128,7 +128,7 @@ export function initNav(currentPage) {
     linkContainer.querySelectorAll('a').forEach(a => {
       a.addEventListener('click', () => {
         linkContainer.classList.remove('open');
-        hamburger.innerHTML = '☰';
+        hamburger.textContent = '\u2630';
       });
     });
   });
