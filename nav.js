@@ -120,6 +120,7 @@ export function initNav(currentPage) {
       const loginLink = document.createElement('a');
       loginLink.href = 'login.html';
       loginLink.className = 'nav-auth';
+      loginLink.textContent = 'Login';
       if (currentPage === 'login.html') loginLink.classList.add('active');
       linkContainer.appendChild(loginLink);
     }
