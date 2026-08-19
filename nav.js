@@ -60,15 +60,17 @@ export function initNav(currentPage) {
     linkContainer.className = 'nav-links';
     nav.appendChild(linkContainer);
 
-    const showScoresOn = ['myteam.html', 'matchup.html', 'schedule.html', 'scores.html'];
-    const showMatchupOn = ['myteam.html', 'portal.html', 'scores.html', 'matchup.html'];
-    const hideCreateLeagueOn = ['myteam.html', 'portal.html', 'scores.html', 'matchup.html'];
+    const showScoresOn = ['myteam.html', 'matchup.html', 'schedule.html', 'scores.html', 'league.html'];
+    const showMatchupOn = ['myteam.html', 'portal.html', 'scores.html', 'matchup.html', 'league.html'];
+    const showLeagueOn = ['myteam.html', 'portal.html', 'scores.html', 'matchup.html', 'league.html'];
+    const hideCreateLeagueOn = ['myteam.html', 'portal.html', 'scores.html', 'matchup.html', 'league.html'];
 
     const baseLinks = [
       { href: 'index.html', label: 'Home' },
       ...(!hideCreateLeagueOn.includes(currentPage) ? [{ href: 'setup.html', label: 'Create A League' }] : []),
       ...(showScoresOn.includes(currentPage) ? [{ href: 'scores.html', label: 'Scores' }] : []),
       ...(showMatchupOn.includes(currentPage) ? [{ href: 'matchup.html', label: 'Matchup' }] : []),
+      ...(showLeagueOn.includes(currentPage) ? [{ href: 'league.html', label: 'League' }] : []),
     ];
 
     baseLinks.forEach(link => {

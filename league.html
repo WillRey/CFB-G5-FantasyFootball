@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>League | Walk-On Fantasy Football</title>
+  <link type="image/png" sizes="16x16" rel="icon" href="/icons8-american-football-gradient-16.png">
+  <link type="image/png" sizes="32x32" rel="icon" href="/icons8-american-football-gradient-32.png">
+  <link type="image/png" sizes="96x96" rel="icon" href="/icons8-american-football-gradient-96.png">
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    /* --- Subnav --- */
+    .league-subnav {
+      display: flex;
+      gap: 0;
+      border-bottom: 1.5px solid #e0e4f0;
+      margin-bottom: 24px;
+    }
+    .league-subnav-tab {
+      padding: 10px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #9ca3af;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      transition: color 0.2s;
+    }
+    .league-subnav-tab.active {
+      background: linear-gradient(135deg, #1a6dff, #c822ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      border-bottom-color: #1a6dff;
+    }
+    .league-subnav-tab:hover {
+      background: linear-gradient(135deg, #1a6dff, #c822ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .league-page { display: none; }
+    .league-page.active { display: block; }
+
+    /* --- Standings Table --- */
+    .standings-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    .standings-table thead th {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #4b5563;
+      padding: 8px 12px;
+      border-bottom: 1.5px solid #e8eaf0;
+      text-align: left;
+    }
+    .standings-table tbody tr {
+      border-bottom: 1px solid #f0f1f7;
+      transition: background 0.12s;
+      cursor: pointer;
+    }
+    .standings-table tbody tr:hover { background: rgba(26,109,255,0.04); }
+    .standings-table tbody td {
+      padding: 10px 12px;
+      color: #1a1a2e;
+    }
+    .standings-rank {
+      font-weight: 700;
+      background: linear-gradient(135deg, #1a6dff, #c822ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      min-width: 24px;
+      display: inline-block;
+    }
+    .standings-team-name { font-weight: 600; }
+    .standings-manager { font-size: 12px; color: #9ca3af; margin-top: 2px; }
+    .playoff-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, #1a6dff, #c822ff);
+      color: white;
+      -webkit-text-fill-color: white;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+    .me-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 20px;
+      background: #eef3ff;
+      color: #1a6dff;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+
+    /* --- Playoff Bracket --- */
+    .bracket-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 24px;
+      margin-top: 8px;
+    }
+    .bracket-round { display: flex; flex-direction: column; gap: 16px; }
+    .bracket-round-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #9ca3af;
+      margin-bottom: 8px;
+    }
+    .bracket-matchup {
+      background: rgba(255,255,255,0.75);
+      border: 1px solid rgba(255,255,255,0.9);
+      border-radius: 12px;
+      padding: 14px 16px;
+      backdrop-filter: blur(6px);
+      box-shadow: 0 2px 8px rgba(26,109,255,0.06);
+    }
+    .bracket-team {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      font-size: 14px;
+      border-bottom: 1px solid #f0f1f7;
+    }
+    .bracket-team:last-child { border-bottom: none; }
+    .bracket-team-name { font-weight: 600; color: #1a1a2e; }
+    .bracket-team-name.winner {
+      background: linear-gradient(135deg, #1a6dff, #c822ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .bracket-team-score { font-weight: 700; font-size: 13px; color: #6b7280; }
+    .bracket-seed {
+      font-size: 10px;
+      font-weight: 700;
+      color: #9ca3af;
+      margin-right: 6px;
+    }
+    .bracket-tbd { color: #9ca3af; font-size: 13px; font-style: italic; }
+
+    /* --- Team Roster View --- */
+    .team-roster-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .team-roster-logo {
+      width: 72px; height: 72px;
+      border-radius: 50%; object-fit: cover;
+      border: 2px solid #e8eaf0;
+      flex-shrink: 0;
+    }
+    .team-roster-logo-placeholder {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #eef3ff, #faf0ff);
+      border: 2px solid #c8d8ff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px; font-weight: 700;
+      color: #1a6dff; flex-shrink: 0;
+    }
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      background: linear-gradient(135deg, #1a6dff, #c822ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .back-link:hover { opacity: 0.7; }
+    .roster-view-slot {
+      display: grid;
+      grid-template-columns: 80px 1fr 100px;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid #f0f1f7;
+      font-size: 14px;
+    }
+    .roster-view-slot-label {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 52px;
+      max-width: 68px;
+      font-size: 11px;
+      font-weight: 700;
+      color: white;
+      background: linear-gradient(135deg, #1a6dff, #c822ff);
+      padding: 4px 8px;
+      border-radius: 6px;
+      text-align: center;
+    }
+    .roster-view-slot-label.bench {
+      background: #e8eaf0;
+      color: #9ca3af;
+    }
+    .roster-view-player { font-weight: 500; color: #1a1a2e; }
+    .roster-view-player .player-sub { font-size: 12px; color: #6b7280; font-weight: 400; }
+    .roster-view-score { font-size: 13px; font-weight: 600; color: #6b7280; text-align: right; }
+  </style>
+</head>
+<body>
+  <nav></nav>
+  <div class="container">
+    <div id="main-view">
+      <h1>League</h1>
+      <div class="league-subnav">
+        <div class="league-subnav-tab active" onclick="showLeaguePage('standings')" id="tab-standings">Standings</div>
+        <div class="league-subnav-tab" onclick="showLeaguePage('bracket')" id="tab-bracket">Playoff Bracket</div>
+      </div>
+      <div class="league-page active" id="page-standings">
+        <div id="standings-content"><p style="color:#9ca3af;">Loading standings...</p></div>
+      </div>
+      <div class="league-page" id="page-bracket">
+        <div id="bracket-content"><p style="color:#9ca3af;">Loading bracket...</p></div>
+      </div>
+    </div>
+
+    <div id="team-view" style="display:none;">
+      <div class="back-link" onclick="showMainView()">← Back to League</div>
+      <div id="team-view-content"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initNav, db, auth, getLeagueId } from './nav.js';
+    import { doc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+    initNav('league.html');
+
+    const leagueId = getLeagueId();
+    if (!leagueId) window.location.href = 'index.html';
+
+    const params = new URLSearchParams(window.location.search);
+    const teamParam = params.get('team');
+
+    let teams = [];
+    let picks = [];
+    let schedule = [];
+    let standings = [];
+    let currentUser = null;
+    let logoMap = {};
+
+    const startingSlotDefs = [
+      { label: 'QB', positions: ['QB'] },
+      { label: 'RB', positions: ['RB'] },
+      { label: 'RB', positions: ['RB'] },
+      { label: 'WR', positions: ['WR'] },
+      { label: 'WR', positions: ['WR'] },
+      { label: 'TE', positions: ['TE'] },
+      { label: 'Flex', positions: ['RB','WR','TE'] },
+      { label: 'Flex', positions: ['RB','WR','TE'] },
+      { label: 'K', positions: ['K'] },
+      { label: 'D/ST', positions: ['DST'] },
+    ];
+
+    onAuthStateChanged(auth, async user => {
+      if (!user) { window.location.href = 'login.html'; return; }
+      currentUser = user;
+      await loadData();
+
+      if (teamParam !== null) {
+        showTeamView(parseInt(teamParam));
+      }
+    });
+
+    async function loadData() {
+      const [draftSnap, scheduleSnap] = await Promise.all([
+        getDoc(doc(db, "drafts", leagueId)),
+        getDoc(doc(db, "schedule", leagueId)),
+      ]);
+
+      if (!draftSnap.exists()) return;
+
+      teams = draftSnap.data().teams || [];
+      picks = draftSnap.data().picks || [];
+      schedule = scheduleSnap.exists() ? scheduleSnap.data().weeks || [] : [];
+
+      // Load logos
+      await Promise.all(teams.map(async (t, i) => {
+        if (!t.uid) return;
+        try {
+          const userSnap = await getDoc(doc(db, "users", t.uid));
+          if (userSnap.exists()) logoMap[i] = userSnap.data().logoUrl || null;
+        } catch (e) {}
+      }));
+
+      computeStandings();
+      renderStandings();
+      renderBracket();
+    }
+
+    function computeStandings() {
+      const records = teams.map((t, i) => ({
+        teamIndex: i,
+        name: t.name,
+        manager: t.manager,
+        wins: 0,
+        losses: 0,
+        pointsFor: 0,
+      }));
+
+      // Only count regular season weeks (1-11)
+      const regularWeeks = schedule.filter(w => !w.playoff && w.week <= 11);
+      regularWeeks.forEach(week => {
+        (week.matchups || []).forEach(m => {
+          if (m.homeScore === null || m.awayScore === null) return;
+          records[m.home].pointsFor += m.homeScore;
+          records[m.away].pointsFor += m.awayScore;
+          if (m.homeScore > m.awayScore) {
+            records[m.home].wins++;
+            records[m.away].losses++;
+          } else if (m.awayScore > m.homeScore) {
+            records[m.away].wins++;
+            records[m.home].losses++;
+          }
+        });
+      });
+
+      standings = records.sort((a, b) => {
+        if (b.wins !== a.wins) return b.wins - a.wins;
+        return b.pointsFor - a.pointsFor;
+      });
+    }
+
+    function renderStandings() {
+      const el = document.getElementById('standings-content');
+      const myTeamIndex = teams.findIndex(t =>
+        t.email && t.email.toLowerCase() === currentUser.email.toLowerCase()
+      );
+
+      el.innerHTML = `
+        <table class="standings-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Team</th>
+              <th>W</th>
+              <th>L</th>
+              <th>PF</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${standings.map((s, i) => {
+              const isMe = s.teamIndex === myTeamIndex;
+              const isPlayoff = i < 4;
+              return `
+                <tr onclick="navigateToTeam(${s.teamIndex})">
+                  <td><span class="standings-rank">${i + 1}</span></td>
+                  <td>
+                    <div class="standings-team-name">
+                      ${s.name}
+                      ${isPlayoff ? '<span class="playoff-badge">Playoffs</span>' : ''}
+                      ${isMe ? '<span class="me-badge">You</span>' : ''}
+                    </div>
+                    <div class="standings-manager">${s.manager}</div>
+                  </td>
+                  <td style="font-weight:700;">${s.wins}</td>
+                  <td style="color:#6b7280;">${s.losses}</td>
+                  <td style="color:#6b7280;">${s.pointsFor.toFixed(1)}</td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+        <p style="font-size:12px;color:#9ca3af;margin-top:12px;">Click any team to view their roster. Top 4 teams advance to playoffs.</p>
+      `;
+    }
+
+    function renderBracket() {
+      const el = document.getElementById('bracket-content');
+      const now = new Date();
+      const seasonStart = new Date('2026-09-03');
+      const weekNum = Math.floor((now - seasonStart) / (7 * 24 * 60 * 60 * 1000)) + 1;
+
+      const semisWeek = schedule.find(w => w.week === 12);
+      const champWeek = schedule.find(w => w.week === 13);
+
+      // Seeds from standings
+      const seed1 = standings[0];
+      const seed2 = standings[1];
+      const seed3 = standings[2];
+      const seed4 = standings[3];
+
+      if (!seed1 || !seed2 || !seed3 || !seed4) {
+        el.innerHTML = '<p style="color:#9ca3af;">Not enough teams to display bracket.</p>';
+        return;
+      }
+
+      // Semis matchups: #1 vs #4, #2 vs #3
+      const semi1 = semisWeek?.matchups?.[0];
+      const semi2 = semisWeek?.matchups?.[1];
+      const champ = champWeek?.matchups?.find(m => !m.thirdPlace);
+      const third = champWeek?.matchups?.find(m => m.thirdPlace);
+
+      function bracketTeam(seed, teamIndex, score, opponentScore) {
+        const isWinner = score !== null && opponentScore !== null && score > opponentScore;
+        return `
+          <div class="bracket-team">
+            <div>
+              <span class="bracket-seed">#${seed}</span>
+              <span class="bracket-team-name ${isWinner ? 'winner' : ''}">${teams[teamIndex]?.name || 'TBD'}</span>
+            </div>
+            <div class="bracket-team-score">${score !== null ? score.toFixed(1) : '—'}</div>
+          </div>
+        `;
+      }
+
+      function tbdMatchup(label1, label2) {
+        return `
+          <div class="bracket-matchup">
+            <div class="bracket-team"><span class="bracket-tbd">${label1}</span></div>
+            <div class="bracket-team"><span class="bracket-tbd">${label2}</span></div>
+          </div>
+        `;
+      }
+
+      // Semifinals column
+      let semisHtml = '';
+      if (weekNum < 12) {
+        semisHtml = `
+          ${tbdMatchup(`#1 Seed: ${seed1.name}`, `#4 Seed: ${seed4.name}`)}
+          ${tbdMatchup(`#2 Seed: ${seed2.name}`, `#3 Seed: ${seed3.name}`)}
+        `;
+      } else {
+        semisHtml = `
+          <div class="bracket-matchup">
+            ${bracketTeam(1, seed1.teamIndex, semi1?.homeScore ?? null, semi1?.awayScore ?? null)}
+            ${bracketTeam(4, seed4.teamIndex, semi1?.awayScore ?? null, semi1?.homeScore ?? null)}
+          </div>
+          <div class="bracket-matchup">
+            ${bracketTeam(2, seed2.teamIndex, semi2?.homeScore ?? null, semi2?.awayScore ?? null)}
+            ${bracketTeam(3, seed3.teamIndex, semi2?.awayScore ?? null, semi2?.homeScore ?? null)}
+          </div>
+        `;
+      }
+
+      // Championship + 3rd place column
+      let champHtml = '';
+      if (weekNum < 13) {
+        champHtml = tbdMatchup('Semis Winner 1', 'Semis Winner 2');
+        champHtml += `<div style="margin-top:8px;font-size:11px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;">3rd Place</div>`;
+        champHtml += tbdMatchup('Semis Loser 1', 'Semis Loser 2');
+      } else {
+        champHtml = `
+          <div class="bracket-matchup">
+            ${champ ? `
+              ${bracketTeam('?', champ.home, champ.homeScore, champ.awayScore)}
+              ${bracketTeam('?', champ.away, champ.awayScore, champ.homeScore)}
+            ` : tbdMatchup('Winner 1', 'Winner 2')}
+          </div>
+          <div style="margin-top:8px;font-size:11px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;">3rd Place</div>
+          <div class="bracket-matchup">
+            ${third ? `
+              ${bracketTeam('?', third.home, third.homeScore, third.awayScore)}
+              ${bracketTeam('?', third.away, third.awayScore, third.homeScore)}
+            ` : tbdMatchup('Loser 1', 'Loser 2')}
+          </div>
+        `;
+      }
+
+      el.innerHTML = `
+        <div class="bracket-container">
+          <div class="bracket-round">
+            <div class="bracket-round-label">Semifinals — Week 12</div>
+            ${semisHtml}
+          </div>
+          <div class="bracket-round">
+            <div class="bracket-round-label">Championship — Week 13</div>
+            ${champHtml}
+          </div>
+          <div class="bracket-round">
+            <div class="bracket-round-label">Champion</div>
+            <div class="bracket-matchup" style="text-align:center;padding:20px;">
+              ${weekNum >= 13 && champ?.homeScore !== null && champ?.awayScore !== null
+                ? `<div style="font-size:24px;">🏆</div>
+                   <div style="font-weight:700;font-size:16px;margin-top:8px;background:linear-gradient(135deg,#1a6dff,#c822ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">
+                     ${teams[champ.homeScore > champ.awayScore ? champ.home : champ.away]?.name}
+                   </div>`
+                : '<span class="bracket-tbd">To be determined</span>'}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    window.showLeaguePage = function(page) {
+      document.querySelectorAll('.league-page').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.league-subnav-tab').forEach(t => t.classList.remove('active'));
+      document.getElementById(`page-${page}`).classList.add('active');
+      document.getElementById(`tab-${page}`).classList.add('active');
+    }
+
+    window.navigateToTeam = function(teamIndex) {
+      window.history.pushState({}, '', `league.html?team=${teamIndex}`);
+      showTeamView(teamIndex);
+    }
+
+    window.showMainView = function() {
+      window.history.pushState({}, '', 'league.html');
+      document.getElementById('main-view').style.display = 'block';
+      document.getElementById('team-view').style.display = 'none';
+    }
+
+    async function showTeamView(teamIndex) {
+      document.getElementById('main-view').style.display = 'none';
+      document.getElementById('team-view').style.display = 'block';
+
+      const team = teams[teamIndex];
+      if (!team) {
+        document.getElementById('team-view-content').innerHTML = '<p style="color:#9ca3af;">Team not found.</p>';
+        return;
+      }
+
+      const logoUrl = logoMap[teamIndex];
+      const logoHtml = logoUrl
+        ? `<img src="${logoUrl}" class="team-roster-logo" alt="${team.name}" />`
+        : `<div class="team-roster-logo-placeholder">${team.name?.[0] || '?'}</div>`;
+
+      const teamPicks = picks.filter(p => p.teamIndex === teamIndex);
+      let starters = [];
+      let bench = [];
+
+      if (team.lineup) {
+        starters = team.lineup.starting || [];
+        bench = team.lineup.bench || [];
+      } else {
+        const roster = [...teamPicks];
+        starters = new Array(startingSlotDefs.length).fill(null);
+        startingSlotDefs.forEach((slot, i) => {
+          const idx = roster.findIndex(p => slot.positions.includes(p.position));
+          if (idx !== -1) { starters[i] = roster[idx]; roster.splice(idx, 1); }
+        });
+        bench = roster.slice(0, 7);
+      }
+
+      // Load weekly scores
+      let playerPoints = {};
+      let dstPoints = {};
+      try {
+        const liveSnap = await getDocs(collection(db, 'liveScores'));
+        liveSnap.forEach(doc => {
+          const data = doc.data();
+          Object.entries(data.players || {}).forEach(([espnId, p]) => {
+            playerPoints[espnId] = (playerPoints[espnId] || 0) + (p.points || 0);
+          });
+          Object.values(data.dst || {}).forEach(d => {
+            dstPoints[d.teamName?.toLowerCase()] = (dstPoints[d.teamName?.toLowerCase()] || 0) + (d.points || 0);
+          });
+        });
+      } catch (e) {}
+
+      function getScore(player) {
+        if (!player) return null;
+        if (player.position === 'DST') return dstPoints[player.team?.toLowerCase()] ?? null;
+        return player.id ? (playerPoints[player.id] ?? null) : null;
+      }
+
+      function renderSlot(label, player, isBench = false) {
+        const score = getScore(player);
+        const displayName = player
+          ? (player.position === 'DST' ? player.lastName : `${player.firstName} ${player.lastName}`)
+          : '—';
+        const sub = player
+          ? `<div class="player-sub">${player.position === 'DST' ? 'D/ST' : player.position} · ${player.team}</div>`
+          : '';
+        return `
+          <div class="roster-view-slot">
+            <span class="roster-view-slot-label ${isBench ? 'bench' : ''}">${label}</span>
+            <div class="roster-view-player">${displayName}${sub}</div>
+            <div class="roster-view-score">${score !== null ? score.toFixed(1) : '—'}</div>
+          </div>
+        `;
+      }
+
+      const standingsEntry = standings.find(s => s.teamIndex === teamIndex);
+
+      document.getElementById('team-view-content').innerHTML = `
+        <div class="team-roster-header">
+          ${logoHtml}
+          <div>
+            <h1 style="margin:0;">${team.name}</h1>
+            <p style="margin:4px 0;color:#6b7280;">${team.manager}</p>
+            ${standingsEntry ? `
+              <p style="margin:0;font-size:13px;color:#6b7280;">
+                ${standingsEntry.wins}–${standingsEntry.losses} · ${standingsEntry.pointsFor.toFixed(1)} pts
+              </p>` : ''}
+          </div>
+        </div>
+        <div class="section-title" style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:#374151;margin:16px 0 8px;">Starting Lineup</div>
+        <div style="border-bottom:1.5px solid #e8eaf0;padding-bottom:4px;margin-bottom:4px;display:grid;grid-template-columns:80px 1fr 100px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:#4b5563;">
+          <div></div><div>Player</div><div style="text-align:right;">Score</div>
+        </div>
+        ${startingSlotDefs.map((slot, i) => renderSlot(slot.label, starters[i] || null)).join('')}
+        <div class="section-title" style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:#374151;margin:20px 0 8px;">Bench</div>
+        <div style="border-bottom:1.5px solid #e8eaf0;padding-bottom:4px;margin-bottom:4px;display:grid;grid-template-columns:80px 1fr 100px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:#4b5563;">
+          <div></div><div>Player</div><div style="text-align:right;">Score</div>
+        </div>
+        ${bench.map((player, i) => renderSlot('BE', player || null, true)).join('')}
+      `;
+    }
+  </script>
+  <footer>
+    <a href="https://icons8.com/icons/set/american-football" target="_blank" rel="noopener">American Football icon by Icons8</a>
+  </footer>
+</body>
+</html>
