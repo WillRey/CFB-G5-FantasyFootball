@@ -446,7 +446,9 @@
         </div>
 
         <!-- Trades -->
+        <!-- Trades -->
         <div class="portal-page" id="page-trades">
+          <div id="trade-response-banner" style="display:none;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:14px;color:#065f46;"></div>
           <div id="trade-deadline-banner" style="display:none;" class="locked-banner">
             🔒 The trade deadline has passed. No new trades can be proposed.
           </div>
@@ -1064,6 +1066,32 @@ function populateFATeamFilter() {
 
     function renderTrades() {
       const trades = window.portalData?.trades || [];
+
+      // Check for newly responded outgoing trades
+      const lastSeen = localStorage.getItem(`tradesLastSeen_${leagueId}`) || '';
+      const newResponses = trades.filter(t =>
+        t.fromTeam === myTeamIndex &&
+        t.status !== 'pending' &&
+        t.respondedAt &&
+        t.respondedAt > lastSeen
+      );
+
+      const responseBanner = document.getElementById('trade-response-banner');
+      if (newResponses.length > 0) {
+        const messages = newResponses.map(t => {
+          const toTeam = allTeams[t.toTeam];
+          return `${toTeam?.name} ${t.status === 'accepted' ? '✅ accepted' : '❌ rejected'} your trade offer.`;
+        });
+        responseBanner.innerHTML = messages.map(m =>
+          `<div style="margin-bottom:4px;">${m}</div>`
+        ).join('');
+        responseBanner.style.display = 'block';
+        // Mark as seen
+        localStorage.setItem(`tradesLastSeen_${leagueId}`, new Date().toISOString());
+      } else {
+        responseBanner.style.display = 'none';
+      }
+
       const incoming = trades.filter(t => t.toTeam === myTeamIndex && t.status === 'pending');
       const outgoing = trades.filter(t => t.fromTeam === myTeamIndex && t.status === 'pending');
       const history = trades.filter(t =>
