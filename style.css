@@ -261,6 +261,13 @@ footer a { color: #9ca3af; }
     z-index: 99;
   }
   .nav-hamburger { display: block; }
+
+  .nav-links.open a,
+  .nav-links.open a.nav-auth {
+    -webkit-text-fill-color: #1a6dff;
+    background: none;
+    color: #1a6dff;
+  }
 }
 
 /* ============================================
