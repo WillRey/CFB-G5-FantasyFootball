@@ -246,6 +246,24 @@
       }));
       window.logoMap = logoMap;
 
+            // Build record map
+      const recordMap = {};
+      teams.forEach((t, i) => { recordMap[i] = { wins: 0, losses: 0 }; });
+      const allWeeks = scheduleDoc.data().weeks || [];
+      allWeeks.filter(w => !w.playoff && w.week <= 11).forEach(week => {
+        (week.matchups || []).forEach(m => {
+          if (m.homeScore === null || m.awayScore === null) return;
+          if (m.homeScore > m.awayScore) {
+            recordMap[m.home].wins++;
+            recordMap[m.away].losses++;
+          } else {
+            recordMap[m.away].wins++;
+            recordMap[m.home].losses++;
+          }
+        });
+      });
+      window.recordMap = recordMap;
+
       const weekData = schedule.find(w => w.week === week);
       if (!weekData) { document.getElementById('loading').textContent = 'Week not found.'; return; }
 
@@ -287,6 +305,7 @@
           <div class="matchup-header-team home">
             <div class="matchup-header-team-name">${homeTeam.name}</div>
             <div class="matchup-header-team-manager">${homeTeam.manager}</div>
+            <div class="matchup-header-team-manager">(${window.recordMap?.[matchup.home]?.wins ?? 0}-${window.recordMap?.[matchup.home]?.losses ?? 0})</div>
           </div>
           ${window.logoMap?.[homeTeam.uid]
             ? `<img src="${window.logoMap[homeTeam.uid]}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:1px solid #e8eaf0;flex-shrink:0;" />`
@@ -304,6 +323,7 @@
           <div class="matchup-header-team">
             <div class="matchup-header-team-name">${awayTeam.name}</div>
             <div class="matchup-header-team-manager">${awayTeam.manager}</div>
+            <div class="matchup-header-team-manager">(${window.recordMap?.[matchup.away]?.wins ?? 0}-${window.recordMap?.[matchup.away]?.losses ?? 0})</div>
           </div>
         </div>
         <div class="rosters-grid">

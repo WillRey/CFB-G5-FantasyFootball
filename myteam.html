@@ -756,10 +756,11 @@
     });
 
     async function loadTeam(user) {
-      const [draftDoc, leagueDoc, userDoc] = await Promise.all([
+      const [draftDoc, leagueDoc, userDoc, scheduleDoc] = await Promise.all([
         getDoc(doc(db, "drafts", leagueId)),
         getDoc(doc(db, "leagues", leagueId)),
-        getDoc(doc(db, "users", user.uid))
+        getDoc(doc(db, "users", user.uid)),
+        getDoc(doc(db, "schedule", leagueId))
       ]);
 
       if (leagueDoc.exists()) {
@@ -779,7 +780,7 @@
       document.getElementById('loading').style.display = 'none';
       document.getElementById('team-content').style.display = 'block';
       document.getElementById('team-heading').textContent = teamName || 'Set Your Team Name';
-      document.getElementById('manager-name').textContent = user.displayName || user.email;
+      document.getElementById('manager-name').textContent = `${user.displayName || user.email} · ${wins}-${losses}`;
       updateLogoDisplay(logoUrl, teamName);
 
       if (!draftDoc.exists()) {
@@ -798,6 +799,22 @@
       myTeamIndex = teamIndex !== -1 ? teamIndex : 0;
       const myTeam = teams[myTeamIndex];
       const myPicks = picks.filter(p => p.teamIndex === myTeamIndex);
+
+      // Calculate record from schedule
+      let wins = 0, losses = 0;
+      if (scheduleDoc.exists()) {
+        const weeks = scheduleDoc.data().weeks || [];
+        weeks.filter(w => !w.playoff && w.week <= 11).forEach(week => {
+          (week.matchups || []).forEach(m => {
+            if (m.homeScore === null || m.awayScore === null) return;
+            if (m.home === myTeamIndex) {
+              m.homeScore > m.awayScore ? wins++ : losses++;
+            } else if (m.away === myTeamIndex) {
+              m.awayScore > m.homeScore ? wins++ : losses++;
+            }
+          });
+        });
+      }
 
       if (myTeam.lineup) {
         startingLineup = myTeam.lineup.starting;

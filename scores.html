@@ -198,6 +198,23 @@
       }));
       window.logoMap = logoMap;
 
+      // Build record map for all teams
+      const recordMap = {};
+      teams.forEach((t, i) => { recordMap[i] = { wins: 0, losses: 0 }; });
+      schedule.filter(w => !w.playoff && w.week <= 11).forEach(week => {
+        (week.matchups || []).forEach(m => {
+          if (m.homeScore === null || m.awayScore === null) return;
+          if (m.homeScore > m.awayScore) {
+            recordMap[m.home].wins++;
+            recordMap[m.away].losses++;
+          } else {
+            recordMap[m.away].wins++;
+            recordMap[m.home].losses++;
+          }
+        });
+      });
+      window.recordMap = recordMap;
+
       document.getElementById('loading').style.display = 'none';
       document.getElementById('scores-content').style.display = 'block';
 
@@ -264,6 +281,7 @@
           <div class="matchup-team home">
             <div class="matchup-team-name">${homeTeam.name}</div>
             <div class="matchup-team-manager">${homeTeam.manager}</div>
+            <div class="matchup-team-manager">(${window.recordMap?.[matchup.home]?.wins ?? 0}-${window.recordMap?.[matchup.home]?.losses ?? 0})</div>
           </div>
           ${homeLogo ? `<img src="${homeLogo}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1px solid #e8eaf0;;" />` : '<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#eef3ff,#faf0ff);border:1px solid #c8d8ff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#1a6dff;">' + (homeTeam.name?.[0] || '?') + '</div>'}
           <div class="matchup-score">
@@ -276,6 +294,7 @@
           <div class="matchup-team">
             <div class="matchup-team-name">${awayTeam.name}</div>
             <div class="matchup-team-manager">${awayTeam.manager}</div>
+            <div class="matchup-team-manager">(${window.recordMap?.[matchup.away]?.wins ?? 0}-${window.recordMap?.[matchup.away]?.losses ?? 0})</div>
           </div>
         `;
         el.appendChild(card);
