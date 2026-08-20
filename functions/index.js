@@ -174,7 +174,7 @@ exports.updateFantasyScores = onSchedule(
       const teams = draftSnap.data().teams || [];
       const weeks = scheduleSnap.data().weeks || [];
 
-      const seasonStart = new Date('2026-09-03');
+      const seasonStart = new Date('2026-08-29');
       const now = new Date();
       const weekNum = Math.min(
         Math.max(Math.floor((now - seasonStart) / (7 * 24 * 60 * 60 * 1000)) + 1, 1),
