@@ -194,7 +194,7 @@
 
   .roster-table-header {
     display: grid;
-    grid-template-columns: 80px 1fr 120px 120px 80px;
+    grid-template-columns: 80px 1fr 120px 80px;
     padding: 6px 0;
     font-size: 11px;
     font-weight: 600;
@@ -206,7 +206,7 @@
   }
   .roster-slot {
     display: grid;
-    grid-template-columns: 80px 1fr 120px 120px 80px;
+    grid-template-columns: 80px 1fr 120px 80px;
     align-items: center;
     padding: 8px 0;
     border-bottom: 1px solid #f0f1f7;
@@ -416,7 +416,6 @@
           <div></div>
           <div>Player</div>
           <div>Opponent</div>
-          <div>Projected</div>
           <div>Score</div>
         </div>
         <div id="starting-lineup"></div>
@@ -426,7 +425,6 @@
           <div></div>
           <div>Player</div>
           <div>Opponent</div>
-          <div>Projected</div>
           <div>Score</div>
         </div>
         <div id="bench-slots"></div>
@@ -833,6 +831,7 @@
 
       renderLineup();
       await loadWeeklyScores();
+      await loadOpponents();
     }
 
     async function loadWeeklyScores() {
@@ -877,6 +876,33 @@
       }
     }
 
+      async function loadOpponents() {
+      try {
+        const res = await fetch('g6_schedule_2026.json');
+        const scheduleData = await res.json();
+
+        const seasonStart = new Date('2026-08-29');
+        const now = new Date();
+        const weekNum = Math.max(0, Math.floor((now - seasonStart) / (7 * 24 * 60 * 60 * 1000)));
+        const weekKey = String(weekNum);
+
+        const weekSchedule = scheduleData[weekKey] || {};
+
+        startingLineup.forEach(player => {
+          if (!player) return;
+          player.opponent = weekSchedule[player.team] || null;
+        });
+        bench.forEach(player => {
+          if (!player) return;
+          player.opponent = weekSchedule[player.team] || null;
+        });
+
+        renderLineup();
+      } catch (e) {
+        console.error('loadOpponents failed:', e);
+      }
+    }
+
     function renderLineup() {
       renderStarters();
       renderBench();
@@ -894,8 +920,7 @@
           <div class="slot-player">
             ${player ? `${player.position === 'DST' ? player.lastName : `${player.firstName} ${player.lastName}`}<div class="player-sub">${player.position === 'DST' ? 'D/ST' : player.position} · ${player.team}</div>` : '<span style="color:#9ca3af;">Empty</span>'}
           </div>
-          <div class="slot-opponent">—</div>
-          <div class="slot-proj">—</div>
+          <div class="slot-opponent">${player?.opponent || '—'}</div>
           <div class="slot-score">${player?.weekPoints != null ? player.weekPoints.toFixed(1) : '—'}</div>
         `;
         el.appendChild(div);
@@ -914,8 +939,7 @@
           <div class="slot-player">
             ${player ? `${player.position === 'DST' ? player.lastName : `${player.firstName} ${player.lastName}`}<div class="player-sub">${player.position === 'DST' ? 'D/ST' : player.position} · ${player.team}</div>` : '<span style="color:#9ca3af;">Empty</span>'}
           </div>
-          <div class="slot-opponent">—</div>
-          <div class="slot-proj">—</div>
+          <div class="slot-opponent">${player?.opponent || '—'}</div>
           <div class="slot-score">${player?.weekPoints != null ? player.weekPoints.toFixed(1) : '—'}</div>
         `;
         el.appendChild(div);
