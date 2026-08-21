@@ -1050,10 +1050,18 @@
       document.getElementById('current-team-label').textContent =
         `On the clock: ${teams[teamIndex].name} (${teams[teamIndex].manager})`;
 
-      const banner = document.getElementById('turn-banner');
-      if (mine) {
-        banner.className = 'my-turn';
-        banner.textContent = "🏈 You're on the clock — make your pick.";
+        const banner = document.getElementById('turn-banner');
+        if (mine) {
+          if (window._chimePlayedForPick !== currentPick) {
+            window._chimePlayedForPick = currentPick;
+            try {
+              const chime = new Audio('Draft_Chime.mp3');
+              chime.volume = 0.7;
+              chime.play();
+            } catch (e) {}
+          }
+          banner.className = 'my-turn';
+          banner.textContent = "🏈 You're on the clock — make your pick.";
       } else {
         banner.className = 'waiting';
         banner.textContent = `Waiting on ${teams[teamIndex].manager}…`;
