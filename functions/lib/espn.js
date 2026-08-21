@@ -332,6 +332,12 @@ function mapStatToField(stats, category, label, rawValue) {
   if (category === 'fumbles') {
     if (label === 'LOST') stats.fumblesLost = parseFloat(rawValue) || 0;
   }
+  if (category === 'kickreturns') {
+    if (label === 'TD') stats.kickReturnTDs = parseFloat(rawValue) || 0;
+  }
+  if (category === 'puntreturns') {
+    if (label === 'TD') stats.puntReturnTDs = parseFloat(rawValue) || 0;
+  }
 }
 
 // Extract DST stats for every team in a game summary.

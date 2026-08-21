@@ -83,12 +83,28 @@ exports.checkLiveScores = onSchedule(
       // ── Offensive players + kickers ─────────────────────────────────────────
       const boxscorePlayers = parseBoxscorePlayers(summary);
       const scoredPlayers = {};
+      const returnTDBonus = {};
 
       Object.values(boxscorePlayers).forEach(p => {
         const position = lookupPosition(p.name, p.team, positionByPlayer);
-        if (!position) return;
-        const points = calculatePlayerScore(p.stats, position);
-        scoredPlayers[p.id] = { name: p.name, stats: p.stats, points, position };
+
+        if (position) {
+          const points = calculatePlayerScore(p.stats, position);
+          scoredPlayers[p.id] = { name: p.name, stats: p.stats, points, position };
+          return;
+        }
+
+        const returnTDPts =
+          ((p.stats.kickReturnTDs || 0) + (p.stats.puntReturnTDs || 0)) * 6;
+
+        if (returnTDPts > 0) {
+          console.log(
+            `Return TD bonus: ${p.name} (${p.team}) not in player pool — ` +
+            `attributing ${returnTDPts}pts as returnTDBonus for team ${p.team}`
+          );
+          const teamKey = normalizeTeamName(p.team);
+          returnTDBonus[teamKey] = (returnTDBonus[teamKey] || 0) + returnTDPts;
+        }
       });
 
       // ── D/ST — one entry per G6 team in this game ───────────────────────────
@@ -119,6 +135,7 @@ exports.checkLiveScores = onSchedule(
         updatedAt: new Date().toISOString(),
         players:  scoredPlayers,
         dst:      scoredDST,
+        returnTDBonus,
       }, { merge: true });
 
       console.log(
@@ -145,6 +162,7 @@ exports.updateFantasyScores = onSchedule(
 
     const playerPoints = {};
     const dstPoints = {};
+    const returnTDBonusByTeam = {};
 
     liveSnap.forEach(doc => {
       const data = doc.data();
@@ -154,6 +172,9 @@ exports.updateFantasyScores = onSchedule(
       Object.values(data.dst || {}).forEach(d => {
         const key = normalizeTeamName(d.teamName);
         dstPoints[key] = (dstPoints[key] || 0) + (d.points || 0);
+      });
+      Object.entries(data.returnTDBonus || {}).forEach(([teamKey, pts]) => {
+        returnTDBonusByTeam[teamKey] = (returnTDBonusByTeam[teamKey] || 0) + pts;
       });
     });
 
@@ -220,6 +241,11 @@ exports.updateFantasyScores = onSchedule(
             total += dstPoints[normalizeTeamName(player.team)] || 0;
           } else if (player.id) {
             total += playerPoints[player.id] || 0;
+            const teamKey = normalizeTeamName(player.team);
+            if (returnTDBonusByTeam[teamKey]) {
+              total += returnTDBonusByTeam[teamKey];
+              returnTDBonusByTeam[teamKey] = 0;
+            }
           }
         });
 
