@@ -731,6 +731,23 @@
         updatedAt: new Date().toISOString()
       }, { merge: true });
 
+      // Also sync the team name into the drafts doc so it shows everywhere
+      try {
+        const draftSnap = await getDoc(doc(db, "drafts", leagueId));
+        if (draftSnap.exists()) {
+          const draftDoc = draftSnap.data();
+          const updatedTeams = (draftDoc.teams || []).map(t => {
+            if (t.email && t.email.toLowerCase() === currentUser.email.toLowerCase()) {
+              return { ...t, name: newName };
+            }
+            return t;
+          });
+          await setDoc(doc(db, "drafts", leagueId), { ...draftDoc, teams: updatedTeams });
+        }
+      } catch (e) {
+        console.warn('Could not sync team name to draft doc:', e);
+      }
+
       currentLogoUrl = logoUrl;
       document.getElementById('team-heading').textContent = newName;
       updateLogoDisplay(logoUrl, newName);

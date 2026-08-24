@@ -932,7 +932,22 @@ function populateFATeamFilter() {
         return p;
       });
 
-      await setDoc(doc(db, "drafts", leagueId), { ...data, picks: updatedPicks });
+      // Also update the lineup if one exists for this team
+      const updatedTeams = (data.teams || []).map((t, i) => {
+        if (i !== myTeamIndex || !t.lineup) return t;
+        const replaceIn = arr => (arr || []).map(p => {
+          if (!p) return p;
+          if (p.firstName === dropPlayer.firstName &&
+              p.lastName === dropPlayer.lastName &&
+              p.team === dropPlayer.team) {
+            return { ...addPlayer, teamIndex: myTeamIndex };
+          }
+          return p;
+        });
+        return { ...t, lineup: { starting: replaceIn(t.lineup.starting), bench: replaceIn(t.lineup.bench) } };
+      });
+
+      await setDoc(doc(db, "drafts", leagueId), { ...data, picks: updatedPicks, teams: updatedTeams });
       await setDoc(doc(db, "portal", leagueId), portalData, { merge: true });
       await logActivity(`${allTeams[myTeamIndex].name} added ${addPlayer.firstName} ${addPlayer.lastName} and dropped ${dropPlayer.firstName} ${dropPlayer.lastName}`);
     }
@@ -1194,7 +1209,40 @@ function populateFATeamFilter() {
           if (idx !== -1) picks[idx] = { ...picks[idx], teamIndex: trade.fromTeam };
         });
 
-        await setDoc(doc(db, "drafts", leagueId), { ...data, picks });
+                // Also swap players in both teams' lineups if they exist
+        const updatedTeams = (data.teams || []).map((t, i) => {
+          if (i !== trade.fromTeam && i !== trade.toTeam) return t;
+          if (!t.lineup) return t;
+
+          const swapIn = (arr, fromIdx, toIdx, players) => (arr || []).map(p => {
+            if (!p) return p;
+            const match = players.find(sp =>
+              sp.firstName === p.firstName &&
+              sp.lastName === p.lastName &&
+              sp.team === p.team
+            );
+            if (!match) return p;
+            // Find the counterpart coming the other way
+            const incoming = i === fromIdx
+              ? trade.receivePlayers.find(rp => rp.firstName === match.firstName && rp.lastName === match.lastName) || match
+              : trade.sendPlayers.find(sp => sp.firstName === match.firstName && sp.lastName === match.lastName) || match;
+            return { ...incoming, teamIndex: i };
+          });
+
+          if (i === trade.fromTeam) {
+            return { ...t, lineup: {
+              starting: swapIn(t.lineup.starting, trade.fromTeam, trade.toTeam, trade.sendPlayers),
+              bench: swapIn(t.lineup.bench, trade.fromTeam, trade.toTeam, trade.sendPlayers)
+            }};
+          } else {
+            return { ...t, lineup: {
+              starting: swapIn(t.lineup.starting, trade.toTeam, trade.fromTeam, trade.receivePlayers),
+              bench: swapIn(t.lineup.bench, trade.toTeam, trade.fromTeam, trade.receivePlayers)
+            }};
+          }
+        });
+
+        await setDoc(doc(db, "drafts", leagueId), { ...data, picks, teams: updatedTeams });
         await logActivity(`Trade completed: ${allTeams[trade.fromTeam].name} and ${allTeams[trade.toTeam].name} swapped players.`);
       }
 
