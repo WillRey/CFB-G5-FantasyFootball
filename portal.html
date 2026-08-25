@@ -648,37 +648,48 @@ function populateFATeamFilter() {
       ];
     }
 
-      async function loadWeeklyScores() {
-      try {
-        const liveSnap = await getDocs(collection(db, 'liveScores'));
-        if (liveSnap.empty) return;
+async function loadWeeklyScores() {
+  try {
+    const liveSnap = await getDocs(collection(db, 'liveScores'));
+    if (liveSnap.empty) return;
 
-        const playerPoints = {};
-        const dstPoints = {};
+    const playerPoints = {};
+    const dstPoints = {};
+    // Teams with a currently-live or completed game doc are "locked".
+    const lockedTeams = new Set();
 
-        liveSnap.forEach(doc => {
-          const data = doc.data();
-          Object.entries(data.players || {}).forEach(([espnId, p]) => {
-            playerPoints[espnId] = (playerPoints[espnId] || 0) + (p.points || 0);
-          });
-          Object.values(data.dst || {}).forEach(d => {
-            dstPoints[d.teamName?.toLowerCase()] = (dstPoints[d.teamName?.toLowerCase()] || 0) + (d.points || 0);
-          });
-        });
+    liveSnap.forEach(doc => {
+      const data = doc.data();
+      // Any liveScores doc present means that game has started.
+      // homeTeam/awayTeam are stored as displayName strings.
+      if (data.homeTeam) lockedTeams.add(data.homeTeam.toLowerCase());
+      if (data.awayTeam) lockedTeams.add(data.awayTeam.toLowerCase());
 
-        // Stamp weekPoints onto every player in the pool
-        availablePlayers.forEach(player => {
-          if (player.position === 'DST') {
-            player.weekPoints = dstPoints[player.team?.toLowerCase()] ?? null;
-          } else {
-            player.weekPoints = player.id ? (playerPoints[player.id] ?? null) : null;
-          }
-        });
+      Object.entries(data.players || {}).forEach(([espnId, p]) => {
+        playerPoints[espnId] = (playerPoints[espnId] || 0) + (p.points || 0);
+      });
+      Object.values(data.dst || {}).forEach(d => {
+        dstPoints[d.teamName?.toLowerCase()] = (dstPoints[d.teamName?.toLowerCase()] || 0) + (d.points || 0);
+      });
+    });
 
-      } catch (e) {
-        console.error('loadWeeklyScores failed:', e);
+    availablePlayers.forEach(player => {
+      // Lock if their team has a live/started game.
+      // For DST the team field matches team name; for players we match against their team.
+      const teamLower = player.team?.toLowerCase();
+      player.gameLocked = lockedTeams.has(teamLower);
+
+      if (player.position === 'DST') {
+        player.weekPoints = dstPoints[teamLower] ?? null;
+      } else {
+        player.weekPoints = player.id ? (playerPoints[player.id] ?? null) : null;
       }
-    }
+    });
+
+  } catch (e) {
+    console.error('loadWeeklyScores failed:', e);
+  }
+}
 
     function getNextWaiverProcessTime(fromDate) {
       const mtOffset = 7;
@@ -749,31 +760,39 @@ function populateFATeamFilter() {
       const end = Math.min(start + FA_PAGE_SIZE, filteredFAPlayers.length);
       const pagePlayers = filteredFAPlayers.slice(start, end);
 
-      const rows = pagePlayers.map((p, i) => {
-        const isWaiver = p.status === 'waiver';
-        const clearsLine = isWaiver
-          ? `<div class="player-card-sub">Clears waivers: ${p.processTime.toLocaleDateString()}</div>`
-          : '';
-        const btnClass = isWaiver ? 'btn-claim' : 'btn-add';
-        const btnLabel = isWaiver ? 'Claim' : 'Add';
+const rows = pagePlayers.map((p, i) => {
+  const isWaiver = p.status === 'waiver';
+  const isLocked = p.gameLocked;
 
-        const weekPts = p.weekPoints != null
-          ? `<div class="player-card-sub" style="color:#1a6dff;">Week: ${p.weekPoints.toFixed(1)} pts</div>`
-          : '';
-        return `
-          <div class="player-card">
-            <div class="player-card-info">
-              <div class="player-card-name">${p.position === 'DST' ? p.lastName : `${p.firstName} ${p.lastName}`}</div>
-              <div class="player-card-details">${p.position === 'DST' ? 'D/ST' : p.position} · ${p.team} · ${p.conference}</div>
-              ${weekPts}
-              ${clearsLine}
-            </div>
-            <div class="player-card-action">
-              <button class="${btnClass}" data-idx="${start + i}">${btnLabel}</button>
-            </div>
-          </div>
-        `;
-      }).join('');
+  // A free agent whose game has started is now claim-only (waiver).
+  const needsClaim = isWaiver || isLocked;
+  const btnClass = needsClaim ? 'btn-claim' : 'btn-add';
+  const btnLabel = needsClaim ? 'Claim' : 'Add';
+
+  const clearsLine = isWaiver
+    ? `<div class="player-card-sub">⏳ Clears waivers: ${p.processTime.toLocaleDateString()}</div>`
+    : isLocked
+      ? `<div class="player-card-sub" style="color:#ef4444;">🔒 Game in progress — waiver claim only</div>`
+      : '';
+
+  const weekPts = p.weekPoints != null
+    ? `<div class="player-card-sub" style="color:#1a6dff;">Week: ${p.weekPoints.toFixed(1)} pts</div>`
+    : '';
+
+  return `
+    <div class="player-card">
+      <div class="player-card-info">
+        <div class="player-card-name">${p.position === 'DST' ? p.lastName : `${p.firstName} ${p.lastName}`}</div>
+        <div class="player-card-details">${p.position === 'DST' ? 'D/ST' : p.position} · ${p.team} · ${p.conference}</div>
+        ${weekPts}
+        ${clearsLine}
+      </div>
+      <div class="player-card-action">
+        <button class="${btnClass}" data-idx="${start + i}">${btnLabel}</button>
+      </div>
+    </div>
+  `;
+}).join('');
 
       el.innerHTML = rows + `
         <div class="pagination">
@@ -783,12 +802,13 @@ function populateFATeamFilter() {
         </div>
       `;
 
-      el.querySelectorAll('[data-idx]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const player = filteredFAPlayers[parseInt(btn.dataset.idx, 10)];
-          openAddDropModal(player, player.status === 'waiver' ? 'waiver' : 'fa');
-        });
+    el.querySelectorAll('[data-idx]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const player = filteredFAPlayers[parseInt(btn.dataset.idx, 10)];
+        const type = (player.status === 'waiver' || player.gameLocked) ? 'waiver' : 'fa';
+        openAddDropModal(player, type);
       });
+    });
 
       document.getElementById('fa-prev-btn')?.addEventListener('click', () => changeFAPage(-1));
       document.getElementById('fa-next-btn')?.addEventListener('click', () => changeFAPage(1));
@@ -816,30 +836,61 @@ function populateFATeamFilter() {
       document.getElementById('waiver-priority-list').innerHTML = rows;
     }
 
-    function renderMyWaiverClaims() {
-      const claims = (window.portalData?.waiverClaims || []).filter(c =>
-        c.teamIndex === myTeamIndex && c.status === 'pending'
+function renderMyWaiverClaims() {
+  const allClaims = (window.portalData?.waiverClaims || []).filter(c =>
+    c.teamIndex === myTeamIndex
+  );
+  const pending = allClaims.filter(c => c.status === 'pending');
+  const results = allClaims.filter(c => c.status === 'won' || c.status === 'lost');
+
+  const el = document.getElementById('my-waiver-claims');
+
+  let html = '';
+
+  if (results.length) {
+    html += `<div class="section-header" style="margin-top:0;">Recent Results</div>`;
+    html += results.slice(-10).reverse().map(claim => {
+      const won = claim.status === 'won';
+      const color = won ? '#065f46' : '#991b1b';
+      const bg = won ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)';
+      const border = won ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)';
+      const icon = won ? '✅' : '❌';
+      return `
+        <div class="waiver-claim-card" style="background:${bg};border-color:${border};">
+          <div style="font-weight:700;font-size:13px;color:${color};">${icon} ${won ? 'Won' : 'Lost'} — ${claim.addPlayer.firstName} ${claim.addPlayer.lastName}</div>
+          <div style="font-size:12px;color:#6b7280;margin-top:2px;">Drop: ${claim.dropPlayer.firstName} ${claim.dropPlayer.lastName}</div>
+          <div class="waiver-claim-details">Processed: ${new Date(claim.processedAt).toLocaleString()}</div>
+        </div>
+      `;
+    }).join('');
+    html += `<div class="section-header">Pending Claims</div>`;
+  }
+
+  if (!pending.length) {
+    html += '<p style="color:#9ca3af;font-size:14px;">No pending claims.</p>';
+  } else {
+    html += pending.map((claim, i) => {
+      // Find the real index in the full claims array for cancellation.
+      const realIdx = (window.portalData?.waiverClaims || []).findIndex(c =>
+        c === claim || (c.teamIndex === claim.teamIndex && c.submittedAt === claim.submittedAt)
       );
-      const el = document.getElementById('my-waiver-claims');
-
-      if (!claims.length) {
-        el.innerHTML = '<p style="color:#9ca3af;font-size:14px;">No pending claims.</p>';
-        return;
-      }
-
-      el.innerHTML = claims.map((claim, i) => `
+      return `
         <div class="waiver-claim-card">
           <div style="font-weight:600;font-size:14px;color:#1a1a2e;">+ ${claim.addPlayer.firstName} ${claim.addPlayer.lastName}</div>
           <div style="font-size:13px;color:#ef4444;margin-top:2px;">− ${claim.dropPlayer.firstName} ${claim.dropPlayer.lastName}</div>
           <div class="waiver-claim-details">Submitted: ${new Date(claim.submittedAt).toLocaleString()}</div>
-          <button class="cancel-claim-btn" data-idx="${i}" style="margin-top:8px;padding:4px 12px;border:1px solid #ef4444;color:#ef4444;background:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">Cancel Claim</button>
+          <button class="cancel-claim-btn" data-idx="${realIdx}" style="margin-top:8px;padding:4px 12px;border:1px solid #ef4444;color:#ef4444;background:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">Cancel</button>
         </div>
-      `).join('');
+      `;
+    }).join('');
+  }
 
-      el.querySelectorAll('.cancel-claim-btn').forEach(btn => {
-        btn.addEventListener('click', () => cancelWaiverClaim(parseInt(btn.dataset.idx, 10)));
-      });
-    }
+  el.innerHTML = html;
+
+  el.querySelectorAll('.cancel-claim-btn').forEach(btn => {
+    btn.addEventListener('click', () => cancelWaiverClaim(parseInt(btn.dataset.idx, 10)));
+  });
+}
 
     function openAddDropModal(player, type) {
       pendingAddPlayer = player;

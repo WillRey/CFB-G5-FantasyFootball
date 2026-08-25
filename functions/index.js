@@ -286,3 +286,176 @@ exports.clearWeeklyScores = onSchedule(
     console.log(`Cleared ${liveSnap.docs.length} liveScores doc(s) for new week.`);
   }
 );
+
+// ─── Process Waiver Claims ────────────────────────────────────────────────────
+// Runs every Tuesday at 7am MT. Iterates all leagues, sorts pending claims by
+// waiver priority, awards players to the highest-priority team that claimed them,
+// updates rosters in drafts/{leagueId}, resets waiver priority, and stamps each
+// claim with a 'won'/'lost' result so the UI can display it.
+
+exports.processWaivers = onSchedule(
+  {
+    schedule: 'every tuesday 07:00',
+    timeZone: 'America/Denver',
+    retryCount: 1,
+  },
+  async () => {
+    const leaguesSnap = await db.collection('leagues').get();
+    if (leaguesSnap.empty) {
+      console.log('No leagues found — skipping waiver processing.');
+      return;
+    }
+
+    for (const leagueDoc of leaguesSnap.docs) {
+      const leagueId = leagueDoc.id;
+      try {
+        await processLeagueWaivers(leagueId);
+      } catch (err) {
+        console.error(`Error processing waivers for league ${leagueId}:`, err);
+      }
+    }
+  }
+);
+
+async function processLeagueWaivers(leagueId) {
+  const [portalSnap, draftSnap] = await Promise.all([
+    db.collection('portal').doc(leagueId).get(),
+    db.collection('drafts').doc(leagueId).get(),
+  ]);
+
+  if (!portalSnap.exists || !draftSnap.exists) {
+    console.log(`League ${leagueId}: missing portal or draft doc — skipping.`);
+    return;
+  }
+
+  const portalData = portalSnap.data();
+  const draftData = draftSnap.data();
+
+  const pendingClaims = (portalData.waiverClaims || []).filter(c => c.status === 'pending');
+  if (!pendingClaims.length) {
+    console.log(`League ${leagueId}: no pending claims.`);
+    return;
+  }
+
+  const waiverPriority = portalData.waiverPriority || [];
+  const teams = draftData.teams || [];
+  let picks = [...(draftData.picks || [])];
+  let updatedTeams = [...teams];
+
+  // Track which players have already been awarded this cycle so later
+  // claims on the same player all get 'lost'.
+  const awardedPlayerIds = new Set();
+  // Track which teams won a claim this cycle (they drop to last priority).
+  const teamsWon = new Set();
+
+  // Sort claims by waiver priority (lower index in waiverPriority = higher priority).
+  const priorityRank = teamIdx => {
+    const rank = waiverPriority.indexOf(teamIdx);
+    return rank === -1 ? 999 : rank;
+  };
+
+  pendingClaims.sort((a, b) => priorityRank(a.teamIndex) - priorityRank(b.teamIndex));
+
+  // Process each claim in priority order.
+  const processedClaims = (portalData.waiverClaims || []).map(claim => {
+    if (claim.status !== 'pending') return claim;
+
+    const addId = playerKey(claim.addPlayer);
+    const teamIdx = claim.teamIndex;
+
+    if (awardedPlayerIds.has(addId)) {
+      // Someone with higher priority already got this player.
+      return { ...claim, status: 'lost', processedAt: new Date().toISOString() };
+    }
+
+    // Check that the player being dropped is still on this team's roster.
+    const team = updatedTeams[teamIdx];
+    const dropId = playerKey(claim.dropPlayer);
+    const stillOnRoster = isPlayerOnTeam(claim.dropPlayer, picks, teamIdx, team);
+    if (!stillOnRoster) {
+      // Drop target no longer on roster (e.g. traded away since claim was filed).
+      return { ...claim, status: 'lost', lostReason: 'drop target no longer on roster', processedAt: new Date().toISOString() };
+    }
+
+    // Award the player.
+    awardedPlayerIds.add(addId);
+    teamsWon.add(teamIdx);
+
+    // Update picks array.
+    let dropHandled = false;
+    picks = picks.map(p => {
+      if (!dropHandled && p.teamIndex === teamIdx && playerKey(p) === dropId) {
+        dropHandled = true;
+        return { ...claim.addPlayer, teamIndex: teamIdx, pickNumber: p.pickNumber };
+      }
+      return p;
+    });
+
+    // Update lineup if it exists for this team.
+    updatedTeams = updatedTeams.map((t, i) => {
+      if (i !== teamIdx || !t.lineup) return t;
+      const replaceIn = arr => (arr || []).map(p => {
+        if (!p) return p;
+        if (playerKey(p) === dropId) return { ...claim.addPlayer, teamIndex: teamIdx };
+        return p;
+      });
+      return { ...t, lineup: { starting: replaceIn(t.lineup.starting), bench: replaceIn(t.lineup.bench) } };
+    });
+
+    // Put the dropped player on waivers (or back to free agency — we put them
+    // in waivers with droppedAt = now so they go through their own waiver period).
+    const waivers = portalData.waivers || [];
+    portalData.waivers = [
+      ...waivers.filter(w => playerKey(w) !== dropId),
+      { ...claim.dropPlayer, droppedAt: new Date().toISOString(), droppedBy: teamIdx }
+    ];
+
+    return { ...claim, status: 'won', processedAt: new Date().toISOString() };
+  });
+
+  // Reset waiver priority: teams that won a claim drop to the end, in the
+  // order they appear in the current priority list (so relative order is preserved
+  // for those that didn't win).
+  const winners = waiverPriority.filter(idx => teamsWon.has(idx));
+  const nonWinners = waiverPriority.filter(idx => !teamsWon.has(idx));
+  const newPriority = [...nonWinners, ...winners];
+
+  // Write everything back.
+  await db.collection('drafts').doc(leagueId).update({ picks, teams: updatedTeams });
+  await db.collection('portal').doc(leagueId).update({
+    waiverClaims: processedClaims,
+    waiverPriority: newPriority,
+    waivers: portalData.waivers,
+  });
+
+  // Log activity.
+  const won = processedClaims.filter(c => c.status === 'won');
+  const lost = processedClaims.filter(c => c.status === 'lost');
+  const activitySnap = await db.collection('activity').doc(leagueId).get();
+  const log = activitySnap.exists ? (activitySnap.data().log || []) : [];
+  won.forEach(c => {
+    log.push({
+      message: `${teams[c.teamIndex]?.name} won waiver claim: added ${c.addPlayer.firstName} ${c.addPlayer.lastName}, dropped ${c.dropPlayer.firstName} ${c.dropPlayer.lastName}.`,
+      timestamp: new Date().toISOString(),
+    });
+  });
+  if (won.length || lost.length) {
+    await db.collection('activity').doc(leagueId).set({ log });
+  }
+
+  console.log(`League ${leagueId}: ${won.length} claims won, ${lost.length} claims lost.`);
+}
+
+function playerKey(p) {
+  if (!p) return '';
+  return `${p.firstName}-${p.lastName}-${p.team}`.toLowerCase();
+}
+
+function isPlayerOnTeam(player, picks, teamIdx, teamObj) {
+  const key = playerKey(player);
+  if (teamObj?.lineup) {
+    const all = [...(teamObj.lineup.starting || []), ...(teamObj.lineup.bench || [])];
+    return all.some(p => p && playerKey(p) === key);
+  }
+  return picks.some(p => p.teamIndex === teamIdx && playerKey(p) === key);
+}
