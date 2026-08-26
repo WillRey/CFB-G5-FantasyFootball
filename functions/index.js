@@ -51,6 +51,55 @@ function lookupPosition(displayName, team, positionByPlayer) {
   return positionByPlayer[key] || null;
 }
 
+// ─── Fantasy Week Boundaries ──────────────────────────────────────────────────
+// Each week runs Tuesday 12:00pm MT → Monday 11:59pm MT.
+// MT = MDT (UTC-6) through Nov 1, MST (UTC-7) after.
+//
+// Week 0 is a testing week covering the Aug 29 games.
+// To switch to production after testing, remove the week0 entry and
+// update the weekBoundaries array comment — no other changes needed.
+//
+// TO SWITCH TO PRODUCTION after Week 0 testing:
+//   - Remove the week0 block and its entry in the boundaries array
+//   - The function will naturally fall into Week 1 starting Sept 2
+
+function getFantasyWeekNumber(now) {
+  const weekBoundaries = [
+    // Week 0 (testing): starts Wed Aug 26 noon MT (UTC-6) = 18:00 UTC
+    // covers the Aug 29 Saturday games
+    { week: 0, start: new Date('2026-08-26T18:00:00Z') },
+
+    // Week 1: Tuesday Sept 1 noon MT = 18:00 UTC
+    // covers Sept 3 (Thu) kickoff weekend through Mon Sept 7
+    { week: 1, start: new Date('2026-09-01T18:00:00Z') },
+
+    // Weeks 2–11: each subsequent Tuesday noon MT
+    { week: 2,  start: new Date('2026-09-08T18:00:00Z') },
+    { week: 3,  start: new Date('2026-09-15T18:00:00Z') },
+    { week: 4,  start: new Date('2026-09-22T18:00:00Z') },
+    { week: 5,  start: new Date('2026-09-29T18:00:00Z') },
+    { week: 6,  start: new Date('2026-10-06T18:00:00Z') },
+    { week: 7,  start: new Date('2026-10-13T18:00:00Z') },
+    { week: 8,  start: new Date('2026-10-20T18:00:00Z') },
+    { week: 9,  start: new Date('2026-10-27T18:00:00Z') },
+    { week: 10, start: new Date('2026-11-03T19:00:00Z') }, // UTC-7 after DST ends Nov 1
+    { week: 11, start: new Date('2026-11-10T19:00:00Z') }, // UTC-7
+  ];
+
+  // Before the very first boundary, return week 0
+  if (now < weekBoundaries[0].start) return 0;
+
+  // After the last boundary, return 11
+  if (now >= weekBoundaries[weekBoundaries.length - 1].start) return 11;
+
+  // Walk backwards to find which week we're currently in
+  for (let i = weekBoundaries.length - 1; i >= 0; i--) {
+    if (now >= weekBoundaries[i].start) return weekBoundaries[i].week;
+  }
+
+  return 0;
+}
+
 exports.checkLiveScores = onSchedule(
   {
     schedule: 'every 5 minutes',
@@ -80,7 +129,6 @@ exports.checkLiveScores = onSchedule(
         continue;
       }
 
-      // ── Offensive players + kickers ─────────────────────────────────────────
       const boxscorePlayers = parseBoxscorePlayers(summary);
       const scoredPlayers = {};
       const returnTDBonus = {};
@@ -107,7 +155,6 @@ exports.checkLiveScores = onSchedule(
         }
       });
 
-      // ── D/ST — one entry per G6 team in this game ───────────────────────────
       const dstMap = parseDSTStatsForGame(summary);
       const scoredDST = {};
 
@@ -126,7 +173,6 @@ exports.checkLiveScores = onSchedule(
         scoredDST[teamId] = { teamId, teamName, teamAbbrev, stats: dstStats, points };
       }
 
-      // ── Write to Firestore ──────────────────────────────────────────────────
       await db.collection('liveScores').doc(String(eventId)).set({
         eventId,
         homeTeam: competitors.find(c => c.homeAway === 'home')?.team?.displayName,
@@ -195,14 +241,15 @@ exports.updateFantasyScores = onSchedule(
       const teams = draftSnap.data().teams || [];
       const weeks = scheduleSnap.data().weeks || [];
 
-      const seasonStart = new Date('2026-08-28');
+      // Use Tuesday-to-Monday week boundaries instead of rolling 7-day windows
       const now = new Date();
-      const weekNum = Math.min(
-        Math.max(Math.floor((now - seasonStart) / (7 * 24 * 60 * 60 * 1000)) + 1, 1),
-        11
-      );
+      const weekNum = getFantasyWeekNumber(now);
+
       const weekIndex = weeks.findIndex(w => w.week === weekNum);
-      if (weekIndex === -1) continue;
+      if (weekIndex === -1) {
+        console.log(`League ${leagueId}: no schedule entry for week ${weekNum} — skipping.`);
+        continue;
+      }
 
       const weekData = weeks[weekIndex];
       if (!weekData.matchups?.length) continue;
@@ -288,11 +335,6 @@ exports.clearWeeklyScores = onSchedule(
 );
 
 // ─── Process Waiver Claims ────────────────────────────────────────────────────
-// Runs every Tuesday at 7am MT. Iterates all leagues, sorts pending claims by
-// waiver priority, awards players to the highest-priority team that claimed them,
-// updates rosters in drafts/{leagueId}, resets waiver priority, and stamps each
-// claim with a 'won'/'lost' result so the UI can display it.
-
 exports.processWaivers = onSchedule(
   {
     schedule: 'every tuesday 07:00',
@@ -342,13 +384,9 @@ async function processLeagueWaivers(leagueId) {
   let picks = [...(draftData.picks || [])];
   let updatedTeams = [...teams];
 
-  // Track which players have already been awarded this cycle so later
-  // claims on the same player all get 'lost'.
   const awardedPlayerIds = new Set();
-  // Track which teams won a claim this cycle (they drop to last priority).
   const teamsWon = new Set();
 
-  // Sort claims by waiver priority (lower index in waiverPriority = higher priority).
   const priorityRank = teamIdx => {
     const rank = waiverPriority.indexOf(teamIdx);
     return rank === -1 ? 999 : rank;
@@ -356,7 +394,6 @@ async function processLeagueWaivers(leagueId) {
 
   pendingClaims.sort((a, b) => priorityRank(a.teamIndex) - priorityRank(b.teamIndex));
 
-  // Process each claim in priority order.
   const processedClaims = (portalData.waiverClaims || []).map(claim => {
     if (claim.status !== 'pending') return claim;
 
@@ -364,24 +401,19 @@ async function processLeagueWaivers(leagueId) {
     const teamIdx = claim.teamIndex;
 
     if (awardedPlayerIds.has(addId)) {
-      // Someone with higher priority already got this player.
       return { ...claim, status: 'lost', processedAt: new Date().toISOString() };
     }
 
-    // Check that the player being dropped is still on this team's roster.
     const team = updatedTeams[teamIdx];
     const dropId = playerKey(claim.dropPlayer);
     const stillOnRoster = isPlayerOnTeam(claim.dropPlayer, picks, teamIdx, team);
     if (!stillOnRoster) {
-      // Drop target no longer on roster (e.g. traded away since claim was filed).
       return { ...claim, status: 'lost', lostReason: 'drop target no longer on roster', processedAt: new Date().toISOString() };
     }
 
-    // Award the player.
     awardedPlayerIds.add(addId);
     teamsWon.add(teamIdx);
 
-    // Update picks array.
     let dropHandled = false;
     picks = picks.map(p => {
       if (!dropHandled && p.teamIndex === teamIdx && playerKey(p) === dropId) {
@@ -391,7 +423,6 @@ async function processLeagueWaivers(leagueId) {
       return p;
     });
 
-    // Update lineup if it exists for this team.
     updatedTeams = updatedTeams.map((t, i) => {
       if (i !== teamIdx || !t.lineup) return t;
       const replaceIn = arr => (arr || []).map(p => {
@@ -402,8 +433,6 @@ async function processLeagueWaivers(leagueId) {
       return { ...t, lineup: { starting: replaceIn(t.lineup.starting), bench: replaceIn(t.lineup.bench) } };
     });
 
-    // Put the dropped player on waivers (or back to free agency — we put them
-    // in waivers with droppedAt = now so they go through their own waiver period).
     const waivers = portalData.waivers || [];
     portalData.waivers = [
       ...waivers.filter(w => playerKey(w) !== dropId),
@@ -413,14 +442,10 @@ async function processLeagueWaivers(leagueId) {
     return { ...claim, status: 'won', processedAt: new Date().toISOString() };
   });
 
-  // Reset waiver priority: teams that won a claim drop to the end, in the
-  // order they appear in the current priority list (so relative order is preserved
-  // for those that didn't win).
   const winners = waiverPriority.filter(idx => teamsWon.has(idx));
   const nonWinners = waiverPriority.filter(idx => !teamsWon.has(idx));
   const newPriority = [...nonWinners, ...winners];
 
-  // Write everything back.
   await db.collection('drafts').doc(leagueId).update({ picks, teams: updatedTeams });
   await db.collection('portal').doc(leagueId).update({
     waiverClaims: processedClaims,
@@ -428,7 +453,6 @@ async function processLeagueWaivers(leagueId) {
     waivers: portalData.waivers,
   });
 
-  // Log activity.
   const won = processedClaims.filter(c => c.status === 'won');
   const lost = processedClaims.filter(c => c.status === 'lost');
   const activitySnap = await db.collection('activity').doc(leagueId).get();
@@ -458,4 +482,34 @@ function isPlayerOnTeam(player, picks, teamIdx, teamObj) {
     return all.some(p => p && playerKey(p) === key);
   }
   return picks.some(p => p.teamIndex === teamIdx && playerKey(p) === key);
+}
+
+// ─── Fantasy Week Number ──────────────────────────────────────────────────────
+// Tuesday 12:00pm MT → Monday 11:59pm MT boundaries.
+// Week 0 is active now for testing (Aug 29 games).
+// After testing, remove the week 0 entry — Week 1 takes over Sept 2 noon MT.
+function getFantasyWeekNumber(now) {
+  const weekBoundaries = [
+    { week: 0,  start: new Date('2026-08-26T18:00:00Z') }, // ← REMOVE after Week 0 testing
+    { week: 1,  start: new Date('2026-09-01T18:00:00Z') },
+    { week: 2,  start: new Date('2026-09-08T18:00:00Z') },
+    { week: 3,  start: new Date('2026-09-15T18:00:00Z') },
+    { week: 4,  start: new Date('2026-09-22T18:00:00Z') },
+    { week: 5,  start: new Date('2026-09-29T18:00:00Z') },
+    { week: 6,  start: new Date('2026-10-06T18:00:00Z') },
+    { week: 7,  start: new Date('2026-10-13T18:00:00Z') },
+    { week: 8,  start: new Date('2026-10-20T18:00:00Z') },
+    { week: 9,  start: new Date('2026-10-27T18:00:00Z') },
+    { week: 10, start: new Date('2026-11-03T19:00:00Z') }, // post-DST end, UTC-7
+    { week: 11, start: new Date('2026-11-10T19:00:00Z') },
+  ];
+
+  if (now < weekBoundaries[0].start) return weekBoundaries[0].week;
+  if (now >= weekBoundaries[weekBoundaries.length - 1].start) return 11;
+
+  for (let i = weekBoundaries.length - 1; i >= 0; i--) {
+    if (now >= weekBoundaries[i].start) return weekBoundaries[i].week;
+  }
+
+  return 0;
 }
