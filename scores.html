@@ -207,9 +207,12 @@
           if (m.homeScore > m.awayScore) {
             recordMap[m.home].wins++;
             recordMap[m.away].losses++;
-          } else {
+          } else if (m.awayScore > m.homeScore) {
             recordMap[m.away].wins++;
             recordMap[m.home].losses++;
+          } else {
+            recordMap[m.home].ties = (recordMap[m.home].ties || 0) + 1;
+            recordMap[m.away].ties = (recordMap[m.away].ties || 0) + 1;
           }
         });
       });
@@ -261,9 +264,12 @@
 
       el.innerHTML = `<div class="week-label">${label}</div>`;
 
-      if (weekData.playoff) {
+      if (weekData.playoff && !weekData.matchups?.length) {
         el.innerHTML += `<span class="playoff-badge">Playoffs</span><p style="color:#9ca3af;font-size:14px;margin-top:8px;">Playoff matchups set after regular season.</p>`;
         return;
+      }
+      if (weekData.playoff) {
+        el.innerHTML += `<span class="playoff-badge">Playoffs</span>`;
       }
 
       weekData.matchups.forEach((matchup, i) => {
@@ -281,7 +287,7 @@
           <div class="matchup-team home">
             <div class="matchup-team-name">${homeTeam.name}</div>
             <div class="matchup-team-manager">${homeTeam.manager}</div>
-            <div class="matchup-team-manager">(${window.recordMap?.[matchup.home]?.wins ?? 0}-${window.recordMap?.[matchup.home]?.losses ?? 0})</div>
+            <div class="matchup-team-manager">(${window.recordMap?.[matchup.home]?.wins ?? 0}-${window.recordMap?.[matchup.home]?.losses ?? 0}${window.recordMap?.[matchup.home]?.ties ? `-${window.recordMap[matchup.home].ties}` : ''})</div>
           </div>
           ${homeLogo ? `<img src="${homeLogo}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1px solid #e8eaf0;;" />` : '<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#eef3ff,#faf0ff);border:1px solid #c8d8ff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#1a6dff;">' + (homeTeam.name?.[0] || '?') + '</div>'}
           <div class="matchup-score">
@@ -294,7 +300,7 @@
           <div class="matchup-team">
             <div class="matchup-team-name">${awayTeam.name}</div>
             <div class="matchup-team-manager">${awayTeam.manager}</div>
-            <div class="matchup-team-manager">(${window.recordMap?.[matchup.away]?.wins ?? 0}-${window.recordMap?.[matchup.away]?.losses ?? 0})</div>
+            <div class="matchup-team-manager">(${window.recordMap?.[matchup.away]?.wins ?? 0}-${window.recordMap?.[matchup.away]?.losses ?? 0}${window.recordMap?.[matchup.away]?.ties ? `-${window.recordMap[matchup.away].ties}` : ''})</div>
           </div>
         `;
         el.appendChild(card);

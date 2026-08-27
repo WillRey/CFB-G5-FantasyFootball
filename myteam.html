@@ -77,21 +77,21 @@
 
   /* --- Subnav Dropdown --- */
   .subnav-dropdown { position: relative; }
-.subnav-dropdown-menu {
-  display: none;
-  position: absolute;
-  top: 100%;
-  left: 0;
-  padding-top: 8px;
-  background: rgba(255,255,255,0.95);
-  border: 1px solid #e8eaf0;
-  border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(26,109,255,0.10), 0 2px 6px rgba(200,34,255,0.06);
-  z-index: 100;
-  min-width: 180px;
-  padding: 6px;
-  backdrop-filter: blur(8px);
-}
+  .subnav-dropdown-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    padding-top: 8px;
+    background: rgba(255,255,255,0.95);
+    border: 1px solid #e8eaf0;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(26,109,255,0.10), 0 2px 6px rgba(200,34,255,0.06);
+    z-index: 100;
+    min-width: 180px;
+    padding: 6px;
+    backdrop-filter: blur(8px);
+  }
   .subnav-dropdown:hover .subnav-dropdown-menu { display: block; }
   .subnav-dropdown-menu a {
     display: block;
@@ -105,19 +105,18 @@
     transition: background 0.15s;
   }
   .subnav-dropdown-menu a:hover {
-    background: linear-gradient(135deg, #eef3ff, #faf0ff);
     background: rgba(26,109,255,0.07);
     color: #1a6dff;
   }
 
-.subnav-dropdown::after {
-  content: '';
-  position: absolute;
-  top: 100%;
-  left: 0;
-  width: 100%;
-  height: 8px;
-}
+  .subnav-dropdown::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    height: 8px;
+  }
 
   /* --- Signing Day Banner --- */
   #signing-day-banner {
@@ -188,9 +187,9 @@
     border-collapse: collapse;
   }
 
-#page-roster {
-  width: 100%;
-}
+  #page-roster {
+    width: 100%;
+  }
 
   .roster-table-header {
     display: grid;
@@ -237,21 +236,27 @@
     background: #e8eaf0;
     color: #9ca3af;
   }
+  .slot-label.locked-slot {
+    background: #9ca3af;
+    cursor: not-allowed;
+    opacity: 0.7;
+  }
+  .slot-label.locked-slot:hover { opacity: 0.7; }
 
-.slot-player { color: #1a1a2e; font-weight: 500; font-size: 16px; }
-.slot-player .player-sub { font-size: 12px; color: #4b5563; font-weight: 400; }
-.slot-opponent { font-size: 13px; color: #4b5563; }
-.slot-proj { font-size: 13px; color: #4b5563; }
+  .slot-player { color: #1a1a2e; font-weight: 500; font-size: 16px; }
+  .slot-player .player-sub { font-size: 12px; color: #4b5563; font-weight: 400; }
+  .slot-opponent { font-size: 13px; color: #4b5563; }
+  .slot-proj { font-size: 13px; color: #4b5563; }
   .slot-score { font-size: 14px; font-weight: 600; color: #1a1a2e; }
 
-.section-title {
-  font-size: 13px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: #374151;
-  margin: 20px 0 6px;
-}
+  .section-title {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #374151;
+    margin: 20px 0 6px;
+  }
 
   /* --- Team Info Modal --- */
   #team-info-modal {
@@ -397,18 +402,18 @@
         <a id="signing-day-btn" href="draft.html">Enter Signing Day</a>
       </div>
 
-    <div class="subnav">
-      <a class="subnav-link active" onclick="showPage('roster')" id="tab-roster">My Roster</a>
-      <a class="subnav-link" href="portal.html">Transfer Portal</a>
-      <div class="subnav-dropdown">
-        <a class="subnav-link no-action" id="tab-conference">Conference Rules ▾</a>
-        <div class="subnav-dropdown-menu">
-          <a onclick="showPage('league-settings')">League Settings</a>
-          <a onclick="showPage('scoring')">Scoring System</a>
-          <a onclick="showPage('activity')">Recent Activity</a>
+      <div class="subnav">
+        <a class="subnav-link active" onclick="showPage('roster')" id="tab-roster">My Roster</a>
+        <a class="subnav-link" href="portal.html">Transfer Portal</a>
+        <div class="subnav-dropdown">
+          <a class="subnav-link no-action" id="tab-conference">Conference Rules ▾</a>
+          <div class="subnav-dropdown-menu">
+            <a onclick="showPage('league-settings')">League Settings</a>
+            <a onclick="showPage('scoring')">Scoring System</a>
+            <a onclick="showPage('activity')">Recent Activity</a>
+          </div>
         </div>
       </div>
-    </div>
 
       <div class="conf-page active" id="page-roster">
         <div class="section-title">Starting Lineup</div>
@@ -522,6 +527,7 @@
     let currentUser = null;
     let pendingLogoFile = null;
     let currentLogoUrl = null;
+    let lockedTeams = new Set();
 
     const leagueRoster = JSON.parse(localStorage.getItem('leagueData'))?.roster || '1QB';
 
@@ -816,22 +822,26 @@
       const myPicks = picks.filter(p => p.teamIndex === myTeamIndex);
 
       // Calculate record from schedule
-      let wins = 0, losses = 0;
+      let wins = 0, losses = 0, ties = 0;
       if (scheduleDoc.exists()) {
         const weeks = scheduleDoc.data().weeks || [];
         weeks.filter(w => !w.playoff && w.week <= 11).forEach(week => {
           (week.matchups || []).forEach(m => {
             if (m.homeScore === null || m.awayScore === null) return;
             if (m.home === myTeamIndex) {
-              m.homeScore > m.awayScore ? wins++ : losses++;
+              if (m.homeScore > m.awayScore) wins++;
+              else if (m.homeScore < m.awayScore) losses++;
+              else ties++;
             } else if (m.away === myTeamIndex) {
-              m.awayScore > m.homeScore ? wins++ : losses++;
+              if (m.awayScore > m.homeScore) wins++;
+              else if (m.awayScore < m.homeScore) losses++;
+              else ties++;
             }
           });
         });
       }
 
-      document.getElementById('manager-name').textContent = `${user.displayName || user.email} · ${wins}-${losses}`;
+      document.getElementById('manager-name').textContent = `${user.displayName || user.email} · ${wins}-${losses}${ties ? `-${ties}` : ''}`;
 
       if (myTeam.lineup) {
         startingLineup = myTeam.lineup.starting;
@@ -848,6 +858,7 @@
 
       renderLineup();
       await loadWeeklyScores();
+      lockedTeams = await buildLockedTeams();
       await loadOpponents();
     }
 
@@ -893,7 +904,28 @@
       }
     }
 
-      async function loadOpponents() {
+    async function buildLockedTeams() {
+      const locked = new Set();
+      try {
+        const liveSnap = await getDocs(collection(db, 'liveScores'));
+        liveSnap.forEach(doc => {
+          const data = doc.data();
+          // Any game with a liveScores doc is in progress or finished — lock both teams
+          if (data.homeTeam) locked.add(data.homeTeam.toLowerCase());
+          if (data.awayTeam) locked.add(data.awayTeam.toLowerCase());
+        });
+      } catch (e) {
+        console.error('buildLockedTeams failed:', e);
+      }
+      return locked;
+    }
+
+    function isPlayerLocked(player) {
+      if (!player) return false;
+      return lockedTeams.has(player.team?.toLowerCase());
+    }
+
+    async function loadOpponents() {
       try {
         const res = await fetch('g6_schedule_2026.json');
         const scheduleData = await res.json();
@@ -930,12 +962,13 @@
       el.innerHTML = '';
       startingSlotDefs.forEach((slot, i) => {
         const player = startingLineup[i];
+        const locked = isPlayerLocked(player);
         const div = document.createElement('div');
         div.className = 'roster-slot';
         div.innerHTML = `
-          <span class="slot-label ${!player ? 'empty-slot' : ''}" onclick="openSwapModal(${i})">${slot.label}</span>
+          <span class="slot-label ${!player ? 'empty-slot' : ''} ${locked ? 'locked-slot' : ''}" onclick="openSwapModal(${i})">${slot.label}</span>
           <div class="slot-player">
-            ${player ? `${player.position === 'DST' ? player.lastName : `${player.firstName} ${player.lastName}`}<div class="player-sub">${player.position === 'DST' ? 'D/ST' : player.position} · ${player.team}</div>` : '<span style="color:#9ca3af;">Empty</span>'}
+            ${player ? `${player.position === 'DST' ? player.lastName : `${player.firstName} ${player.lastName}`}<div class="player-sub">${player.position === 'DST' ? 'D/ST' : player.position} · ${player.team}${locked ? ' 🔒' : ''}</div>` : '<span style="color:#9ca3af;">Empty</span>'}
           </div>
           <div class="slot-opponent">${player?.opponent || '—'}</div>
           <div class="slot-score">${player?.weekPoints != null ? player.weekPoints.toFixed(1) : '—'}</div>
@@ -949,12 +982,13 @@
       el.innerHTML = '';
       for (let i = 0; i < 7; i++) {
         const player = bench[i] || null;
+        const locked = isPlayerLocked(player);
         const div = document.createElement('div');
         div.className = 'roster-slot';
         div.innerHTML = `
-          <span class="slot-label ${!player ? 'empty-slot' : ''}" onclick="openBenchSwapModal(${i})">BE</span>
+          <span class="slot-label ${!player ? 'empty-slot' : ''} ${locked ? 'locked-slot' : ''}" onclick="openBenchSwapModal(${i})">BE</span>
           <div class="slot-player">
-            ${player ? `${player.position === 'DST' ? player.lastName : `${player.firstName} ${player.lastName}`}<div class="player-sub">${player.position === 'DST' ? 'D/ST' : player.position} · ${player.team}</div>` : '<span style="color:#9ca3af;">Empty</span>'}
+            ${player ? `${player.position === 'DST' ? player.lastName : `${player.firstName} ${player.lastName}`}<div class="player-sub">${player.position === 'DST' ? 'D/ST' : player.position} · ${player.team}${locked ? ' 🔒' : ''}</div>` : '<span style="color:#9ca3af;">Empty</span>'}
           </div>
           <div class="slot-opponent">${player?.opponent || '—'}</div>
           <div class="slot-score">${player?.weekPoints != null ? player.weekPoints.toFixed(1) : '—'}</div>
@@ -964,6 +998,9 @@
     }
 
     window.openSwapModal = function(starterIndex) {
+      const player = startingLineup[starterIndex];
+      if (isPlayerLocked(player)) return; // locked, do nothing
+
       selectedStarterIndex = starterIndex;
       const slot = startingSlotDefs[starterIndex];
       document.getElementById('swap-modal-title').textContent = `Select a player to fill the ${slot.label} slot`;
@@ -972,30 +1009,32 @@
 
       startingSlotDefs.forEach((otherSlot, i) => {
         if (i === starterIndex) return;
-        const player = startingLineup[i];
-        if (!player || !slot.positions.includes(player.position)) return;
+        const p = startingLineup[i];
+        if (!p || !slot.positions.includes(p.position)) return;
+        if (isPlayerLocked(p)) return; // can't swap in a locked player
         const div = document.createElement('div');
         div.className = 'swap-option';
         div.innerHTML = `
           <span class="swap-option-slot">${otherSlot.label}</span>
           <div>
-            <div class="swap-option-name">${player.position === 'DST' ? player.lastName : `${player.firstName} ${player.lastName}`}</div>
-            <div class="swap-option-details">${player.position} — ${player.team} — ${player.conference}</div>
+            <div class="swap-option-name">${p.position === 'DST' ? p.lastName : `${p.firstName} ${p.lastName}`}</div>
+            <div class="swap-option-details">${p.position} — ${p.team} — ${p.conference}</div>
           </div>
         `;
         div.onclick = () => swapStarters(starterIndex, i);
         optionsEl.appendChild(div);
       });
 
-      bench.forEach((player, i) => {
-        if (!player || !slot.positions.includes(player.position)) return;
+      bench.forEach((p, i) => {
+        if (!p || !slot.positions.includes(p.position)) return;
+        if (isPlayerLocked(p)) return; // can't swap in a locked player
         const div = document.createElement('div');
         div.className = 'swap-option';
         div.innerHTML = `
           <span class="swap-option-slot">BE</span>
           <div>
-            <div class="swap-option-name">${player.position === 'DST' ? player.lastName : `${player.firstName} ${player.lastName}`}</div>
-            <div class="swap-option-details">${player.position} — ${player.team} — ${player.conference}</div>
+            <div class="swap-option-name">${p.position === 'DST' ? p.lastName : `${p.firstName} ${p.lastName}`}</div>
+            <div class="swap-option-details">${p.position} — ${p.team} — ${p.conference}</div>
           </div>
         `;
         div.onclick = () => swapWithBench(starterIndex, i);
@@ -1011,6 +1050,8 @@
     window.openBenchSwapModal = function(benchIndex) {
       const benchPlayer = bench[benchIndex];
       if (!benchPlayer) return;
+      if (isPlayerLocked(benchPlayer)) return; // locked, do nothing
+
       document.getElementById('swap-modal-title').textContent =
         `Move ${benchPlayer.position === 'DST' ? benchPlayer.lastName : `${benchPlayer.firstName} ${benchPlayer.lastName}`} to starting lineup`;
       const optionsEl = document.getElementById('swap-options');
@@ -1019,6 +1060,7 @@
       startingSlotDefs.forEach((slot, i) => {
         if (!slot.positions.includes(benchPlayer.position)) return;
         const currentStarter = startingLineup[i];
+        if (isPlayerLocked(currentStarter)) return; // can't displace a locked starter
         const div = document.createElement('div');
         div.className = 'swap-option';
         div.innerHTML = `

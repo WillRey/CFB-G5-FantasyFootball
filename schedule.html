@@ -106,7 +106,7 @@
           if (m.homeScore > m.awayScore) {
             records[m.home].wins++;
             records[m.away].losses++;
-          } else {
+          } else if (m.awayScore > m.homeScore) {
             records[m.away].wins++;
             records[m.home].losses++;
           }

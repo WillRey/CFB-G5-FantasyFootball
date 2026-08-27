@@ -26,7 +26,11 @@ function filterLiveG6Games(events, knownTeamNames) {
 }
 
 function normalizeTeamName(name) {
-  return (name || '').trim().toLowerCase();
+  return (name || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
 }
 
 // Fetch the full boxscore for one live event — this includes every

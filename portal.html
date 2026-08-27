@@ -39,11 +39,7 @@
       background-clip: text;
       border-bottom-color: #1a6dff;
     }
-
-    .portal-tabs a.portal-tab {
-      text-decoration: none;
-    }
-
+    .portal-tabs a.portal-tab { text-decoration: none; }
     .portal-page { display: none; }
     .portal-page.active { display: block; }
 
@@ -78,50 +74,31 @@
       backdrop-filter: blur(6px);
       transition: box-shadow 0.15s;
     }
-    .player-card:hover {
-      box-shadow: 0 4px 16px rgba(26,109,255,0.10);
-    }
+    .player-card:hover { box-shadow: 0 4px 16px rgba(26,109,255,0.10); }
     .player-card-info { flex: 1; }
     .player-card-name { font-weight: 600; font-size: 14px; color: #1a1a2e; }
     .player-card-details { font-size: 12px; color: #6b7280; margin-top: 2px; }
     .player-card-sub { font-size: 11px; color: #f59e0b; margin-top: 2px; }
 
     .btn-add {
-      padding: 6px 16px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 600;
-      border: none;
+      padding: 6px 16px; border-radius: 6px; cursor: pointer;
+      font-size: 13px; font-weight: 600; border: none;
       background: linear-gradient(135deg, #1a6dff, #c822ff);
-      color: white;
-      transition: opacity 0.15s;
+      color: white; transition: opacity 0.15s;
     }
     .btn-add:hover { opacity: 0.85; }
 
     .btn-claim {
-      padding: 6px 16px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 600;
-      border: none;
-      background: #f59e0b;
-      color: white;
-      transition: opacity 0.15s;
+      padding: 6px 16px; border-radius: 6px; cursor: pointer;
+      font-size: 13px; font-weight: 600; border: none;
+      background: #f59e0b; color: white; transition: opacity 0.15s;
     }
     .btn-claim:hover { opacity: 0.85; }
 
     .btn-drop {
-      padding: 6px 16px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 600;
-      border: none;
-      background: #ef4444;
-      color: white;
-      transition: opacity 0.15s;
+      padding: 6px 16px; border-radius: 6px; cursor: pointer;
+      font-size: 13px; font-weight: 600; border: none;
+      background: #ef4444; color: white; transition: opacity 0.15s;
     }
 
     /* --- Section Headers --- */
@@ -209,67 +186,39 @@
     .trade-team-players { font-size: 13px; color: #374151; }
     .trade-team-label { font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #9ca3af; margin-bottom: 6px; }
     .trade-arrow { text-align: center; font-size: 20px; color: #c8d8ff; }
-    .trade-status {
-      font-size: 12px;
-      font-weight: 600;
-      padding: 3px 10px;
-      border-radius: 20px;
-    }
+    .trade-status { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
     .trade-status.pending { background: #fef3c7; color: #92400e; }
     .trade-status.accepted { background: #d1fae5; color: #065f46; }
     .trade-status.rejected { background: #fee2e2; color: #991b1b; }
 
     /* --- Propose Trade Button --- */
     .btn-propose {
-      padding: 9px 20px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: 600;
-      border: none;
+      padding: 9px 20px; border-radius: 8px; cursor: pointer;
+      font-size: 14px; font-weight: 600; border: none;
       background: linear-gradient(135deg, #1a6dff, #c822ff);
-      color: white;
-      transition: opacity 0.15s;
-      margin-bottom: 16px;
+      color: white; transition: opacity 0.15s; margin-bottom: 16px;
     }
     .btn-propose:hover { opacity: 0.85; }
 
     /* --- Modals --- */
     .modal-overlay {
-      display: none;
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
+      display: none; position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(13,13,20,0.5);
-      z-index: 1000;
-      justify-content: center;
-      align-items: center;
+      z-index: 1000; justify-content: center; align-items: center;
     }
     .modal-overlay.open { display: flex; }
     .modal-box {
-      background: white;
-      border-radius: 14px;
-      padding: 24px;
-      width: 500px;
-      max-width: 90vw;
-      max-height: 85vh;
-      overflow-y: auto;
+      background: white; border-radius: 14px;
+      padding: 24px; width: 500px; max-width: 90vw;
+      max-height: 85vh; overflow-y: auto;
       box-shadow: 0 12px 40px rgba(26,109,255,0.15);
     }
     .modal-box h3 { margin: 0 0 16px; font-size: 17px; font-weight: 700; color: #1a1a2e; }
-    .modal-actions {
-      display: flex;
-      gap: 10px;
-      margin-top: 16px;
-    }
+    .modal-actions { display: flex; gap: 10px; margin-top: 16px; }
     .modal-actions button {
-      flex: 1;
-      padding: 10px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: 600;
-      border: none;
+      flex: 1; padding: 10px; border-radius: 8px;
+      cursor: pointer; font-size: 14px; font-weight: 600; border: none;
     }
     .modal-btn-cancel { background: #f5f5f8; color: #374151; border: 1px solid #e8eaf0 !important; }
     .modal-btn-confirm { background: linear-gradient(135deg, #1a6dff, #c822ff); color: white; }
@@ -277,53 +226,34 @@
 
     /* --- Drop / Trade Select Items --- */
     .drop-select-item {
-      display: flex;
-      align-items: center;
-      padding: 8px 12px;
-      border: 1px solid #e8eaf0;
-      border-radius: 8px;
-      margin-bottom: 6px;
-      cursor: pointer;
-      font-size: 13px;
-      gap: 10px;
-      transition: all 0.15s;
+      display: flex; align-items: center;
+      padding: 8px 12px; border: 1px solid #e8eaf0;
+      border-radius: 8px; margin-bottom: 6px;
+      cursor: pointer; font-size: 13px; gap: 10px; transition: all 0.15s;
     }
     .drop-select-item:hover { background: rgba(26,109,255,0.05); border-color: #a0b8ff; }
     .drop-select-item.selected { background: rgba(239,68,68,0.06); border-color: #ef4444; }
 
     .trade-player-select {
-      display: flex;
-      align-items: center;
-      padding: 8px 12px;
-      border: 1px solid #e8eaf0;
-      border-radius: 8px;
-      margin-bottom: 6px;
-      cursor: pointer;
-      font-size: 13px;
-      gap: 10px;
-      transition: all 0.15s;
+      display: flex; align-items: center;
+      padding: 8px 12px; border: 1px solid #e8eaf0;
+      border-radius: 8px; margin-bottom: 6px;
+      cursor: pointer; font-size: 13px; gap: 10px; transition: all 0.15s;
     }
     .trade-player-select:hover { background: rgba(26,109,255,0.05); border-color: #a0b8ff; }
     .trade-player-select.selected { background: rgba(26,109,255,0.08); border-color: #1a6dff; }
 
     /* --- Pagination --- */
     .pagination {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: 16px;
-      font-size: 13px;
-      color: #6b7280;
+      display: flex; justify-content: space-between;
+      align-items: center; margin-top: 16px;
+      font-size: 13px; color: #6b7280;
     }
     .pagination button {
-      padding: 6px 14px;
-      border: 1px solid #d0d5e8;
-      border-radius: 8px;
-      cursor: pointer;
+      padding: 6px 14px; border: 1px solid #d0d5e8;
+      border-radius: 8px; cursor: pointer;
       background: rgba(255,255,255,0.8);
-      font-size: 13px;
-      font-weight: 500;
-      transition: background 0.15s;
+      font-size: 13px; font-weight: 500; transition: background 0.15s;
     }
     .pagination button:hover:not(:disabled) { background: rgba(26,109,255,0.06); }
     .pagination button:disabled { opacity: 0.4; cursor: default; }
@@ -446,7 +376,6 @@
         </div>
 
         <!-- Trades -->
-        <!-- Trades -->
         <div class="portal-page" id="page-trades">
           <div id="trade-response-banner" style="display:none;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:14px;color:#065f46;"></div>
           <div id="trade-deadline-banner" style="display:none;" class="locked-banner">
@@ -468,7 +397,7 @@
 
   <script type="module">
     import { initNav, db, auth, getLeagueId } from './nav.js';
-        import { doc, getDoc, setDoc, updateDoc, arrayUnion, serverTimestamp, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { doc, getDoc, setDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
     import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
     initNav('portal.html');
@@ -477,8 +406,8 @@
     if (!leagueId) window.location.href = 'index.html';
 
     const TRADE_DEADLINE = new Date('2026-10-29T23:59:00');
-    const WAIVER_PROCESS_DAY = 2;
-    const WAIVER_PROCESS_HOUR = 7;
+    const WAIVER_PROCESS_DAY = 1;  // Monday
+    const WAIVER_PROCESS_HOUR = 10; // 10am MT
     const FA_PAGE_SIZE = 30;
 
     let currentUser = null;
@@ -561,7 +490,7 @@
       const myPicks = picks.filter(p => p.teamIndex === myTeamIndex);
       const myTeam = allTeams[myTeamIndex];
       if (myTeam.lineup) {
-              myRoster = [...myTeam.lineup.starting.filter(Boolean), ...myTeam.lineup.bench.filter(Boolean)];
+        myRoster = [...myTeam.lineup.starting.filter(Boolean), ...myTeam.lineup.bench.filter(Boolean)];
       } else {
         myRoster = myPicks;
       }
@@ -602,16 +531,16 @@
       populateFATeamFilter();
     }
 
-function populateFATeamFilter() {
-  const teams = [...new Set(allPlayers.map(p => p.team))].sort();
-  const select = document.getElementById('fa-team-filter');
-  teams.forEach(t => {
-    const opt = document.createElement('option');
-    opt.value = t;
-    opt.textContent = t;
-    select.appendChild(opt);
-  });
-}
+    function populateFATeamFilter() {
+      const teams = [...new Set(allPlayers.map(p => p.team))].sort();
+      const select = document.getElementById('fa-team-filter');
+      teams.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t;
+        opt.textContent = t;
+        select.appendChild(opt);
+      });
+    }
 
     async function loadPortalData() {
       const portalDoc = await getDoc(doc(db, "portal", leagueId));
@@ -648,48 +577,41 @@ function populateFATeamFilter() {
       ];
     }
 
-async function loadWeeklyScores() {
-  try {
-    const liveSnap = await getDocs(collection(db, 'liveScores'));
-    if (liveSnap.empty) return;
+    async function loadWeeklyScores() {
+      try {
+        const liveSnap = await getDocs(collection(db, 'liveScores'));
+        if (liveSnap.empty) return;
 
-    const playerPoints = {};
-    const dstPoints = {};
-    // Teams with a currently-live or completed game doc are "locked".
-    const lockedTeams = new Set();
+        const playerPoints = {};
+        const dstPoints = {};
+        const lockedTeams = new Set();
 
-    liveSnap.forEach(doc => {
-      const data = doc.data();
-      // Any liveScores doc present means that game has started.
-      // homeTeam/awayTeam are stored as displayName strings.
-      if (data.homeTeam) lockedTeams.add(data.homeTeam.toLowerCase());
-      if (data.awayTeam) lockedTeams.add(data.awayTeam.toLowerCase());
+        liveSnap.forEach(doc => {
+          const data = doc.data();
+          if (data.homeTeam) lockedTeams.add(data.homeTeam.toLowerCase());
+          if (data.awayTeam) lockedTeams.add(data.awayTeam.toLowerCase());
 
-      Object.entries(data.players || {}).forEach(([espnId, p]) => {
-        playerPoints[espnId] = (playerPoints[espnId] || 0) + (p.points || 0);
-      });
-      Object.values(data.dst || {}).forEach(d => {
-        dstPoints[d.teamName?.toLowerCase()] = (dstPoints[d.teamName?.toLowerCase()] || 0) + (d.points || 0);
-      });
-    });
+          Object.entries(data.players || {}).forEach(([espnId, p]) => {
+            playerPoints[espnId] = (playerPoints[espnId] || 0) + (p.points || 0);
+          });
+          Object.values(data.dst || {}).forEach(d => {
+            dstPoints[d.teamName?.toLowerCase()] = (dstPoints[d.teamName?.toLowerCase()] || 0) + (d.points || 0);
+          });
+        });
 
-    availablePlayers.forEach(player => {
-      // Lock if their team has a live/started game.
-      // For DST the team field matches team name; for players we match against their team.
-      const teamLower = player.team?.toLowerCase();
-      player.gameLocked = lockedTeams.has(teamLower);
-
-      if (player.position === 'DST') {
-        player.weekPoints = dstPoints[teamLower] ?? null;
-      } else {
-        player.weekPoints = player.id ? (playerPoints[player.id] ?? null) : null;
+        availablePlayers.forEach(player => {
+          const teamLower = player.team?.toLowerCase();
+          player.gameLocked = lockedTeams.has(teamLower);
+          if (player.position === 'DST') {
+            player.weekPoints = dstPoints[teamLower] ?? null;
+          } else {
+            player.weekPoints = player.id ? (playerPoints[player.id] ?? null) : null;
+          }
+        });
+      } catch (e) {
+        console.error('loadWeeklyScores failed:', e);
       }
-    });
-
-  } catch (e) {
-    console.error('loadWeeklyScores failed:', e);
-  }
-}
+    }
 
     function getNextWaiverProcessTime(fromDate) {
       const mtOffset = 7;
@@ -727,7 +649,6 @@ async function loadWeeklyScores() {
       const search = document.getElementById('fa-search').value.toLowerCase();
       const pos = document.getElementById('fa-pos-filter').value;
       const conf = document.getElementById('fa-conf-filter').value;
-
       const team = document.getElementById('fa-team-filter').value;
 
       filteredFAPlayers = availablePlayers.filter(p => {
@@ -738,9 +659,9 @@ async function loadWeeklyScores() {
           (!team || p.team === team);
       });
 
-      filteredFAPlayers.sort((a, b) => {
-        return (b.weekPoints ?? -Infinity) - (a.weekPoints ?? -Infinity);
-      });
+      filteredFAPlayers.sort((a, b) =>
+        (b.weekPoints ?? -Infinity) - (a.weekPoints ?? -Infinity)
+      );
 
       faPage = 0;
       renderFAPage();
@@ -760,39 +681,37 @@ async function loadWeeklyScores() {
       const end = Math.min(start + FA_PAGE_SIZE, filteredFAPlayers.length);
       const pagePlayers = filteredFAPlayers.slice(start, end);
 
-const rows = pagePlayers.map((p, i) => {
-  const isWaiver = p.status === 'waiver';
-  const isLocked = p.gameLocked;
+      const rows = pagePlayers.map((p, i) => {
+        const isWaiver = p.status === 'waiver';
+        const isLocked = p.gameLocked;
+        const needsClaim = isWaiver || isLocked;
+        const btnClass = needsClaim ? 'btn-claim' : 'btn-add';
+        const btnLabel = needsClaim ? 'Claim' : 'Add';
 
-  // A free agent whose game has started is now claim-only (waiver).
-  const needsClaim = isWaiver || isLocked;
-  const btnClass = needsClaim ? 'btn-claim' : 'btn-add';
-  const btnLabel = needsClaim ? 'Claim' : 'Add';
+        const clearsLine = isWaiver
+          ? `<div class="player-card-sub">⏳ Clears waivers: ${p.processTime.toLocaleDateString()}</div>`
+          : isLocked
+            ? `<div class="player-card-sub" style="color:#ef4444;">🔒 Game in progress — waiver claim only</div>`
+            : '';
 
-  const clearsLine = isWaiver
-    ? `<div class="player-card-sub">⏳ Clears waivers: ${p.processTime.toLocaleDateString()}</div>`
-    : isLocked
-      ? `<div class="player-card-sub" style="color:#ef4444;">🔒 Game in progress — waiver claim only</div>`
-      : '';
+        const weekPts = p.weekPoints != null
+          ? `<div class="player-card-sub" style="color:#1a6dff;">Week: ${p.weekPoints.toFixed(1)} pts</div>`
+          : '';
 
-  const weekPts = p.weekPoints != null
-    ? `<div class="player-card-sub" style="color:#1a6dff;">Week: ${p.weekPoints.toFixed(1)} pts</div>`
-    : '';
-
-  return `
-    <div class="player-card">
-      <div class="player-card-info">
-        <div class="player-card-name">${p.position === 'DST' ? p.lastName : `${p.firstName} ${p.lastName}`}</div>
-        <div class="player-card-details">${p.position === 'DST' ? 'D/ST' : p.position} · ${p.team} · ${p.conference}</div>
-        ${weekPts}
-        ${clearsLine}
-      </div>
-      <div class="player-card-action">
-        <button class="${btnClass}" data-idx="${start + i}">${btnLabel}</button>
-      </div>
-    </div>
-  `;
-}).join('');
+        return `
+          <div class="player-card">
+            <div class="player-card-info">
+              <div class="player-card-name">${p.position === 'DST' ? p.lastName : `${p.firstName} ${p.lastName}`}</div>
+              <div class="player-card-details">${p.position === 'DST' ? 'D/ST' : p.position} · ${p.team} · ${p.conference}</div>
+              ${weekPts}
+              ${clearsLine}
+            </div>
+            <div class="player-card-action">
+              <button class="${btnClass}" data-idx="${start + i}">${btnLabel}</button>
+            </div>
+          </div>
+        `;
+      }).join('');
 
       el.innerHTML = rows + `
         <div class="pagination">
@@ -802,13 +721,13 @@ const rows = pagePlayers.map((p, i) => {
         </div>
       `;
 
-    el.querySelectorAll('[data-idx]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const player = filteredFAPlayers[parseInt(btn.dataset.idx, 10)];
-        const type = (player.status === 'waiver' || player.gameLocked) ? 'waiver' : 'fa';
-        openAddDropModal(player, type);
+      el.querySelectorAll('[data-idx]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const player = filteredFAPlayers[parseInt(btn.dataset.idx, 10)];
+          const type = (player.status === 'waiver' || player.gameLocked) ? 'waiver' : 'fa';
+          openAddDropModal(player, type);
+        });
       });
-    });
 
       document.getElementById('fa-prev-btn')?.addEventListener('click', () => changeFAPage(-1));
       document.getElementById('fa-next-btn')?.addEventListener('click', () => changeFAPage(1));
@@ -836,61 +755,58 @@ const rows = pagePlayers.map((p, i) => {
       document.getElementById('waiver-priority-list').innerHTML = rows;
     }
 
-function renderMyWaiverClaims() {
-  const allClaims = (window.portalData?.waiverClaims || []).filter(c =>
-    c.teamIndex === myTeamIndex
-  );
-  const pending = allClaims.filter(c => c.status === 'pending');
-  const results = allClaims.filter(c => c.status === 'won' || c.status === 'lost');
-
-  const el = document.getElementById('my-waiver-claims');
-
-  let html = '';
-
-  if (results.length) {
-    html += `<div class="section-header" style="margin-top:0;">Recent Results</div>`;
-    html += results.slice(-10).reverse().map(claim => {
-      const won = claim.status === 'won';
-      const color = won ? '#065f46' : '#991b1b';
-      const bg = won ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)';
-      const border = won ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)';
-      const icon = won ? '✅' : '❌';
-      return `
-        <div class="waiver-claim-card" style="background:${bg};border-color:${border};">
-          <div style="font-weight:700;font-size:13px;color:${color};">${icon} ${won ? 'Won' : 'Lost'} — ${claim.addPlayer.firstName} ${claim.addPlayer.lastName}</div>
-          <div style="font-size:12px;color:#6b7280;margin-top:2px;">Drop: ${claim.dropPlayer.firstName} ${claim.dropPlayer.lastName}</div>
-          <div class="waiver-claim-details">Processed: ${new Date(claim.processedAt).toLocaleString()}</div>
-        </div>
-      `;
-    }).join('');
-    html += `<div class="section-header">Pending Claims</div>`;
-  }
-
-  if (!pending.length) {
-    html += '<p style="color:#9ca3af;font-size:14px;">No pending claims.</p>';
-  } else {
-    html += pending.map((claim, i) => {
-      // Find the real index in the full claims array for cancellation.
-      const realIdx = (window.portalData?.waiverClaims || []).findIndex(c =>
-        c === claim || (c.teamIndex === claim.teamIndex && c.submittedAt === claim.submittedAt)
+    function renderMyWaiverClaims() {
+      const allClaims = (window.portalData?.waiverClaims || []).filter(c =>
+        c.teamIndex === myTeamIndex
       );
-      return `
-        <div class="waiver-claim-card">
-          <div style="font-weight:600;font-size:14px;color:#1a1a2e;">+ ${claim.addPlayer.firstName} ${claim.addPlayer.lastName}</div>
-          <div style="font-size:13px;color:#ef4444;margin-top:2px;">− ${claim.dropPlayer.firstName} ${claim.dropPlayer.lastName}</div>
-          <div class="waiver-claim-details">Submitted: ${new Date(claim.submittedAt).toLocaleString()}</div>
-          <button class="cancel-claim-btn" data-idx="${realIdx}" style="margin-top:8px;padding:4px 12px;border:1px solid #ef4444;color:#ef4444;background:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">Cancel</button>
-        </div>
-      `;
-    }).join('');
-  }
+      const pending = allClaims.filter(c => c.status === 'pending');
+      const results = allClaims.filter(c => c.status === 'won' || c.status === 'lost');
 
-  el.innerHTML = html;
+      const el = document.getElementById('my-waiver-claims');
+      let html = '';
 
-  el.querySelectorAll('.cancel-claim-btn').forEach(btn => {
-    btn.addEventListener('click', () => cancelWaiverClaim(parseInt(btn.dataset.idx, 10)));
-  });
-}
+      if (results.length) {
+        html += `<div class="section-header" style="margin-top:0;">Recent Results</div>`;
+        html += results.slice(-10).reverse().map(claim => {
+          const won = claim.status === 'won';
+          const color = won ? '#065f46' : '#991b1b';
+          const bg = won ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)';
+          const border = won ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)';
+          const icon = won ? '✅' : '❌';
+          return `
+            <div class="waiver-claim-card" style="background:${bg};border-color:${border};">
+              <div style="font-weight:700;font-size:13px;color:${color};">${icon} ${won ? 'Won' : 'Lost'} — ${claim.addPlayer.firstName} ${claim.addPlayer.lastName}</div>
+              <div style="font-size:12px;color:#6b7280;margin-top:2px;">Drop: ${claim.dropPlayer.firstName} ${claim.dropPlayer.lastName}</div>
+              <div class="waiver-claim-details">Processed: ${new Date(claim.processedAt).toLocaleString()}</div>
+            </div>
+          `;
+        }).join('');
+        html += `<div class="section-header">Pending Claims</div>`;
+      }
+
+      if (!pending.length) {
+        html += '<p style="color:#9ca3af;font-size:14px;">No pending claims.</p>';
+      } else {
+        html += pending.map((claim, i) => {
+          const realIdx = (window.portalData?.waiverClaims || []).findIndex(c =>
+            c === claim || (c.teamIndex === claim.teamIndex && c.submittedAt === claim.submittedAt)
+          );
+          return `
+            <div class="waiver-claim-card">
+              <div style="font-weight:600;font-size:14px;color:#1a1a2e;">+ ${claim.addPlayer.firstName} ${claim.addPlayer.lastName}</div>
+              <div style="font-size:13px;color:#ef4444;margin-top:2px;">− ${claim.dropPlayer.firstName} ${claim.dropPlayer.lastName}</div>
+              <div class="waiver-claim-details">Submitted: ${new Date(claim.submittedAt).toLocaleString()}</div>
+              <button class="cancel-claim-btn" data-idx="${realIdx}" style="margin-top:8px;padding:4px 12px;border:1px solid #ef4444;color:#ef4444;background:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">Cancel</button>
+            </div>
+          `;
+        }).join('');
+      }
+
+      el.innerHTML = html;
+      el.querySelectorAll('.cancel-claim-btn').forEach(btn => {
+        btn.addEventListener('click', () => cancelWaiverClaim(parseInt(btn.dataset.idx, 10)));
+      });
+    }
 
     function openAddDropModal(player, type) {
       pendingAddPlayer = player;
@@ -952,7 +868,7 @@ function renderMyWaiverClaims() {
         };
         portalData.waiverClaims = [...(portalData.waiverClaims || []), claim];
         await setDoc(doc(db, "portal", leagueId), portalData, { merge: true });
-        alert('Waiver claim submitted! It will be processed on Tuesday at 7am MT.');
+        alert('Waiver claim submitted! It will be processed on Monday at 10am MT.');
       } else {
         await executeAddDrop(pendingAddPlayer, pendingDropPlayer, now);
         alert(`${pendingAddPlayer.firstName} ${pendingAddPlayer.lastName} added to your roster!`);
@@ -983,7 +899,6 @@ function renderMyWaiverClaims() {
         return p;
       });
 
-      // Also update the lineup if one exists for this team
       const updatedTeams = (data.teams || []).map((t, i) => {
         if (i !== myTeamIndex || !t.lineup) return t;
         const replaceIn = arr => (arr || []).map(p => {
@@ -1001,6 +916,16 @@ function renderMyWaiverClaims() {
       await setDoc(doc(db, "drafts", leagueId), { ...data, picks: updatedPicks, teams: updatedTeams });
       await setDoc(doc(db, "portal", leagueId), portalData, { merge: true });
       await logActivity(`${allTeams[myTeamIndex].name} added ${addPlayer.firstName} ${addPlayer.lastName} and dropped ${dropPlayer.firstName} ${dropPlayer.lastName}`);
+
+      // Update myRoster in memory so immediate follow-up actions are correct
+      myRoster = myRoster.map(p => {
+        if (p && p.firstName === dropPlayer.firstName &&
+            p.lastName === dropPlayer.lastName &&
+            p.team === dropPlayer.team) {
+          return { ...addPlayer, teamIndex: myTeamIndex };
+        }
+        return p;
+      });
     }
 
     async function cancelWaiverClaim(claimIndex) {
@@ -1133,7 +1058,6 @@ function renderMyWaiverClaims() {
     function renderTrades() {
       const trades = window.portalData?.trades || [];
 
-      // Check for newly responded outgoing trades
       const lastSeen = localStorage.getItem(`tradesLastSeen_${leagueId}`) || '';
       const newResponses = trades.filter(t =>
         t.fromTeam === myTeamIndex &&
@@ -1148,11 +1072,8 @@ function renderMyWaiverClaims() {
           const toTeam = allTeams[t.toTeam];
           return `${toTeam?.name} ${t.status === 'accepted' ? '✅ accepted' : '❌ rejected'} your trade offer.`;
         });
-        responseBanner.innerHTML = messages.map(m =>
-          `<div style="margin-bottom:4px;">${m}</div>`
-        ).join('');
+        responseBanner.innerHTML = messages.map(m => `<div style="margin-bottom:4px;">${m}</div>`).join('');
         responseBanner.style.display = 'block';
-        // Mark as seen
         localStorage.setItem(`tradesLastSeen_${leagueId}`, new Date().toISOString());
       } else {
         responseBanner.style.display = 'none';
@@ -1242,6 +1163,7 @@ function renderMyWaiverClaims() {
         const data = draftDoc.data();
         let picks = [...data.picks];
 
+        // Swap picks
         trade.sendPlayers.forEach(p => {
           const idx = picks.findIndex(pick =>
             pick.teamIndex === trade.fromTeam &&
@@ -1260,35 +1182,30 @@ function renderMyWaiverClaims() {
           if (idx !== -1) picks[idx] = { ...picks[idx], teamIndex: trade.fromTeam };
         });
 
-                // Also swap players in both teams' lineups if they exist
+        // Swap players in lineups
+        const replaceInArr = (arr, outgoing, incoming) => (arr || []).map(p => {
+          if (!p) return p;
+          const idx = outgoing.findIndex(op =>
+            op.firstName === p.firstName &&
+            op.lastName === p.lastName &&
+            op.team === p.team
+          );
+          return idx !== -1 ? { ...incoming[idx], teamIndex: p.teamIndex } : p;
+        });
+
         const updatedTeams = (data.teams || []).map((t, i) => {
           if (i !== trade.fromTeam && i !== trade.toTeam) return t;
           if (!t.lineup) return t;
 
-          const swapIn = (arr, fromIdx, toIdx, players) => (arr || []).map(p => {
-            if (!p) return p;
-            const match = players.find(sp =>
-              sp.firstName === p.firstName &&
-              sp.lastName === p.lastName &&
-              sp.team === p.team
-            );
-            if (!match) return p;
-            // Find the counterpart coming the other way
-            const incoming = i === fromIdx
-              ? trade.receivePlayers.find(rp => rp.firstName === match.firstName && rp.lastName === match.lastName) || match
-              : trade.sendPlayers.find(sp => sp.firstName === match.firstName && sp.lastName === match.lastName) || match;
-            return { ...incoming, teamIndex: i };
-          });
-
           if (i === trade.fromTeam) {
             return { ...t, lineup: {
-              starting: swapIn(t.lineup.starting, trade.fromTeam, trade.toTeam, trade.sendPlayers),
-              bench: swapIn(t.lineup.bench, trade.fromTeam, trade.toTeam, trade.sendPlayers)
+              starting: replaceInArr(t.lineup.starting, trade.sendPlayers, trade.receivePlayers),
+              bench: replaceInArr(t.lineup.bench, trade.sendPlayers, trade.receivePlayers)
             }};
           } else {
             return { ...t, lineup: {
-              starting: swapIn(t.lineup.starting, trade.toTeam, trade.fromTeam, trade.receivePlayers),
-              bench: swapIn(t.lineup.bench, trade.toTeam, trade.fromTeam, trade.receivePlayers)
+              starting: replaceInArr(t.lineup.starting, trade.receivePlayers, trade.sendPlayers),
+              bench: replaceInArr(t.lineup.bench, trade.receivePlayers, trade.sendPlayers)
             }};
           }
         });

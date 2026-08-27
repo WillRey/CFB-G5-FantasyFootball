@@ -194,7 +194,7 @@
 
   <script type="module">
     import { initNav, db, getLeagueId } from './nav.js';
-    import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { doc, getDoc, getDocs, collection } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
     initNav('matchup.html');
 
@@ -246,19 +246,22 @@
       }));
       window.logoMap = logoMap;
 
-            // Build record map
+      // Build record map with ties
       const recordMap = {};
-      teams.forEach((t, i) => { recordMap[i] = { wins: 0, losses: 0 }; });
+      teams.forEach((t, i) => { recordMap[i] = { wins: 0, losses: 0, ties: 0 }; });
       const allWeeks = scheduleDoc.data().weeks || [];
-      allWeeks.filter(w => !w.playoff && w.week <= 11).forEach(week => {
-        (week.matchups || []).forEach(m => {
+      allWeeks.filter(w => !w.playoff && w.week <= 11).forEach(w => {
+        (w.matchups || []).forEach(m => {
           if (m.homeScore === null || m.awayScore === null) return;
           if (m.homeScore > m.awayScore) {
             recordMap[m.home].wins++;
             recordMap[m.away].losses++;
-          } else {
+          } else if (m.awayScore > m.homeScore) {
             recordMap[m.away].wins++;
             recordMap[m.home].losses++;
+          } else {
+            recordMap[m.home].ties++;
+            recordMap[m.away].ties++;
           }
         });
       });
@@ -278,6 +281,10 @@
       const homeLineup = buildLineup(homeTeam, homePicks);
       const awayLineup = buildLineup(awayTeam, awayPicks);
 
+      // Fetch live scores and attach weekPoints to each player
+      await loadLivePoints(homeLineup);
+      await loadLivePoints(awayLineup);
+
       document.getElementById('loading').style.display = 'none';
       document.getElementById('matchup-content').style.display = 'block';
 
@@ -285,14 +292,52 @@
     }
 
     function buildLineup(team, picks) {
-           if (team.lineup) return { starting: team.lineup.starting, bench: team.lineup.bench };
+      if (team.lineup) return { starting: team.lineup.starting, bench: team.lineup.bench };
       const roster = [...picks];
       const starting = new Array(startingSlotDefs.length).fill(null);
       startingSlotDefs.forEach((slot, i) => {
         const idx = roster.findIndex(p => slot.positions.includes(p.position));
         if (idx !== -1) { starting[i] = roster[idx]; roster.splice(idx, 1); }
       });
-      return { starting, bench: roster.slice(0, 7), mr: roster.slice(7, 9) };
+      return { starting, bench: roster.slice(0, 7) };
+    }
+
+    async function loadLivePoints(lineup) {
+      try {
+        const liveSnap = await getDocs(collection(db, 'liveScores'));
+        if (liveSnap.empty) return;
+
+        const playerPoints = {};
+        const dstPoints = {};
+
+        liveSnap.forEach(doc => {
+          const data = doc.data();
+          Object.entries(data.players || {}).forEach(([espnId, p]) => {
+            playerPoints[espnId] = (playerPoints[espnId] || 0) + (p.points || 0);
+          });
+          Object.values(data.dst || {}).forEach(d => {
+            dstPoints[d.teamName?.toLowerCase()] = (dstPoints[d.teamName?.toLowerCase()] || 0) + (d.points || 0);
+          });
+        });
+
+        [...(lineup.starting || []), ...(lineup.bench || [])].forEach(player => {
+          if (!player) return;
+          if (player.position === 'DST') {
+            player.weekPoints = dstPoints[player.team?.toLowerCase()] ?? null;
+          } else {
+            player.weekPoints = player.id ? (playerPoints[player.id] ?? null) : null;
+          }
+        });
+      } catch (e) {
+        console.error('loadLivePoints failed:', e);
+      }
+    }
+
+    function formatRecord(rec) {
+      if (!rec) return '0-0';
+      return rec.ties
+        ? `${rec.wins}-${rec.losses}-${rec.ties}`
+        : `${rec.wins}-${rec.losses}`;
     }
 
     function renderMatchup(homeTeam, awayTeam, homeLineup, awayLineup, matchup, week) {
@@ -305,7 +350,7 @@
           <div class="matchup-header-team home">
             <div class="matchup-header-team-name">${homeTeam.name}</div>
             <div class="matchup-header-team-manager">${homeTeam.manager}</div>
-            <div class="matchup-header-team-manager">(${window.recordMap?.[matchup.home]?.wins ?? 0}-${window.recordMap?.[matchup.home]?.losses ?? 0})</div>
+            <div class="matchup-header-team-manager">(${formatRecord(window.recordMap?.[matchup.home])})</div>
           </div>
           ${window.logoMap?.[homeTeam.uid]
             ? `<img src="${window.logoMap[homeTeam.uid]}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:1px solid #e8eaf0;flex-shrink:0;" />`
@@ -323,7 +368,7 @@
           <div class="matchup-header-team">
             <div class="matchup-header-team-name">${awayTeam.name}</div>
             <div class="matchup-header-team-manager">${awayTeam.manager}</div>
-            <div class="matchup-header-team-manager">(${window.recordMap?.[matchup.away]?.wins ?? 0}-${window.recordMap?.[matchup.away]?.losses ?? 0})</div>
+            <div class="matchup-header-team-manager">(${formatRecord(window.recordMap?.[matchup.away])})</div>
           </div>
         </div>
         <div class="rosters-grid">
@@ -345,14 +390,14 @@
 
       startingSlotDefs.forEach((slot, i) => {
         const player = starting[i];
-        const pts = player?.weekPoints || null;
-        if (pts) totalPoints += pts;
+        const pts = player?.weekPoints ?? null;
+        if (pts !== null) totalPoints += pts;
         html += `
           <div class="player-row">
             <span class="player-row-slot">${slot.label}</span>
             <div class="player-row-info">
-            <div class="player-row-name">${player ? (player.position === 'DST' ? player.lastName : `${player.firstName} ${player.lastName}`) : '—'}</div>
-            <div class="player-row-details">${player ? `${player.position === 'DST' ? 'D/ST' : player.position} · ${player.team}` : ''}</div>
+              <div class="player-row-name">${player ? (player.position === 'DST' ? player.lastName : `${player.firstName} ${player.lastName}`) : '—'}</div>
+              <div class="player-row-details">${player ? `${player.position === 'DST' ? 'D/ST' : player.position} · ${player.team}` : ''}</div>
             </div>
             <div class="player-row-points ${pts === null ? 'empty' : ''}">${pts !== null ? pts.toFixed(1) : '—'}</div>
           </div>
@@ -366,8 +411,8 @@
           <div class="player-row bench-row">
             <span class="player-row-slot bench">BE</span>
             <div class="player-row-info">
-              <div class="player-row-name">${player.firstName} ${player.lastName}</div>
-              <div class="player-row-details">${player.position} · ${player.team}</div>
+              <div class="player-row-name">${player.position === 'DST' ? player.lastName : `${player.firstName} ${player.lastName}`}</div>
+              <div class="player-row-details">${player.position === 'DST' ? 'D/ST' : player.position} · ${player.team}</div>
             </div>
             <div class="player-row-points empty">—</div>
           </div>
