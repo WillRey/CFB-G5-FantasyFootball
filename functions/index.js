@@ -27,7 +27,8 @@ async function loadKnownTeamsAndPositions() {
 
     if (row.team) teamNames.add(normalizeTeamName(row.team));
     const key = `${row.firstName}-${row.lastName}-${row.team}`.toLowerCase();
-    positionByPlayer[key] = row.position === 'PK' ? 'K' : row.position;
+    const POS_MAP = { PK: 'K', FB: 'RB', SB: 'RB', FL: 'WR', SE: 'WR' };
+    positionByPlayer[key] = POS_MAP[row.position] || row.position;
   }
 
   return { teamNames, positionByPlayer };
@@ -63,43 +64,6 @@ function lookupPosition(displayName, team, positionByPlayer) {
 //   - Remove the week0 block and its entry in the boundaries array
 //   - The function will naturally fall into Week 1 starting Sept 2
 
-function getFantasyWeekNumber(now) {
-  const weekBoundaries = [
-    // Week 0 (testing): starts Wed Aug 26 noon MT (UTC-6) = 18:00 UTC
-    // covers the Aug 29 Saturday games
-    { week: 0, start: new Date('2026-08-26T18:00:00Z') },
-
-    // Week 1: Tuesday Sept 1 noon MT = 18:00 UTC
-    // covers Sept 3 (Thu) kickoff weekend through Mon Sept 7
-    { week: 1, start: new Date('2026-09-01T18:00:00Z') },
-
-    // Weeks 2–11: each subsequent Tuesday noon MT
-    { week: 2,  start: new Date('2026-09-08T18:00:00Z') },
-    { week: 3,  start: new Date('2026-09-15T18:00:00Z') },
-    { week: 4,  start: new Date('2026-09-22T18:00:00Z') },
-    { week: 5,  start: new Date('2026-09-29T18:00:00Z') },
-    { week: 6,  start: new Date('2026-10-06T18:00:00Z') },
-    { week: 7,  start: new Date('2026-10-13T18:00:00Z') },
-    { week: 8,  start: new Date('2026-10-20T18:00:00Z') },
-    { week: 9,  start: new Date('2026-10-27T18:00:00Z') },
-    { week: 10, start: new Date('2026-11-03T19:00:00Z') }, // UTC-7 after DST ends Nov 1
-    { week: 11, start: new Date('2026-11-10T19:00:00Z') }, // UTC-7
-  ];
-
-  // Before the very first boundary, return week 0
-  if (now < weekBoundaries[0].start) return 0;
-
-  // After the last boundary, return 11
-  if (now >= weekBoundaries[weekBoundaries.length - 1].start) return 11;
-
-  // Walk backwards to find which week we're currently in
-  for (let i = weekBoundaries.length - 1; i >= 0; i--) {
-    if (now >= weekBoundaries[i].start) return weekBoundaries[i].week;
-  }
-
-  return 0;
-}
-
 exports.checkLiveScores = onSchedule(
   {
     schedule: 'every 5 minutes',
@@ -111,6 +75,10 @@ exports.checkLiveScores = onSchedule(
 
     const events = await fetchScoreboard();
     const liveGames = filterLiveG6Games(events, teamNames);
+
+    console.log('ESPN team names seen:', [...new Set(events.flatMap(e =>
+      (e.competitions?.[0]?.competitors || []).map(c => c.team?.displayName || '')
+    ))].sort().join(', '));
 
     if (liveGames.length === 0) {
       console.log('No live G6 games right now — skipping.');
@@ -131,28 +99,12 @@ exports.checkLiveScores = onSchedule(
 
       const boxscorePlayers = parseBoxscorePlayers(summary);
       const scoredPlayers = {};
-      const returnTDBonus = {};
 
       Object.values(boxscorePlayers).forEach(p => {
         const position = lookupPosition(p.name, p.team, positionByPlayer);
-
-        if (position) {
-          const points = calculatePlayerScore(p.stats, position);
-          scoredPlayers[p.id] = { name: p.name, stats: p.stats, points, position };
-          return;
-        }
-
-        const returnTDPts =
-          ((p.stats.kickReturnTDs || 0) + (p.stats.puntReturnTDs || 0)) * 6;
-
-        if (returnTDPts > 0) {
-          console.log(
-            `Return TD bonus: ${p.name} (${p.team}) not in player pool — ` +
-            `attributing ${returnTDPts}pts as returnTDBonus for team ${p.team}`
-          );
-          const teamKey = normalizeTeamName(p.team);
-          returnTDBonus[teamKey] = (returnTDBonus[teamKey] || 0) + returnTDPts;
-        }
+        if (!position) return; // not a draftable skill player — DST already captures their return TDs
+        const points = calculatePlayerScore(p.stats, position);
+        scoredPlayers[p.id] = { name: p.name, stats: p.stats, points, position };
       });
 
       const dstMap = parseDSTStatsForGame(summary);
@@ -173,16 +125,15 @@ exports.checkLiveScores = onSchedule(
         scoredDST[teamId] = { teamId, teamName, teamAbbrev, stats: dstStats, points };
       }
 
-      await db.collection('liveScores').doc(String(eventId)).set({
-        eventId,
-        homeTeam: competitors.find(c => c.homeAway === 'home')?.team?.displayName,
-        awayTeam: competitors.find(c => c.homeAway === 'away')?.team?.displayName,
-        status:   event.status?.type?.description,
-        updatedAt: new Date().toISOString(),
-        players:  scoredPlayers,
-        dst:      scoredDST,
-        returnTDBonus,
-      }, { merge: true });
+    await db.collection('liveScores').doc(String(eventId)).set({
+      eventId,
+      homeTeam: competitors.find(c => c.homeAway === 'home')?.team?.displayName,
+      awayTeam: competitors.find(c => c.homeAway === 'away')?.team?.displayName,
+      status:   event.status?.type?.description,
+      updatedAt: new Date().toISOString(),
+      players:  scoredPlayers,
+      dst:      scoredDST,
+    }, { merge: true });
 
       console.log(
         `Wrote live scores for event ${eventId} — ` +
@@ -208,7 +159,6 @@ exports.updateFantasyScores = onSchedule(
 
     const playerPoints = {};
     const dstPoints = {};
-    const returnTDBonusByTeam = {};
 
     liveSnap.forEach(doc => {
       const data = doc.data();
@@ -218,9 +168,6 @@ exports.updateFantasyScores = onSchedule(
       Object.values(data.dst || {}).forEach(d => {
         const key = normalizeTeamName(d.teamName);
         dstPoints[key] = (dstPoints[key] || 0) + (d.points || 0);
-      });
-      Object.entries(data.returnTDBonus || {}).forEach(([teamKey, pts]) => {
-        returnTDBonusByTeam[teamKey] = (returnTDBonusByTeam[teamKey] || 0) + pts;
       });
     });
 
@@ -287,12 +234,9 @@ exports.updateFantasyScores = onSchedule(
           if (player.position === 'DST') {
             total += dstPoints[normalizeTeamName(player.team)] || 0;
           } else if (player.id) {
-            total += playerPoints[player.id] || 0;
-            const teamKey = normalizeTeamName(player.team);
-            if (returnTDBonusByTeam[teamKey]) {
-              total += returnTDBonusByTeam[teamKey];
-              returnTDBonusByTeam[teamKey] = 0;
-            }
+            const pts = playerPoints[player.id] || 0;
+            if (pts === 0) console.log(`Zero points for ${player.firstName} ${player.lastName} (id: ${player.id})`);
+            total += pts;
           }
         });
 
@@ -337,7 +281,7 @@ exports.clearWeeklyScores = onSchedule(
 // ─── Process Waiver Claims ────────────────────────────────────────────────────
 exports.processWaivers = onSchedule(
   {
-    schedule: 'every tuesday 07:00',
+    schedule: 'every monday 10:00',
     timeZone: 'America/Denver',
     retryCount: 1,
   },
