@@ -26,6 +26,13 @@
       <button onclick="setPlayoffMatchups()" style="background:linear-gradient(135deg,#1a6dff,#c822ff);color:white;border:none;padding:9px 20px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">Set Playoff Matchups from Standings</button>
     </div>
 
+    <div id="draft-order-controls" style="margin-top:24px;display:none;">
+      <h3 style="margin-bottom:8px;">Set Draft Order</h3>
+      <p style="color:#6b7280;font-size:14px;margin-bottom:12px;">Drag teams into your preferred draft order. This locks in the snake draft sequence.</p>
+      <div id="draft-order-list" style="max-width:400px;"></div>
+      <button onclick="saveDraftOrder()" style="margin-top:12px;background:linear-gradient(135deg,#1a6dff,#c822ff);color:white;border:none;padding:9px 20px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">Save Draft Order</button>
+    </div>
+
     <div id="schedule-output" style="margin-top:24px;"></div>
   </div>
 
@@ -43,10 +50,14 @@
 
     let teams = [];
     let existingSchedule = null;
+    let draftTeams = [];
 
     async function init() {
       const draftDoc = await getDoc(doc(db, "drafts", leagueId));
-      if (draftDoc.exists()) teams = draftDoc.data().teams || [];
+      if (draftDoc.exists()) {
+        teams = draftDoc.data().teams || [];
+        draftTeams = [...teams];
+      }
 
       const scheduleDoc = await getDoc(doc(db, "schedule", leagueId));
       if (scheduleDoc.exists()) {
@@ -54,9 +65,72 @@
         renderSchedule(existingSchedule);
         document.getElementById('playoff-controls').style.display = 'block';
       }
+
+      await loadDraftOrder();
     }
 
     init();
+
+    // ─── Draft Order ──────────────────────────────────────────────────────────
+
+    async function loadDraftOrder() {
+      if (!draftTeams.length) return;
+      document.getElementById('draft-order-controls').style.display = 'block';
+      renderDraftOrderList();
+    }
+
+    function renderDraftOrderList() {
+      const el = document.getElementById('draft-order-list');
+      el.innerHTML = '';
+      draftTeams.forEach((team, i) => {
+        const div = document.createElement('div');
+        div.draggable = true;
+        div.dataset.index = i;
+        div.style.cssText = 'display:flex;align-items:center;gap:12px;padding:10px 14px;background:rgba(255,255,255,0.75);border:1px solid #e8eaf0;border-radius:8px;margin-bottom:6px;cursor:grab;font-size:14px;font-weight:500;user-select:none;';
+        div.innerHTML = `
+          <span style="color:#9ca3af;font-weight:700;min-width:20px;">${i + 1}</span>
+          <span style="color:#9ca3af;">⠿</span>
+          <span style="flex:1;">${team.name}</span>
+          <span style="font-size:12px;color:#9ca3af;">${team.manager}</span>
+        `;
+
+        div.addEventListener('dragstart', e => {
+          e.dataTransfer.setData('text/plain', String(i));
+          setTimeout(() => div.style.opacity = '0.4', 0);
+        });
+        div.addEventListener('dragend', () => div.style.opacity = '1');
+        div.addEventListener('dragover', e => {
+          e.preventDefault();
+          div.style.borderColor = '#1a6dff';
+        });
+        div.addEventListener('dragleave', () => {
+          div.style.borderColor = '#e8eaf0';
+        });
+        div.addEventListener('drop', e => {
+          e.preventDefault();
+          div.style.borderColor = '#e8eaf0';
+          const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
+          const toIndex = parseInt(div.dataset.index);
+          if (fromIndex === toIndex) return;
+          const moved = draftTeams.splice(fromIndex, 1)[0];
+          draftTeams.splice(toIndex, 0, moved);
+          renderDraftOrderList();
+        });
+
+        el.appendChild(div);
+      });
+    }
+
+    window.saveDraftOrder = async function() {
+      const draftDoc = await getDoc(doc(db, "drafts", leagueId));
+      if (!draftDoc.exists()) { alert('No draft found.'); return; }
+      const data = draftDoc.data();
+      await setDoc(doc(db, "drafts", leagueId), { ...data, teams: draftTeams });
+      teams = [...draftTeams];
+      alert('Draft order saved!');
+    }
+
+    // ─── Schedule Generation ──────────────────────────────────────────────────
 
     window.generateSchedule = async function() {
       if (teams.length < 2) {
@@ -93,7 +167,6 @@
       if (!existingSchedule) { alert('No schedule found.'); return; }
       if (!confirm('Set playoff matchups based on current standings? This will overwrite any existing playoff matchups.')) return;
 
-      // Compute standings from regular season
       const records = teams.map((t, i) => ({
         teamIndex: i, wins: 0, losses: 0, pointsFor: 0
       }));
@@ -122,8 +195,6 @@
       const seed3 = sorted[2].teamIndex;
       const seed4 = sorted[3].teamIndex;
 
-      // Week 12: #1 vs #4 (home/away), #2 vs #3
-      // Week 13: championship + 3rd place
       const updatedWeeks = existingSchedule.map(w => {
         if (w.week === 12) {
           return {

@@ -434,7 +434,6 @@ function isPlayerOnTeam(player, picks, teamIdx, teamObj) {
 // After testing, remove the week 0 entry — Week 1 takes over Sept 2 noon MT.
 function getFantasyWeekNumber(now) {
   const weekBoundaries = [
-    { week: 0,  start: new Date('2026-08-26T18:00:00Z') }, // ← REMOVE after Week 0 testing
     { week: 1,  start: new Date('2026-09-01T18:00:00Z') },
     { week: 2,  start: new Date('2026-09-08T18:00:00Z') },
     { week: 3,  start: new Date('2026-09-15T18:00:00Z') },

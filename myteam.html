@@ -645,7 +645,7 @@
           ? `${days}d ${hours}h ${mins}m ${secs}s`
           : `${hours}h ${mins}m ${secs}s`;
 
-        if (diff <= 2 * 60 * 60 * 1000) {
+        if (diff <= 48 * 60 * 60 * 1000) {
           btn.style.display = 'inline-block';
           title.textContent = "Signing Day Starts Soon!";
         }
@@ -930,7 +930,7 @@
         const res = await fetch('g6_schedule_2026.json');
         const scheduleData = await res.json();
 
-        const seasonStart = new Date('2026-08-29');
+        const seasonStart = new Date('2026-09-03');
         const now = new Date();
         const weekNum = Math.max(0, Math.floor((now - seasonStart) / (7 * 24 * 60 * 60 * 1000)));
         const weekKey = String(weekNum);
