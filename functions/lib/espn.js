@@ -4,8 +4,6 @@ const fetch = require('node-fetch');
 const SCOREBOARD_URL = 'https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard';
 const SUMMARY_URL = 'https://site.api.espn.com/apis/site/v2/sports/football/college-football/summary';
 
-// Pull today's full scoreboard. ESPN returns every FBS game for the date —
-// we filter down to your G6 teams afterward using a name list you control.
 async function fetchScoreboard() {
   const res = await fetch(`${SCOREBOARD_URL}?limit=200&groups=80`);
   if (!res.ok) throw new Error(`ESPN scoreboard fetch failed: ${res.status}`);
@@ -13,11 +11,9 @@ async function fetchScoreboard() {
   return data.events || [];
 }
 
-// Returns only events that are (a) currently in progress and
-// (b) involve at least one team from your known G6 team list.
 function filterLiveG6Games(events, knownTeamNames) {
   return events.filter(event => {
-    const state = event.status?.type?.state; // 'pre' | 'in' | 'post'
+    const state = event.status?.type?.state;
     if (state !== 'in') return false;
 
     const competitors = event.competitions?.[0]?.competitors || [];
@@ -33,8 +29,6 @@ function normalizeTeamName(name) {
     .replace(/[\u0300-\u036f]/g, '');
 }
 
-// Fetch the full boxscore for one live event — this includes every
-// player's stats, scoring plays, and team stats in a single call.
 async function fetchGameSummary(eventId) {
   const res = await fetch(`${SUMMARY_URL}?event=${eventId}`);
   if (!res.ok) throw new Error(`ESPN summary fetch failed for event ${eventId}: ${res.status}`);
@@ -43,30 +37,17 @@ async function fetchGameSummary(eventId) {
 
 // ─── Kicking helpers ──────────────────────────────────────────────────────────
 
-// ESPN kicking labels (from the 'kicking' stat category):
-//   'FG', 'FGA', '1-19', 'ATT', '20-29', 'ATT', '30-39', 'ATT',
-//   '40-49', 'ATT', '50+', 'ATT', 'XP', 'XPA', 'PTS'
-// The label array looks like: ['FG', 'FGA', '1-19', 'ATT', '20-29', 'ATT', ...]
-// where each range is immediately followed by its attempts label.
-//
-// We parse by label value + position pairing: when we see a range label like
-// '1-19', the next 'ATT' is its attempts. We scan the full labels array once
-// and build a named lookup.
 function parseKickingLabels(labels, values) {
   const raw = {};
   for (let i = 0; i < labels.length; i++) {
     const label = (labels[i] || '').trim();
     const val   = parseFloat(values[i]) || 0;
 
-    // Total FG made/attempted
     if (label === 'FG')  { raw.fgMade = val; continue; }
     if (label === 'FGA') { raw.fgAtt  = val; continue; }
-
-    // XP made/attempted
     if (label === 'XP')  { raw.xpMade = val; continue; }
     if (label === 'XPA') { raw.xpAtt  = val; continue; }
 
-    // Per-range buckets — each range label is followed immediately by its ATT
     if (label === '1-19')  { raw.fg0_19Made  = val; raw.fg0_19Att  = parseFloat(values[i + 1]) || 0; i++; continue; }
     if (label === '20-29') { raw.fg20_29Made = val; raw.fg20_29Att = parseFloat(values[i + 1]) || 0; i++; continue; }
     if (label === '30-39') { raw.fg30_39Made = val; raw.fg30_39Att = parseFloat(values[i + 1]) || 0; i++; continue; }
@@ -76,17 +57,6 @@ function parseKickingLabels(labels, values) {
   return raw;
 }
 
-// Convert ESPN's raw kicking lookup into the flat stat fields that
-// calculatePlayerScore() expects for position 'K'.
-//
-// Made FGs: initially derived from buckets, then overridden with exact
-// distances from parseScoringPlayKicks() for better accuracy.
-//
-// Missed FGs: ESPN's 50+ bucket spans our 50-59 and 60+ tiers.
-// We assign all 50+ misses to the 50+ penalty (-0.5) since that's
-// the lighter penalty and we can't distinguish 50-59 from 60+ on misses.
-//
-// Miss tiers:  0-39 → -2,  40-49 → -1,  50+ → -0.5
 function buildKickingStats(raw) {
   const missed = (made, att) => Math.max(0, (att || 0) - (made || 0));
 
@@ -94,13 +64,11 @@ function buildKickingStats(raw) {
     xpMade:        raw.xpMade || 0,
     xpMissed:      missed(raw.xpMade, raw.xpAtt),
 
-    // Made FG buckets (may be overridden by parseScoringPlayKicks)
     fgMade0_39:    (raw.fg0_19Made || 0) + (raw.fg20_29Made || 0) + (raw.fg30_39Made || 0),
     fgMade40_49:   raw.fg40_49Made || 0,
-    fgMade50_59:   raw.fg50Made    || 0,  // ESPN 50+ treated as 50-59; overridden if scoring plays available
-    fgMade60:      0,                      // Cannot determine from buckets alone
+    fgMade50_59:   raw.fg50Made    || 0,
+    fgMade60:      0,
 
-    // Missed FG buckets
     fgMissed0_39:  missed(raw.fg0_19Made,  raw.fg0_19Att)
                  + missed(raw.fg20_29Made, raw.fg20_29Att)
                  + missed(raw.fg30_39Made, raw.fg30_39Att),
@@ -109,22 +77,11 @@ function buildKickingStats(raw) {
   };
 }
 
-// Parse the scoringPlays array to get exact distances for MADE field goals,
-// so we can replace the bucket-based fgMade0_39/40_49/50_59/60 values with
-// precise ones. Missed FGs don't appear in scoringPlays so we keep buckets for those.
-//
-// ESPN scoringPlay.text examples:
-//   "Jake Veale 42 Yd Field Goal"
-//   "42 Yard Field Goal Good"
-//   "D.J. Douglas 52-Yard Field Goal"
-//
-// We match by kicker last name against the play text, and by team ID.
 function parseScoringPlayKicks(scoringPlays, kickerDisplayName, espnTeamId) {
   if (!scoringPlays?.length) return null;
 
   const made = { fgMade0_39: 0, fgMade40_49: 0, fgMade50_59: 0, fgMade60: 0, xpMade: 0 };
 
-  // Pull last name, accounting for suffixes like Jr./Sr./II/III
   const NAME_SUFFIXES = new Set(['jr.', 'jr', 'sr.', 'sr', 'ii', 'iii', 'iv']);
   const parts = (kickerDisplayName || '').trim().split(' ');
   let lastName = parts.pop() || '';
@@ -141,10 +98,7 @@ function parseScoringPlayKicks(scoringPlays, kickerDisplayName, espnTeamId) {
     const playTeamId = String(play.team?.id || '');
     const text       = play.text || play.shortText || '';
 
-    // Only score plays by this player's team
     if (espnTeamId && playTeamId && playTeamId !== String(espnTeamId)) continue;
-
-    // Only attribute plays that mention this kicker's last name
     if (lastNameLower && !text.toLowerCase().includes(lastNameLower)) continue;
 
     if (type === 'field-goal' || fgRe.test(text)) {
@@ -166,13 +120,6 @@ function parseScoringPlayKicks(scoringPlays, kickerDisplayName, espnTeamId) {
 
 // ─── D/ST helper ──────────────────────────────────────────────────────────────
 
-// Extract team-level D/ST stats for a given ESPN team ID from a game summary.
-// Pulls from two places:
-//   1. boxscore.teams[n].statistics  — sacks, INTs, fumbles from team stat block
-//   2. scoringPlays                  — defensive TDs, safeties, blocked kicks
-//   3. header competitors            — opponent's score → pointsAllowed
-//
-// Returns the stat object that calculateDSTScore() expects.
 function parseDSTStats(summary, espnTeamId) {
   const teamIdStr = String(espnTeamId);
 
@@ -196,40 +143,54 @@ function parseDSTStats(summary, espnTeamId) {
     }
   }
 
-  // 2. Team boxscore statistics
+  // 2. Defensive player stats — sum sacks across all defenders
+  for (const teamBlock of (summary.boxscore?.players || [])) {
+    if (String(teamBlock.team?.id) !== teamIdStr) continue;
+
+    for (const statCategory of (teamBlock.statistics || [])) {
+      const keys = statCategory.keys || [];
+      if ((statCategory.name || '').toLowerCase() !== 'defensive') continue;
+
+      const sackIdx = keys.indexOf('sacks');
+      if (sackIdx === -1) continue;
+
+      for (const athleteEntry of (statCategory.athletes || [])) {
+        dst.sacks += parseFloat(athleteEntry.stats?.[sackIdx]) || 0;
+      }
+    }
+    break;
+  }
+
+  // Team stats block — interceptions only
   for (const teamEntry of (summary.boxscore?.teams || [])) {
     if (String(teamEntry.team?.id) !== teamIdStr) continue;
-
     const statLookup = {};
     for (const stat of (teamEntry.statistics || [])) {
       statLookup[stat.name] = parseFloat(stat.displayValue) || 0;
     }
-
-    // Debug log — remove after first live game confirms correct field names
-    console.log(`DST stat keys for team ${teamIdStr}:`, JSON.stringify(statLookup));
-
-    dst.sacks            = statLookup['totalSacks']           || statLookup['sacks']                    || 0;
-    dst.interceptions    = statLookup['interceptions']        || 0;
-    dst.fumblesRecovered = statLookup['fumblesRecovered']     || statLookup['defensiveFumblesRecovered'] || 0;
-    dst.fumblesForced    = statLookup['fumblesForced']        || statLookup['forcedFumbles']             || 0;
+    dst.interceptions = statLookup['interceptions'] || 0;
     break;
   }
 
-  // 3. Scoring plays — defensive/ST TDs, safeties, blocked kicks
+  // 3. Scoring plays — defensive/ST TDs, safeties, blocked kicks, fumble recoveries
   for (const play of (summary.scoringPlays || [])) {
     const type       = play.scoringType?.name || '';
     const playTeamId = String(play.team?.id || '');
 
     if (playTeamId !== teamIdStr) continue;
+
     console.log(`Scoring play for team ${teamIdStr}: type="${type}" text="${play.text || ''}"`);
 
     switch (type) {
       case 'defensive-touchdown':
-      case 'fumble-return-td':
       case 'interception-return-td':
       case 'kick-return-td':
       case 'punt-return-td':
         dst.touchdowns++;
+        break;
+      case 'fumble-return-td':
+        dst.touchdowns++;
+        dst.fumblesRecovered++;
         break;
       case 'blocked-kick-td':
       case 'blocked-punt-td':
@@ -251,12 +212,6 @@ function parseDSTStats(summary, espnTeamId) {
 
 // ─── Main boxscore parser ─────────────────────────────────────────────────────
 
-// ESPN's boxscore groups stats by category (passing/rushing/receiving/etc)
-// with a labels array + per-player stats array. This walks that structure
-// and returns { [espnPlayerId]: { name, team, teamId, stats: { passingYards, ... } } }.
-//
-// Now handles kicking stats (via parseKickingLabels + parseScoringPlayKicks)
-// in addition to the existing passing/rushing/receiving/fumbles categories.
 function parseBoxscorePlayers(summaryData) {
   const players = {};
   const boxscorePlayers = summaryData.boxscore?.players || [];
@@ -290,15 +245,12 @@ function parseBoxscorePlayers(summaryData) {
           const raw         = parseKickingLabels(labels, values);
           const kickStats   = buildKickingStats(raw);
 
-          // Refine made FG distances using exact yardage from scoring plays
           const refined = parseScoringPlayKicks(scoringPlays, players[id].name, teamId);
           if (refined) {
             kickStats.fgMade0_39  = refined.fgMade0_39;
             kickStats.fgMade40_49 = refined.fgMade40_49;
             kickStats.fgMade50_59 = refined.fgMade50_59;
             kickStats.fgMade60    = refined.fgMade60;
-            // Note: we keep bucket-based xpMade as a fallback if scoring plays
-            // don't capture all XPs (e.g. early in a live game); take the higher value
             kickStats.xpMade = Math.max(kickStats.xpMade, refined.xpMade);
           }
 
@@ -316,7 +268,6 @@ function parseBoxscorePlayers(summaryData) {
   return players;
 }
 
-// Maps ESPN's raw label/value pairs into the field names calculatePlayerScore expects.
 function mapStatToField(stats, category, label, rawValue) {
   if (rawValue === undefined || rawValue === null) return;
 
@@ -346,8 +297,6 @@ function mapStatToField(stats, category, label, rawValue) {
   }
 }
 
-// Extract DST stats for every team in a game summary.
-// Returns a Map of espnTeamId → dstStats object.
 function parseDSTStatsForGame(summaryData) {
   const dstMap = new Map();
   const competitors = summaryData.header?.competitions?.[0]?.competitors || [];
