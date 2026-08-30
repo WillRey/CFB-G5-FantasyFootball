@@ -80,6 +80,9 @@
       color: #9ca3af;
       margin-top: 4px;
     }
+    .matchup-header-score-label.live {
+      color: #f59e0b;
+    }
     .matchup-vs {
       font-size: 22px;
       font-weight: 700;
@@ -207,34 +210,34 @@
 
     let teams = [];
 
-const leagueRoster = JSON.parse(localStorage.getItem('leagueData'))?.roster || '1QB';
+    const leagueRoster = JSON.parse(localStorage.getItem('leagueData'))?.roster || '1QB';
 
-const startingSlotDefs = leagueRoster === 'Superflex'
-  ? [
-      { label: 'QB', positions: ['QB'] },
-      { label: 'RB', positions: ['RB'] },
-      { label: 'RB', positions: ['RB'] },
-      { label: 'WR', positions: ['WR'] },
-      { label: 'WR', positions: ['WR'] },
-      { label: 'TE', positions: ['TE'] },
-      { label: 'Flex', positions: ['RB', 'WR', 'TE'] },
-      { label: 'Flex', positions: ['RB', 'WR', 'TE'] },
-      { label: 'SF', positions: ['QB', 'RB', 'WR', 'TE'] },
-      { label: 'K', positions: ['K'] },
-      { label: 'D/ST', positions: ['DST'] },
-    ]
-  : [
-      { label: 'QB', positions: ['QB'] },
-      { label: 'RB', positions: ['RB'] },
-      { label: 'RB', positions: ['RB'] },
-      { label: 'WR', positions: ['WR'] },
-      { label: 'WR', positions: ['WR'] },
-      { label: 'TE', positions: ['TE'] },
-      { label: 'Flex', positions: ['RB', 'WR', 'TE'] },
-      { label: 'Flex', positions: ['RB', 'WR', 'TE'] },
-      { label: 'K', positions: ['K'] },
-      { label: 'D/ST', positions: ['DST'] },
-    ];
+    const startingSlotDefs = leagueRoster === 'Superflex'
+      ? [
+          { label: 'QB', positions: ['QB'] },
+          { label: 'RB', positions: ['RB'] },
+          { label: 'RB', positions: ['RB'] },
+          { label: 'WR', positions: ['WR'] },
+          { label: 'WR', positions: ['WR'] },
+          { label: 'TE', positions: ['TE'] },
+          { label: 'Flex', positions: ['RB', 'WR', 'TE'] },
+          { label: 'Flex', positions: ['RB', 'WR', 'TE'] },
+          { label: 'SF', positions: ['QB', 'RB', 'WR', 'TE'] },
+          { label: 'K', positions: ['K'] },
+          { label: 'D/ST', positions: ['DST'] },
+        ]
+      : [
+          { label: 'QB', positions: ['QB'] },
+          { label: 'RB', positions: ['RB'] },
+          { label: 'RB', positions: ['RB'] },
+          { label: 'WR', positions: ['WR'] },
+          { label: 'WR', positions: ['WR'] },
+          { label: 'TE', positions: ['TE'] },
+          { label: 'Flex', positions: ['RB', 'WR', 'TE'] },
+          { label: 'Flex', positions: ['RB', 'WR', 'TE'] },
+          { label: 'K', positions: ['K'] },
+          { label: 'D/ST', positions: ['DST'] },
+        ];
 
     async function loadMatchup() {
       const [scheduleDoc, draftDoc] = await Promise.all([
@@ -283,6 +286,13 @@ const startingSlotDefs = leagueRoster === 'Superflex'
       });
       window.recordMap = recordMap;
 
+      // Check if any games are live
+      let gamesLive = false;
+      try {
+        const liveSnap = await getDocs(collection(db, 'liveScores'));
+        gamesLive = !liveSnap.empty;
+      } catch (e) {}
+
       const weekData = schedule.find(w => w.week === week);
       if (!weekData) { document.getElementById('loading').textContent = 'Week not found.'; return; }
 
@@ -301,10 +311,19 @@ const startingSlotDefs = leagueRoster === 'Superflex'
       await loadLivePoints(homeLineup);
       await loadLivePoints(awayLineup);
 
+      // Calculate running totals from weekPoints
+      const homeLiveTotal = calcTotal(homeLineup.starting);
+      const awayLiveTotal = calcTotal(awayLineup.starting);
+      const hasLiveScores = homeLiveTotal > 0 || awayLiveTotal > 0;
+
       document.getElementById('loading').style.display = 'none';
       document.getElementById('matchup-content').style.display = 'block';
 
-      renderMatchup(homeTeam, awayTeam, homeLineup, awayLineup, matchup, week);
+      renderMatchup(homeTeam, awayTeam, homeLineup, awayLineup, matchup, week, gamesLive, hasLiveScores, homeLiveTotal, awayLiveTotal);
+    }
+
+    function calcTotal(starting) {
+      return (starting || []).reduce((sum, p) => sum + (p?.weekPoints ?? 0), 0);
     }
 
     function buildLineup(team, picks) {
@@ -356,9 +375,34 @@ const startingSlotDefs = leagueRoster === 'Superflex'
         : `${rec.wins}-${rec.losses}`;
     }
 
-    function renderMatchup(homeTeam, awayTeam, homeLineup, awayLineup, matchup, week) {
+    function renderMatchup(homeTeam, awayTeam, homeLineup, awayLineup, matchup, week, gamesLive, hasLiveScores, homeLiveTotal, awayLiveTotal) {
       const el = document.getElementById('matchup-content');
-      const hasScores = matchup.homeScore !== null && matchup.awayScore !== null;
+
+      // Determine what to show in the header score area
+      const scheduledHomeScore = matchup.homeScore;
+      const scheduledAwayScore = matchup.awayScore;
+      const hasScheduledScores = scheduledHomeScore !== null && scheduledAwayScore !== null;
+
+      let scoreHtml;
+      if (gamesLive && hasLiveScores) {
+        // Live game — show running totals from weekPoints
+        scoreHtml = `
+          <div class="matchup-header-score-value">${homeLiveTotal.toFixed(1)} – ${awayLiveTotal.toFixed(1)}</div>
+          <div class="matchup-header-score-label live">Live</div>
+        `;
+      } else if (hasScheduledScores) {
+        // Game finished — show final scores from schedule
+        scoreHtml = `
+          <div class="matchup-header-score-value">${scheduledHomeScore.toFixed(1)} – ${scheduledAwayScore.toFixed(1)}</div>
+          <div class="matchup-header-score-label">Final</div>
+        `;
+      } else {
+        // Not yet started
+        scoreHtml = `
+          <div class="matchup-vs">vs</div>
+          <div class="matchup-header-score-label">Upcoming</div>
+        `;
+      }
 
       el.innerHTML = `
         <div class="week-label">Week ${week}</div>
@@ -371,13 +415,7 @@ const startingSlotDefs = leagueRoster === 'Superflex'
           ${window.logoMap?.[homeTeam.uid]
             ? `<img src="${window.logoMap[homeTeam.uid]}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:1px solid #e8eaf0;flex-shrink:0;" />`
             : `<div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#eef3ff,#faf0ff);border:1px solid #c8d8ff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;color:#1a6dff;flex-shrink:0;">${homeTeam.name?.[0] || '?'}</div>`}
-          <div class="matchup-header-score">
-            ${hasScores
-              ? `<div class="matchup-header-score-value">${matchup.homeScore} – ${matchup.awayScore}</div>
-                 <div class="matchup-header-score-label">Final</div>`
-              : `<div class="matchup-vs">vs</div>
-                 <div class="matchup-header-score-label">Upcoming</div>`}
-          </div>
+          <div class="matchup-header-score">${scoreHtml}</div>
           ${window.logoMap?.[awayTeam.uid]
             ? `<img src="${window.logoMap[awayTeam.uid]}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:1px solid #e8eaf0;flex-shrink:0;" />`
             : `<div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#eef3ff,#faf0ff);border:1px solid #c8d8ff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;color:#1a6dff;flex-shrink:0;">${awayTeam.name?.[0] || '?'}</div>`}

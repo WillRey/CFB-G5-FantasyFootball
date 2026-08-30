@@ -122,6 +122,14 @@
       letter-spacing: 0.06em;
       margin-top: 3px;
     }
+    .matchup-score-live {
+      font-size: 11px;
+      font-weight: 600;
+      color: #f59e0b;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-top: 3px;
+    }
     .matchup-score-vs {
       font-size: 16px;
       font-weight: 700;
@@ -156,7 +164,7 @@
 
   <script type="module">
     import { initNav, db, getLeagueId } from './nav.js';
-    import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { doc, getDoc, getDocs, collection } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
     initNav('scores.html');
 
@@ -165,6 +173,7 @@
     let teams = [];
     let schedule = [];
     let currentWeek = 1;
+    let gamesLive = false;
 
     async function loadSchedule() {
       if (!leagueId) {
@@ -198,9 +207,9 @@
       }));
       window.logoMap = logoMap;
 
-      // Build record map for all teams
+      // Build record map for all teams with ties
       const recordMap = {};
-      teams.forEach((t, i) => { recordMap[i] = { wins: 0, losses: 0 }; });
+      teams.forEach((t, i) => { recordMap[i] = { wins: 0, losses: 0, ties: 0 }; });
       schedule.filter(w => !w.playoff && w.week <= 11).forEach(week => {
         (week.matchups || []).forEach(m => {
           if (m.homeScore === null || m.awayScore === null) return;
@@ -211,12 +220,20 @@
             recordMap[m.away].wins++;
             recordMap[m.home].losses++;
           } else {
-            recordMap[m.home].ties = (recordMap[m.home].ties || 0) + 1;
-            recordMap[m.away].ties = (recordMap[m.away].ties || 0) + 1;
+            recordMap[m.home].ties++;
+            recordMap[m.away].ties++;
           }
         });
       });
       window.recordMap = recordMap;
+
+      // Check if any G6 games are currently live
+      try {
+        const liveSnap = await getDocs(collection(db, 'liveScores'));
+        gamesLive = !liveSnap.empty;
+      } catch (e) {
+        gamesLive = false;
+      }
 
       document.getElementById('loading').style.display = 'none';
       document.getElementById('scores-content').style.display = 'block';
@@ -231,6 +248,13 @@
       const now = new Date();
       const diff = Math.floor((now - seasonStart) / (7 * 24 * 60 * 60 * 1000));
       return Math.min(Math.max(diff + 1, 1), 13);
+    }
+
+    function formatRecord(rec) {
+      if (!rec) return '0-0';
+      return rec.ties
+        ? `${rec.wins}-${rec.losses}-${rec.ties}`
+        : `${rec.wins}-${rec.losses}`;
     }
 
     function renderWeekSelector() {
@@ -272,35 +296,53 @@
         el.innerHTML += `<span class="playoff-badge">Playoffs</span>`;
       }
 
+      // Only show live label for the current week
+      const isCurrentWeek = week === currentWeek;
+
       weekData.matchups.forEach((matchup, i) => {
         const homeTeam = teams[matchup.home];
         const awayTeam = teams[matchup.away];
         if (!homeTeam || !awayTeam) return;
 
-        const hasScores = matchup.homeScore !== null && matchup.awayScore !== null;
+        const homeScore = matchup.homeScore;
+        const awayScore = matchup.awayScore;
+        const hasScores = homeScore !== null && awayScore !== null;
+        const isLive = isCurrentWeek && gamesLive && hasScores;
+
         const card = document.createElement('div');
         card.className = 'matchup-card';
         card.onclick = () => { window.location.href = `matchup.html?week=${week}&matchup=${i}`; };
+
         const homeLogo = window.logoMap?.[homeTeam.uid];
         const awayLogo = window.logoMap?.[awayTeam.uid];
+
+        let scoreHtml;
+        if (hasScores) {
+          scoreHtml = `
+            <div class="matchup-score-value">${homeScore.toFixed(1)} – ${awayScore.toFixed(1)}</div>
+            <div class="${isLive ? 'matchup-score-live' : 'matchup-score-final'}">${isLive ? 'Live' : 'Final'}</div>
+          `;
+        } else {
+          scoreHtml = `<div class="matchup-score-vs">vs</div>`;
+        }
+
         card.innerHTML = `
           <div class="matchup-team home">
             <div class="matchup-team-name">${homeTeam.name}</div>
             <div class="matchup-team-manager">${homeTeam.manager}</div>
-            <div class="matchup-team-manager">(${window.recordMap?.[matchup.home]?.wins ?? 0}-${window.recordMap?.[matchup.home]?.losses ?? 0}${window.recordMap?.[matchup.home]?.ties ? `-${window.recordMap[matchup.home].ties}` : ''})</div>
+            <div class="matchup-team-manager">(${formatRecord(window.recordMap?.[matchup.home])})</div>
           </div>
-          ${homeLogo ? `<img src="${homeLogo}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1px solid #e8eaf0;;" />` : '<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#eef3ff,#faf0ff);border:1px solid #c8d8ff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#1a6dff;">' + (homeTeam.name?.[0] || '?') + '</div>'}
-          <div class="matchup-score">
-            ${hasScores
-              ? `<div class="matchup-score-value">${matchup.homeScore} – ${matchup.awayScore}</div>
-                 <div class="matchup-score-final">Final</div>`
-              : `<div class="matchup-score-vs">vs</div>`}
-          </div>
-          ${awayLogo ? `<img src="${awayLogo}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1px solid #e8eaf0;" />` : '<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#eef3ff,#faf0ff);border:1px solid #c8d8ff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#1a6dff;">' + (awayTeam.name?.[0] || '?') + '</div>'}
+          ${homeLogo
+            ? `<img src="${homeLogo}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1px solid #e8eaf0;" />`
+            : `<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#eef3ff,#faf0ff);border:1px solid #c8d8ff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#1a6dff;">${homeTeam.name?.[0] || '?'}</div>`}
+          <div class="matchup-score">${scoreHtml}</div>
+          ${awayLogo
+            ? `<img src="${awayLogo}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1px solid #e8eaf0;" />`
+            : `<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#eef3ff,#faf0ff);border:1px solid #c8d8ff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#1a6dff;">${awayTeam.name?.[0] || '?'}</div>`}
           <div class="matchup-team">
             <div class="matchup-team-name">${awayTeam.name}</div>
             <div class="matchup-team-manager">${awayTeam.manager}</div>
-            <div class="matchup-team-manager">(${window.recordMap?.[matchup.away]?.wins ?? 0}-${window.recordMap?.[matchup.away]?.losses ?? 0}${window.recordMap?.[matchup.away]?.ties ? `-${window.recordMap[matchup.away].ties}` : ''})</div>
+            <div class="matchup-team-manager">(${formatRecord(window.recordMap?.[matchup.away])})</div>
           </div>
         `;
         el.appendChild(card);
