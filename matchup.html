@@ -207,7 +207,23 @@
 
     let teams = [];
 
-    const startingSlotDefs = [
+const leagueRoster = JSON.parse(localStorage.getItem('leagueData'))?.roster || '1QB';
+
+const startingSlotDefs = leagueRoster === 'Superflex'
+  ? [
+      { label: 'QB', positions: ['QB'] },
+      { label: 'RB', positions: ['RB'] },
+      { label: 'RB', positions: ['RB'] },
+      { label: 'WR', positions: ['WR'] },
+      { label: 'WR', positions: ['WR'] },
+      { label: 'TE', positions: ['TE'] },
+      { label: 'Flex', positions: ['RB', 'WR', 'TE'] },
+      { label: 'Flex', positions: ['RB', 'WR', 'TE'] },
+      { label: 'SF', positions: ['QB', 'RB', 'WR', 'TE'] },
+      { label: 'K', positions: ['K'] },
+      { label: 'D/ST', positions: ['DST'] },
+    ]
+  : [
       { label: 'QB', positions: ['QB'] },
       { label: 'RB', positions: ['RB'] },
       { label: 'RB', positions: ['RB'] },

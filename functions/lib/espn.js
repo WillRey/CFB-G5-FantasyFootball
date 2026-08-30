@@ -7,7 +7,7 @@ const SUMMARY_URL = 'https://site.api.espn.com/apis/site/v2/sports/football/coll
 // Pull today's full scoreboard. ESPN returns every FBS game for the date —
 // we filter down to your G6 teams afterward using a name list you control.
 async function fetchScoreboard() {
-  const res = await fetch(`${SCOREBOARD_URL}?limit=200`);
+  const res = await fetch(`${SCOREBOARD_URL}?limit=200&groups=80`);
   if (!res.ok) throw new Error(`ESPN scoreboard fetch failed: ${res.status}`);
   const data = await res.json();
   return data.events || [];
@@ -205,8 +205,9 @@ function parseDSTStats(summary, espnTeamId) {
       statLookup[stat.name] = parseFloat(stat.displayValue) || 0;
     }
 
-    // ESPN NCAAF team stat names (these are the confirmed field names from
-    // the team statistics block — verify against first live game logs)
+    // Debug log — remove after first live game confirms correct field names
+    console.log(`DST stat keys for team ${teamIdStr}:`, JSON.stringify(statLookup));
+
     dst.sacks            = statLookup['totalSacks']           || statLookup['sacks']                    || 0;
     dst.interceptions    = statLookup['interceptions']        || 0;
     dst.fumblesRecovered = statLookup['fumblesRecovered']     || statLookup['defensiveFumblesRecovered'] || 0;
@@ -220,6 +221,7 @@ function parseDSTStats(summary, espnTeamId) {
     const playTeamId = String(play.team?.id || '');
 
     if (playTeamId !== teamIdStr) continue;
+    console.log(`Scoring play for team ${teamIdStr}: type="${type}" text="${play.text || ''}"`);
 
     switch (type) {
       case 'defensive-touchdown':
