@@ -613,7 +613,7 @@
         : false;
 
       const now = Date.now();
-      const sixtyMinMs = 60 * 60 * 1000;
+      const sixtyMinMs = 48 * 60 * 60 * 1000;
 
       // Too early — locked screen, and auto-reload when the room opens.
       if (draftTimestamp && now < draftTimestamp - sixtyMinMs) {
@@ -1254,25 +1254,8 @@
         const pick = (i % teamCount) + 1;
         const div = document.createElement('div');
         div.className = i === currentPick ? 'pick-chip current' : 'pick-chip';
-
-        // If this pick has already been made, show who was drafted
-        const madePick = draftedPlayers[i];
-        let subLine = teams[teamIndex]?.name || '';
-        let playerLine = '';
-        if (madePick) {
-          const isDST = madePick.position === 'DST';
-          const playerName = isDST
-            ? madePick.lastName
-            : `${madePick.firstName} ${madePick.lastName}`;
-          const posDisplay = isDST ? 'D/ST' : madePick.position;
-          playerLine = `<span class="pick-player">${playerName} · ${posDisplay}</span>`;
-        }
-
-        div.innerHTML = `
-          <span class="pick-label">R${round}P${pick}</span>
-          <span class="pick-team">${subLine}</span>
-          ${playerLine}
-        `;
+        div.innerHTML = `<span class="pick-label">R${round}P${pick}</span>
+          <span class="pick-team">${teams[teamIndex]?.name || ''}</span>`;
         container.appendChild(div);
       }
     }
