@@ -39,6 +39,53 @@ export function generateLeagueId() {
   return id;
 }
 
+async function getMyMatchupUrl() {
+  try {
+    const user = auth.currentUser;
+    if (!user) return 'matchup.html';
+    const leagueId = getLeagueId();
+    if (!leagueId) return 'matchup.html';
+    const [draftDoc, scheduleDoc] = await Promise.all([
+      getDoc(doc(db, "drafts", leagueId)),
+      getDoc(doc(db, "schedule", leagueId))
+    ]);
+    if (!draftDoc.exists() || !scheduleDoc.exists()) return 'matchup.html';
+    const teams = draftDoc.data().teams || [];
+    const myTeamIndex = teams.findIndex(t =>
+      t.email && t.email.toLowerCase() === user.email.toLowerCase()
+    );
+    if (myTeamIndex === -1) return 'matchup.html';
+    const weekBoundaries = [
+      { week: 1,  start: new Date('2026-09-01T18:00:00Z') },
+      { week: 2,  start: new Date('2026-09-08T18:00:00Z') },
+      { week: 3,  start: new Date('2026-09-15T18:00:00Z') },
+      { week: 4,  start: new Date('2026-09-22T18:00:00Z') },
+      { week: 5,  start: new Date('2026-09-29T18:00:00Z') },
+      { week: 6,  start: new Date('2026-10-06T18:00:00Z') },
+      { week: 7,  start: new Date('2026-10-13T18:00:00Z') },
+      { week: 8,  start: new Date('2026-10-20T18:00:00Z') },
+      { week: 9,  start: new Date('2026-10-27T18:00:00Z') },
+      { week: 10, start: new Date('2026-11-03T19:00:00Z') },
+      { week: 11, start: new Date('2026-11-10T19:00:00Z') },
+    ];
+    const now = new Date();
+    let currentWeek = 1;
+    for (let i = weekBoundaries.length - 1; i >= 0; i--) {
+      if (now >= weekBoundaries[i].start) { currentWeek = weekBoundaries[i].week; break; }
+    }
+    const weeks = scheduleDoc.data().weeks || [];
+    const weekData = weeks.find(w => w.week === currentWeek);
+    if (!weekData) return 'matchup.html';
+    const matchupIndex = weekData.matchups.findIndex(m =>
+      m.home === myTeamIndex || m.away === myTeamIndex
+    );
+    if (matchupIndex === -1) return 'matchup.html';
+    return `matchup.html?week=${currentWeek}&matchup=${matchupIndex}`;
+  } catch (e) {
+    return 'matchup.html';
+  }
+}
+
 export function initNav(currentPage) {
   onAuthStateChanged(auth, async user => {
     const nav = document.querySelector('nav');
@@ -69,7 +116,7 @@ export function initNav(currentPage) {
       { href: 'index.html', label: 'Home' },
       ...(!hideCreateLeagueOn.includes(currentPage) ? [{ href: 'setup.html', label: 'Create A League' }] : []),
       ...(showScoresOn.includes(currentPage) ? [{ href: 'scores.html', label: 'Scores' }] : []),
-      ...(showMatchupOn.includes(currentPage) ? [{ href: 'matchup.html', label: 'Matchup' }] : []),
+      ...(showMatchupOn.includes(currentPage) ? [{ href: await getMyMatchupUrl(), label: 'Matchup' }] : []),
       ...(showLeagueOn.includes(currentPage) ? [{ href: 'league.html', label: 'League' }] : []),
     ];
 
