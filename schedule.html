@@ -232,28 +232,124 @@
     function buildSchedule(teams, regularSeasonWeeks) {
       const n = teams.length;
       const weeks = [];
-      const allMatchups = [];
 
-      for (let i = 0; i < n; i++) {
-        for (let j = i + 1; j < n; j++) {
-          allMatchups.push([i, j]);
+      // ── Round Robin (weeks 1-7): every team plays every other team once ──
+      // Uses the circle/polygon method for a proper round robin
+      function generateRoundRobin(n) {
+        const rounds = [];
+        const fixed = 0;
+        const rotating = Array.from({length: n - 1}, (_, i) => i + 1);
+
+        for (let r = 0; r < n - 1; r++) {
+          const round = [];
+          const circle = [fixed, ...rotating];
+          for (let i = 0; i < n / 2; i++) {
+            round.push([circle[i], circle[n - 1 - i]]);
+          }
+          rounds.push(round);
+          rotating.push(rotating.shift());
+        }
+        return rounds;
+      }
+
+      // ── Rematches (weeks 8-11): each team plays 4 opponents a second time ──
+      function generateRematchRounds(n) {
+        // Build all pairs and shuffle
+        const allPairs = [];
+        for (let i = 0; i < n; i++) {
+          for (let j = i + 1; j < n; j++) {
+            allPairs.push([i, j]);
+          }
+        }
+        // Fisher-Yates shuffle
+        for (let i = allPairs.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [allPairs[i], allPairs[j]] = [allPairs[j], allPairs[i]];
+        }
+
+        // Greedily assign pairs to 4 rounds, each team appears once per round
+        const rounds = [[], [], [], []];
+        const usedInRound = rounds.map(() => new Set());
+        const pairUsed = new Set();
+        const key = (a, b) => `${Math.min(a,b)}-${Math.max(a,b)}`;
+
+        for (const [a, b] of allPairs) {
+          if (pairUsed.has(key(a, b))) continue;
+          for (let r = 0; r < 4; r++) {
+            if (rounds[r].length < n / 2 && !usedInRound[r].has(a) && !usedInRound[r].has(b)) {
+              rounds[r].push([a, b]);
+              usedInRound[r].add(a);
+              usedInRound[r].add(b);
+              pairUsed.add(key(a, b));
+              break;
+            }
+          }
+        }
+
+        return rounds;
+      }
+
+      // Generate rounds
+      const rrRounds = generateRoundRobin(n);
+
+      // Shuffle round robin order
+      for (let i = rrRounds.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [rrRounds[i], rrRounds[j]] = [rrRounds[j], rrRounds[i]];
+      }
+
+      const rematchRounds = generateRematchRounds(n);
+
+      // Combine all 11 rounds
+      const allRounds = [...rrRounds, ...rematchRounds];
+
+      // ── Fix back-to-back same opponents by swapping weeks ──
+      function getOpponent(round, team) {
+        for (const [a, b] of round) {
+          if (a === team) return b;
+          if (b === team) return a;
+        }
+        return null;
+      }
+
+      function countBackToBack(rounds) {
+        let count = 0;
+        for (let r = 1; r < rounds.length; r++) {
+          for (let t = 0; t < n; t++) {
+            if (getOpponent(rounds[r-1], t) === getOpponent(rounds[r], t)) count++;
+          }
+        }
+        return count;
+      }
+
+      let finalRounds = [...allRounds];
+      let swapAttempts = 0;
+      while (countBackToBack(finalRounds) > 0 && swapAttempts < 500) {
+        swapAttempts++;
+        const i = Math.floor(Math.random() * finalRounds.length);
+        const j = Math.floor(Math.random() * finalRounds.length);
+        if (i !== j) {
+          const candidate = [...finalRounds];
+          [candidate[i], candidate[j]] = [candidate[j], candidate[i]];
+          if (countBackToBack(candidate) <= countBackToBack(finalRounds)) {
+            finalRounds = candidate;
+          }
         }
       }
 
+      // ── Build week objects ──
       for (let week = 1; week <= regularSeasonWeeks; week++) {
-        const weekMatchups = [];
-        const teamsScheduled = new Set();
-        const shuffled = [...allMatchups].sort(() => Math.random() - 0.5);
+        const round = finalRounds[week - 1] || [];
+        const weekMatchups = round.map(([a, b]) => ({
+          home: a,
+          away: b,
+          homeScore: null,
+          awayScore: null
+        }));
 
-        for (const [a, b] of shuffled) {
-          if (teamsScheduled.has(a) || teamsScheduled.has(b)) continue;
-          weekMatchups.push({ home: a, away: b, homeScore: null, awayScore: null });
-          teamsScheduled.add(a);
-          teamsScheduled.add(b);
-          if (weekMatchups.length >= Math.floor(n / 2)) break;
-        }
+        const scheduledTeams = new Set(round.flat());
+        const byeTeam = [...Array(n).keys()].find(i => !scheduledTeams.has(i));
 
-        const byeTeam = [...Array(n).keys()].find(i => !teamsScheduled.has(i));
         weeks.push({
           week,
           type: 'regular',
