@@ -1,29 +1,23 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getStorage } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCY7GbyNnvAcAMGVqp3RGaP1jCm7sThg",
+  apiKey: "AIzaSyABxk_gvkfdvAVMr_Hd-x5OrTv6Qh2i4rE",
   authDomain: "walk-on-fantasy-football.firebaseapp.com",
   projectId: "walk-on-fantasy-football",
-  storageBucket: "walk-on-fantasy-football.appspot.com",
+  storageBucket: "walk-on-fantasy-football.firebasestorage.app",
   messagingSenderId: "667624140764",
-  appId: "1:667624140764:web:f4c18e3b2c8a9f4d3e5b6c"
+  appId: "1:667624140764:web:9bcf904b19013006aa2919"
 };
 
 const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
 export const db = getFirestore(app);
+export const auth = getAuth(app);
 export const storage = getStorage(app);
 
 export function getLeagueId() {
-  const params = new URLSearchParams(window.location.search);
-  const urlLeague = params.get('league');
-  if (urlLeague) {
-    localStorage.setItem('leagueId', urlLeague);
-    return urlLeague;
-  }
   return localStorage.getItem('leagueId');
 }
 
@@ -31,131 +25,114 @@ export function setLeagueId(id) {
   localStorage.setItem('leagueId', id);
 }
 
-async function getMyMatchupUrl() {
-  try {
-    const user = auth.currentUser;
-    if (!user) return 'matchup.html';
-
-    const leagueId = getLeagueId();
-    if (!leagueId) return 'matchup.html';
-
-    const [draftDoc, scheduleDoc] = await Promise.all([
-      getDoc(doc(db, "drafts", leagueId)),
-      getDoc(doc(db, "schedule", leagueId))
-    ]);
-
-    if (!draftDoc.exists() || !scheduleDoc.exists()) return 'matchup.html';
-
-    const teams = draftDoc.data().teams || [];
-    const myTeamIndex = teams.findIndex(t =>
-      t.email && t.email.toLowerCase() === user.email.toLowerCase()
-    );
-    if (myTeamIndex === -1) return 'matchup.html';
-
-    // Get current week using same boundaries as index.js
-    const weekBoundaries = [
-      { week: 1,  start: new Date('2026-09-01T18:00:00Z') },
-      { week: 2,  start: new Date('2026-09-08T18:00:00Z') },
-      { week: 3,  start: new Date('2026-09-15T18:00:00Z') },
-      { week: 4,  start: new Date('2026-09-22T18:00:00Z') },
-      { week: 5,  start: new Date('2026-09-29T18:00:00Z') },
-      { week: 6,  start: new Date('2026-10-06T18:00:00Z') },
-      { week: 7,  start: new Date('2026-10-13T18:00:00Z') },
-      { week: 8,  start: new Date('2026-10-20T18:00:00Z') },
-      { week: 9,  start: new Date('2026-10-27T18:00:00Z') },
-      { week: 10, start: new Date('2026-11-03T19:00:00Z') },
-      { week: 11, start: new Date('2026-11-10T19:00:00Z') },
-    ];
-
-    const now = new Date();
-    let currentWeek = 1;
-    for (let i = weekBoundaries.length - 1; i >= 0; i--) {
-      if (now >= weekBoundaries[i].start) {
-        currentWeek = weekBoundaries[i].week;
-        break;
-      }
-    }
-
-    const weeks = scheduleDoc.data().weeks || [];
-    const weekData = weeks.find(w => w.week === currentWeek);
-    if (!weekData) return 'matchup.html';
-
-    const matchupIndex = weekData.matchups.findIndex(m =>
-      m.home === myTeamIndex || m.away === myTeamIndex
-    );
-    if (matchupIndex === -1) return 'matchup.html';
-
-    return `matchup.html?week=${currentWeek}&matchup=${matchupIndex}`;
-  } catch (e) {
-    console.error('getMyMatchupUrl failed:', e);
-    return 'matchup.html';
-  }
+export function clearLeagueId() {
+  localStorage.removeItem('leagueId');
+  localStorage.removeItem('leagueData');
 }
 
-export function initNav(activePage) {
-  onAuthStateChanged(auth, async (user) => {
+export function generateLeagueId() {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let id = 'woff-';
+  for (let i = 0; i < 5; i++) {
+    id += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return id;
+}
+
+export function initNav(currentPage) {
+  onAuthStateChanged(auth, async user => {
     const nav = document.querySelector('nav');
     if (!nav) return;
 
-    if (!user) {
-      nav.innerHTML = `
-        <div class="nav-inner">
-          <a href="index.html" class="nav-logo">
-            <img src="/icons8-american-football-gradient-32.png" alt="WOFF" style="width:24px;height:24px;" />
-            Walk-On FF
-          </a>
-          <div class="nav-links">
-            <a href="login.html" class="${activePage === 'login.html' ? 'active' : ''}">Sign In</a>
-          </div>
-        </div>
-      `;
-      return;
-    }
+    nav.innerHTML = '';
 
-    const leagueId = getLeagueId();
-    let teams = [];
-    if (leagueId) {
-      try {
-        const draftDoc = await getDoc(doc(db, "drafts", leagueId));
-        if (draftDoc.exists()) teams = draftDoc.data().teams || [];
-      } catch (e) {}
-    }
+    // Hamburger button (mobile only)
+    const hamburger = document.createElement('button');
+    hamburger.className = 'nav-hamburger';
+    hamburger.textContent = '\u2630';
+    hamburger.onclick = () => {
+      linkContainer.classList.toggle('open');
+      hamburger.textContent = linkContainer.classList.contains('open') ? '\u2715' : '\u2630';
+    };
+    nav.appendChild(hamburger);
 
-    const matchupUrl = await getMyMatchupUrl();
+    const linkContainer = document.createElement('div');
+    linkContainer.className = 'nav-links';
+    nav.appendChild(linkContainer);
 
-    const links = [
-      { label: 'Home',     href: 'index.html' },
-      { label: 'Scores',   href: 'scores.html' },
-      { label: 'Matchup',  href: matchupUrl },
-      { label: 'League',   href: 'league.html' },
-      { label: 'My Team',  href: 'myteam.html' },
-      { label: 'Sign Out', href: '#', id: 'signout-btn' },
+    const showScoresOn = ['myteam.html', 'matchup.html', 'schedule.html', 'scores.html', 'league.html'];
+    const showMatchupOn = ['myteam.html', 'portal.html', 'scores.html', 'matchup.html', 'league.html'];
+    const showLeagueOn = ['myteam.html', 'portal.html', 'scores.html', 'matchup.html', 'league.html'];
+    const hideCreateLeagueOn = ['myteam.html', 'portal.html', 'scores.html', 'matchup.html', 'league.html'];
+
+    const baseLinks = [
+      { href: 'index.html', label: 'Home' },
+      ...(!hideCreateLeagueOn.includes(currentPage) ? [{ href: 'setup.html', label: 'Create A League' }] : []),
+      ...(showScoresOn.includes(currentPage) ? [{ href: 'scores.html', label: 'Scores' }] : []),
+      ...(showMatchupOn.includes(currentPage) ? [{ href: 'matchup.html', label: 'Matchup' }] : []),
+      ...(showLeagueOn.includes(currentPage) ? [{ href: 'league.html', label: 'League' }] : []),
     ];
 
-    nav.innerHTML = `
-      <div class="nav-inner">
-        <a href="index.html" class="nav-logo">
-          <img src="/icons8-american-football-gradient-32.png" alt="WOFF" style="width:24px;height:24px;" />
-          Walk-On FF
-        </a>
-        <div class="nav-links">
-          ${links.map(l => `
-            <a href="${l.href}"
-               ${l.id ? `id="${l.id}"` : ''}
-               class="${activePage === l.href ? 'active' : ''}">
-              ${l.label}
-            </a>
-          `).join('')}
-        </div>
-      </div>
-    `;
+    baseLinks.forEach(link => {
+      const a = document.createElement('a');
+      a.href = link.href;
+      a.textContent = link.label;
+      if (currentPage === link.href) a.classList.add('active');
+      linkContainer.appendChild(a);
+    });
 
-    document.getElementById('signout-btn')?.addEventListener('click', async (e) => {
-      e.preventDefault();
-      await signOut(auth);
-      localStorage.removeItem('leagueId');
-      localStorage.removeItem('leagueData');
-      window.location.href = 'login.html';
+    if (user) {
+      const leagueId = getLeagueId();
+
+      if (leagueId) {
+        try {
+          const draftDoc = await getDoc(doc(db, "drafts", leagueId));
+          if (draftDoc.exists()) {
+            const teams = draftDoc.data().teams || [];
+            const hasTeam = teams.some(t =>
+              t.email && t.email.toLowerCase() === user.email.toLowerCase()
+            ) || teams.length > 0;
+
+            if (hasTeam) {
+              const myTeamLink = document.createElement('a');
+              myTeamLink.href = 'myteam.html';
+              myTeamLink.textContent = 'My Team';
+              if (currentPage === 'myteam.html') myTeamLink.classList.add('active');
+              linkContainer.appendChild(myTeamLink);
+            }
+          }
+        } catch (e) {
+          console.error('Nav error:', e);
+        }
+      }
+
+      const signOutBtn = document.createElement('a');
+      signOutBtn.href = '#';
+      signOutBtn.className = 'nav-auth';
+      signOutBtn.textContent = 'Sign Out';
+      signOutBtn.onclick = async (e) => {
+        e.preventDefault();
+        await signOut(auth);
+        clearLeagueId();
+        window.location.href = 'index.html';
+      };
+      linkContainer.appendChild(signOutBtn);
+
+    } else {
+      const loginLink = document.createElement('a');
+      loginLink.href = 'login.html';
+      loginLink.className = 'nav-auth';
+      loginLink.textContent = 'Login';
+      if (currentPage === 'login.html') loginLink.classList.add('active');
+      linkContainer.appendChild(loginLink);
+    }
+
+    // Close menu on link click (mobile)
+    linkContainer.querySelectorAll('a').forEach(a => {
+      a.addEventListener('click', () => {
+        linkContainer.classList.remove('open');
+        hamburger.textContent = '\u2630';
+      });
     });
   });
 }
