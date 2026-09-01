@@ -4,7 +4,7 @@ import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10
 import { getStorage } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCY7GbyNnvAcAMGVqp3RGaP1jGCm7sThg",
+  apiKey: "AIzaSyCY7GbyNnvAcAMGVqp3RGaP1jCm7sThg",
   authDomain: "walk-on-fantasy-football.firebaseapp.com",
   projectId: "walk-on-fantasy-football",
   storageBucket: "walk-on-fantasy-football.appspot.com",
