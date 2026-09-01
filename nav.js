@@ -27,6 +27,10 @@ export function getLeagueId() {
   return localStorage.getItem('leagueId');
 }
 
+export function setLeagueId(id) {
+  localStorage.setItem('leagueId', id);
+}
+
 async function getMyMatchupUrl() {
   try {
     const user = auth.currentUser;
