@@ -930,9 +930,24 @@
         const res = await fetch('g6_schedule_2026.json');
         const scheduleData = await res.json();
 
-        const seasonStart = new Date('2026-09-03');
+        const weekBoundaries = [
+          { week: 1,  start: new Date('2026-09-01T18:00:00Z') },
+          { week: 2,  start: new Date('2026-09-08T18:00:00Z') },
+          { week: 3,  start: new Date('2026-09-15T18:00:00Z') },
+          { week: 4,  start: new Date('2026-09-22T18:00:00Z') },
+          { week: 5,  start: new Date('2026-09-29T18:00:00Z') },
+          { week: 6,  start: new Date('2026-10-06T18:00:00Z') },
+          { week: 7,  start: new Date('2026-10-13T18:00:00Z') },
+          { week: 8,  start: new Date('2026-10-20T18:00:00Z') },
+          { week: 9,  start: new Date('2026-10-27T18:00:00Z') },
+          { week: 10, start: new Date('2026-11-03T19:00:00Z') },
+          { week: 11, start: new Date('2026-11-10T19:00:00Z') },
+        ];
         const now = new Date();
-        const weekNum = Math.max(0, Math.floor((now - seasonStart) / (7 * 24 * 60 * 60 * 1000)));
+        let weekNum = 1;
+        for (let i = weekBoundaries.length - 1; i >= 0; i--) {
+          if (now >= weekBoundaries[i].start) { weekNum = weekBoundaries[i].week; break; }
+        }
         const weekKey = String(weekNum);
 
         const weekSchedule = scheduleData[weekKey] || {};
