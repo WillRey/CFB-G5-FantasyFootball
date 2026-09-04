@@ -210,7 +210,8 @@
       // Build record map for all teams with ties
       const recordMap = {};
       teams.forEach((t, i) => { recordMap[i] = { wins: 0, losses: 0, ties: 0 }; });
-      schedule.filter(w => !w.playoff && w.week <= 11).forEach(week => {
+      const currentWeek = getCurrentWeek();
+      schedule.filter(w => !w.playoff && w.week <= 11 && w.week < currentWeek).forEach(week => {
         (week.matchups || []).forEach(m => {
           if (m.homeScore === null || m.awayScore === null) return;
           if (m.homeScore > m.awayScore) {

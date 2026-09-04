@@ -239,6 +239,28 @@
           { label: 'D/ST', positions: ['DST'] },
         ];
 
+      function getCurrentWeek() {
+      const weekBoundaries = [
+        { week: 1,  start: new Date('2026-09-01T18:00:00Z') },
+        { week: 2,  start: new Date('2026-09-08T18:00:00Z') },
+        { week: 3,  start: new Date('2026-09-15T18:00:00Z') },
+        { week: 4,  start: new Date('2026-09-22T18:00:00Z') },
+        { week: 5,  start: new Date('2026-09-29T18:00:00Z') },
+        { week: 6,  start: new Date('2026-10-06T18:00:00Z') },
+        { week: 7,  start: new Date('2026-10-13T18:00:00Z') },
+        { week: 8,  start: new Date('2026-10-20T18:00:00Z') },
+        { week: 9,  start: new Date('2026-10-27T18:00:00Z') },
+        { week: 10, start: new Date('2026-11-03T19:00:00Z') },
+        { week: 11, start: new Date('2026-11-10T19:00:00Z') },
+      ];
+      const now = new Date();
+      let currentWeek = 1;
+      for (let i = weekBoundaries.length - 1; i >= 0; i--) {
+        if (now >= weekBoundaries[i].start) { currentWeek = weekBoundaries[i].week; break; }
+      }
+      return currentWeek;
+    }
+
     async function loadMatchup() {
       const [scheduleDoc, draftDoc] = await Promise.all([
         getDoc(doc(db, "schedule", leagueId)),
@@ -269,7 +291,8 @@
       const recordMap = {};
       teams.forEach((t, i) => { recordMap[i] = { wins: 0, losses: 0, ties: 0 }; });
       const allWeeks = scheduleDoc.data().weeks || [];
-      allWeeks.filter(w => !w.playoff && w.week <= 11).forEach(w => {
+      const currentWeek = getCurrentWeek();
+      allWeeks.filter(w => !w.playoff && w.week <= 11 && w.week < currentWeek).forEach(w => {
         (w.matchups || []).forEach(m => {
           if (m.homeScore === null || m.awayScore === null) return;
           if (m.homeScore > m.awayScore) {
