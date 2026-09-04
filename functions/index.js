@@ -125,15 +125,20 @@ exports.checkLiveScores = onSchedule(
         scoredDST[teamId] = { teamId, teamName, teamAbbrev, stats: dstStats, points };
       }
 
-    await db.collection('liveScores').doc(String(eventId)).set({
-      eventId,
-      homeTeam: competitors.find(c => c.homeAway === 'home')?.team?.displayName,
-      awayTeam: competitors.find(c => c.homeAway === 'away')?.team?.displayName,
-      status:   event.status?.type?.description,
-      updatedAt: new Date().toISOString(),
-      players:  scoredPlayers,
-      dst:      scoredDST,
-    }, { merge: true });
+        if (Object.keys(scoredPlayers).length === 0 && Object.keys(scoredDST).length === 0) {
+          console.log(`No scored data for event ${eventId} — skipping write to preserve existing data`);
+          continue;
+        }
+
+        await db.collection('liveScores').doc(String(eventId)).set({
+          eventId,
+          homeTeam: competitors.find(c => c.homeAway === 'home')?.team?.displayName,
+          awayTeam: competitors.find(c => c.homeAway === 'away')?.team?.displayName,
+          status:   event.status?.type?.description,
+          updatedAt: new Date().toISOString(),
+          players:  scoredPlayers,
+          dst:      scoredDST,
+        }, { merge: true });
 
       console.log(
         `Wrote live scores for event ${eventId} — ` +
