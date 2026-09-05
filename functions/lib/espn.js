@@ -90,7 +90,8 @@ function parseScoringPlayKicks(scoringPlays, kickerDisplayName, espnTeamId) {
   }
   const lastNameLower = lastName.toLowerCase();
 
-  const fgRe = /(\d+)\s*[-\s]?yd(?:s|ard(?:s)?)?\s*field\s*goal/i;
+  // after
+  const fgRe = /(\d+)\s*[-\s]?yd(?:s|ard(?:s)?)?\s*(?:field\s*goal|FG)/i;
   const xpRe = /extra\s*point|PAT\b/i;
 
   for (const play of scoringPlays) {
