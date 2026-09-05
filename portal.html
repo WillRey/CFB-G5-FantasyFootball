@@ -528,6 +528,27 @@
         parsed.push(obj);
       }
       allPlayers = parsed;
+
+      // Append synthetic D/ST entries — one per unique team, same shape as draft.html
+      const seen = new Set();
+      for (const p of allPlayers) {
+        if (!p.team || seen.has(p.team)) continue;
+        seen.add(p.team);
+        allPlayers.push({
+          id: `dst-${p.team.toLowerCase().replace(/\s+/g, '-')}`,
+          firstName: '',
+          lastName: p.team,
+          position: 'DST',
+          team: p.team,
+          conference: p.conference,
+          jersey: '',
+          year: '',
+          pts2025: null,
+          ovrRank: 9999,
+          posRank: null,
+        });
+      }
+
       populateFATeamFilter();
     }
 
