@@ -172,40 +172,58 @@ function parseDSTStats(summary, espnTeamId) {
     break;
   }
 
-  // 3. Scoring plays — defensive/ST TDs, safeties, blocked kicks, fumble recoveries
-  for (const play of (summary.scoringPlays || [])) {
-    const type       = play.scoringType?.name || '';
-    const playTeamId = String(play.team?.id || '');
+// 3. Scoring plays — defensive/ST TDs, safeties, blocked kicks, fumble recoveries
+for (const play of (summary.scoringPlays || [])) {
+  const type       = play.scoringType?.name || '';
+  const playTeamId = String(play.team?.id || '');
+  const text       = play.text || '';
 
-    if (playTeamId !== teamIdStr) continue;
+  if (playTeamId !== teamIdStr) continue;
 
-    console.log(`Scoring play for team ${teamIdStr}: type="${type}" text="${play.text || ''}"`);
+  console.log(`Scoring play for team ${teamIdStr}: type="${type}" text="${text}"`);
 
-    switch (type) {
-      case 'defensive-touchdown':
-      case 'interception-return-td':
-      case 'kick-return-td':
-      case 'punt-return-td':
-        dst.touchdowns++;
-        break;
-      case 'fumble-return-td':
-        dst.touchdowns++;
-        dst.fumblesRecovered++;
-        break;
-      case 'blocked-kick-td':
-      case 'blocked-punt-td':
-        dst.touchdowns++;
-        dst.blockedKicks++;
-        break;
-      case 'blocked-kick':
-      case 'blocked-punt':
-        dst.blockedKicks++;
-        break;
-      case 'safety':
-        dst.safeties++;
-        break;
-    }
+  if (type === 'safety') {
+    dst.safeties++;
+    continue;
   }
+
+  if (type === 'blocked-kick' || type === 'blocked-punt') {
+    dst.blockedKicks++;
+    continue;
+  }
+
+  if (type !== 'touchdown') continue;
+
+  // ESPN uses generic "touchdown" for everything — classify by text
+  const t = text.toLowerCase();
+
+  const isFumbleReturn = /fumble[^.]*return[^.]*td|fumbled.*for a td/i.test(text);
+  const isInterceptionReturn = /intercept[^.]*return[^.]*td|intercept[^.]*for a td/i.test(text);
+  const isPuntReturn = /punt[^.]*return[^.]*td|returns.*for a td/i.test(text) && /punt/i.test(text);
+  const isKickReturn = /kick[^.]*return[^.]*td|returns.*for a td/i.test(text) && /kick/i.test(text) && !/punt/i.test(text);
+  const isBlockedKickTD = /blocked[^.]*kick[^.]*td|blocked[^.]*punt[^.]*td/i.test(text);
+
+  // Offensive TDs: pass, run, rush — NOT defensive
+  const isOffensive = /\bpass\b.*for a td|\brun\b.*for a td|\brush\b.*for a td/i.test(text);
+
+  if (isOffensive) continue; // opponent's offensive TD — skip
+
+  if (isFumbleReturn) {
+    dst.touchdowns++;
+    dst.fumblesRecovered++;
+  } else if (isInterceptionReturn) {
+    dst.touchdowns++;
+    // interceptions already counted from boxscore team stats — don't double-count
+  } else if (isPuntReturn || isKickReturn) {
+    dst.touchdowns++;
+  } else if (isBlockedKickTD) {
+    dst.touchdowns++;
+    dst.blockedKicks++;
+  } else {
+    // Catch-all: any non-offensive TD credited to this team is defensive
+    dst.touchdowns++;
+  }
+}
 
   return dst;
 }
