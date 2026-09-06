@@ -215,18 +215,33 @@ exports.updateFantasyScores = onSchedule(
         if (team.lineup?.starting) {
           starters = team.lineup.starting.filter(Boolean);
         } else {
-          const startingSlots = [
-            { positions: ['QB'] },
-            { positions: ['RB'] },
-            { positions: ['RB'] },
-            { positions: ['WR'] },
-            { positions: ['WR'] },
-            { positions: ['TE'] },
-            { positions: ['RB','WR','TE'] },
-            { positions: ['RB','WR','TE'] },
-            { positions: ['K'] },
-            { positions: ['DST'] },
-          ];
+        const leagueRosterFormat = leagueDoc.data().roster || '1QB';
+        const startingSlots = leagueRosterFormat === 'Superflex'
+          ? [
+              { positions: ['QB'] },
+              { positions: ['RB'] },
+              { positions: ['RB'] },
+              { positions: ['WR'] },
+              { positions: ['WR'] },
+              { positions: ['TE'] },
+              { positions: ['RB','WR','TE'] },
+              { positions: ['RB','WR','TE'] },
+              { positions: ['QB','RB','WR','TE'] },
+              { positions: ['K'] },
+              { positions: ['DST'] },
+            ]
+          : [
+              { positions: ['QB'] },
+              { positions: ['RB'] },
+              { positions: ['RB'] },
+              { positions: ['WR'] },
+              { positions: ['WR'] },
+              { positions: ['TE'] },
+              { positions: ['RB','WR','TE'] },
+              { positions: ['RB','WR','TE'] },
+              { positions: ['K'] },
+              { positions: ['DST'] },
+            ];
           const roster = [...teamPicks];
           startingSlots.forEach(slot => {
             const idx = roster.findIndex(p => slot.positions.includes(p.position));
