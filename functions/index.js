@@ -102,7 +102,10 @@ exports.checkLiveScores = onSchedule(
 
       Object.values(boxscorePlayers).forEach(p => {
         const position = lookupPosition(p.name, p.team, positionByPlayer);
-        if (!position) return; // not a draftable skill player — DST already captures their return TDs
+        if (!position) {
+          console.log(`UNMATCHED: name="${p.name}" team="${p.team}"`);
+          return;
+        }
         const points = calculatePlayerScore(p.stats, position);
         scoredPlayers[p.id] = { name: p.name, stats: p.stats, points, position };
       });
