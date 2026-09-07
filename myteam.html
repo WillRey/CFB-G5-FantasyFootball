@@ -888,7 +888,16 @@
     async function loadWeeklyScores() {
       try {
         const liveSnap = await getDocs(collection(db, 'liveScores'));
-        if (liveSnap.empty) return;
+
+        // Always reset weekPoints first so stale scores don't persist
+        [...startingLineup, ...bench].forEach(player => {
+          if (player) player.weekPoints = null;
+        });
+
+        if (liveSnap.empty) {
+          renderLineup();
+          return;
+        }
 
         const playerPoints = {};
         const dstPoints = {};

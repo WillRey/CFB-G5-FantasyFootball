@@ -363,6 +363,12 @@
     async function loadLivePoints(lineup) {
       try {
         const liveSnap = await getDocs(collection(db, 'liveScores'));
+
+        // Reset first so stale scores don't persist
+        [...(lineup.starting || []), ...(lineup.bench || [])].forEach(p => {
+          if (p) p.weekPoints = null;
+        });
+
         if (liveSnap.empty) return;
 
         const playerPoints = {};
