@@ -327,8 +327,8 @@
       const homePicks = picks.filter(p => p.teamIndex === matchup.home);
       const awayPicks = picks.filter(p => p.teamIndex === matchup.away);
 
-      const homeLineup = buildLineup(homeTeam, homePicks);
-      const awayLineup = buildLineup(awayTeam, awayPicks);
+      const homeLineup = buildLineup(homeTeam, picks, matchup.home, weekData);
+      const awayLineup = buildLineup(awayTeam, picks, matchup.away, weekData);
 
       // Fetch live scores and attach weekPoints to each player
       await loadLivePoints(homeLineup);
@@ -349,7 +349,16 @@
       return (starting || []).reduce((sum, p) => sum + (p?.weekPoints ?? 0), 0);
     }
 
-    function buildLineup(team, picks) {
+    function buildLineup(team, picks, teamIndex, weekData) {
+      const currentWeek = getCurrentWeek();
+      // For past weeks, use the snapshotted lineup if available
+      if (week < currentWeek && weekData?.lineupSnapshot?.[teamIndex]) {
+        const snapshotStarters = weekData.lineupSnapshot[teamIndex];
+        const starterKeys = new Set(snapshotStarters.map(p => `${p.firstName}-${p.lastName}-${p.team}`));
+        const benchPicks = picks.filter(p => p.teamIndex === teamIndex && !starterKeys.has(`${p.firstName}-${p.lastName}-${p.team}`));
+        return { starting: snapshotStarters, bench: benchPicks.slice(0, 7) };
+      }
+      // Current week — use live lineup
       if (team.lineup) return { starting: team.lineup.starting, bench: team.lineup.bench };
       const roster = [...picks];
       const starting = new Array(startingSlotDefs.length).fill(null);

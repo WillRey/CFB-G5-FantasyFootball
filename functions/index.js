@@ -326,6 +326,34 @@ exports.snapshotSeasonScores = onSchedule(
       updatedAt: new Date().toISOString()
     });
 
+    // Also snapshot starting lineups for the current week into the schedule doc
+    const leaguesSnap = await db.collection('leagues').get();
+    for (const leagueDoc of leaguesSnap.docs) {
+      const leagueId = leagueDoc.id;
+      const [draftSnap, scheduleSnap] = await Promise.all([
+        db.collection('drafts').doc(leagueId).get(),
+        db.collection('schedule').doc(leagueId).get(),
+      ]);
+      if (!draftSnap.exists || !scheduleSnap.exists) continue;
+
+      const teams = draftSnap.data().teams || [];
+      const weeks = scheduleSnap.data().weeks || [];
+      const weekNum = getFantasyWeekNumber(new Date());
+      const weekIndex = weeks.findIndex(w => w.week === weekNum);
+      if (weekIndex === -1) continue;
+
+      const lineupSnapshot = {};
+      teams.forEach((team, i) => {
+        if (team.lineup?.starting) {
+          lineupSnapshot[i] = team.lineup.starting.filter(Boolean);
+        }
+      });
+
+      weeks[weekIndex] = { ...weeks[weekIndex], lineupSnapshot };
+      await db.collection('schedule').doc(leagueId).update({ weeks });
+      console.log(`Snapshotted lineups for league ${leagueId} week ${weekNum}`);
+    }
+
     console.log(`Snapshotted season scores — ${Object.keys(mergedPlayers).length} players, ${Object.keys(mergedDst).length} DSTs.`);
   }
 );
