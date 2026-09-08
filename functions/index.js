@@ -535,17 +535,17 @@ function isPlayerOnTeam(player, picks, teamIdx, teamObj) {
 // After testing, remove the week 0 entry — Week 1 takes over Sept 2 noon MT.
 function getFantasyWeekNumber(now) {
   const weekBoundaries = [
-    { week: 1,  start: new Date('2026-09-01T18:00:00Z') },
-    { week: 2,  start: new Date('2026-09-08T18:00:00Z') },
-    { week: 3,  start: new Date('2026-09-15T18:00:00Z') },
-    { week: 4,  start: new Date('2026-09-22T18:00:00Z') },
-    { week: 5,  start: new Date('2026-09-29T18:00:00Z') },
-    { week: 6,  start: new Date('2026-10-06T18:00:00Z') },
-    { week: 7,  start: new Date('2026-10-13T18:00:00Z') },
-    { week: 8,  start: new Date('2026-10-20T18:00:00Z') },
-    { week: 9,  start: new Date('2026-10-27T18:00:00Z') },
-    { week: 10, start: new Date('2026-11-03T19:00:00Z') }, // post-DST end, UTC-7
-    { week: 11, start: new Date('2026-11-10T19:00:00Z') },
+    { week: 1,  start: new Date('2026-09-01T15:00:00Z') },
+    { week: 2,  start: new Date('2026-09-08T15:00:00Z') },
+    { week: 3,  start: new Date('2026-09-15T15:00:00Z') },
+    { week: 4,  start: new Date('2026-09-22T15:00:00Z') },
+    { week: 5,  start: new Date('2026-09-29T15:00:00Z') },
+    { week: 6,  start: new Date('2026-10-06T15:00:00Z') },
+    { week: 7,  start: new Date('2026-10-13T15:00:00Z') },
+    { week: 8,  start: new Date('2026-10-20T15:00:00Z') },
+    { week: 9,  start: new Date('2026-10-27T15:00:00Z') },
+    { week: 10, start: new Date('2026-11-03T16:00:00Z') },
+    { week: 11, start: new Date('2026-11-10T16:00:00Z') },
   ];
 
   if (now < weekBoundaries[0].start) return weekBoundaries[0].week;
