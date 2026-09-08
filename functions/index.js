@@ -280,6 +280,56 @@ exports.updateFantasyScores = onSchedule(
   }
 );
 
+exports.snapshotSeasonScores = onSchedule(
+  {
+    schedule: 'every monday 08:55',
+    timeZone: 'America/Denver',
+    retryCount: 0
+  },
+  async () => {
+    const liveSnap = await db.collection('liveScores').get();
+    if (liveSnap.empty) {
+      console.log('No liveScores to snapshot — skipping.');
+      return;
+    }
+
+    const playerPoints = {};
+    const dstPoints = {};
+
+    liveSnap.forEach(doc => {
+      const data = doc.data();
+      Object.entries(data.players || {}).forEach(([espnId, p]) => {
+        playerPoints[espnId] = (playerPoints[espnId] || 0) + (p.points || 0);
+      });
+      Object.values(data.dst || {}).forEach(d => {
+        const key = d.teamName?.toLowerCase();
+        dstPoints[key] = (dstPoints[key] || 0) + (d.points || 0);
+      });
+    });
+
+    const seasonSnap = await db.collection('seasonScores').doc('current').get();
+    const existing = seasonSnap.exists ? seasonSnap.data() : { players: {}, dst: {} };
+
+    const mergedPlayers = { ...existing.players };
+    Object.entries(playerPoints).forEach(([id, pts]) => {
+      mergedPlayers[id] = (mergedPlayers[id] || 0) + pts;
+    });
+
+    const mergedDst = { ...existing.dst };
+    Object.entries(dstPoints).forEach(([key, pts]) => {
+      mergedDst[key] = (mergedDst[key] || 0) + pts;
+    });
+
+    await db.collection('seasonScores').doc('current').set({
+      players: mergedPlayers,
+      dst: mergedDst,
+      updatedAt: new Date().toISOString()
+    });
+
+    console.log(`Snapshotted season scores — ${Object.keys(mergedPlayers).length} players, ${Object.keys(mergedDst).length} DSTs.`);
+  }
+);
+
 exports.clearWeeklyScores = onSchedule(
   {
     schedule: 'every monday 09:00',

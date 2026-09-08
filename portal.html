@@ -427,6 +427,7 @@
     let faPage = 0;
     let filteredFAPlayers = [];
     let availablePlayers = [];
+    let seasonScores = { players: {}, dst: {} }; // add this line
 
     const leagueRoster = JSON.parse(localStorage.getItem('leagueData'))?.roster || '1QB';
     const startingSlotDefs = leagueRoster === 'Superflex'
@@ -504,6 +505,7 @@
 
       await loadPortalData();
       await loadWeeklyScores();
+      await loadSeasonScores();
       renderFAPlayers();
       renderWaiverPriority();
       renderMyWaiverClaims();
@@ -634,6 +636,15 @@
       }
     }
 
+    async function loadSeasonScores() {
+      try {
+        const snap = await getDoc(doc(db, 'seasonScores', 'current'));
+        if (snap.exists()) seasonScores = snap.data();
+      } catch (e) {
+        console.error('loadSeasonScores failed:', e);
+      }
+    }
+
     function getNextWaiverProcessTime(fromDate) {
       const mtOffset = 7;
       const from = new Date(fromDate);
@@ -680,9 +691,21 @@
           (!team || p.team === team);
       });
 
-      filteredFAPlayers.sort((a, b) =>
-        (b.weekPoints ?? -Infinity) - (a.weekPoints ?? -Infinity)
-      );
+    filteredFAPlayers.sort((a, b) => {
+      const aWeek = a.weekPoints ?? null;
+      const bWeek = b.weekPoints ?? null;
+      if (aWeek !== null || bWeek !== null) {
+        return (bWeek ?? -Infinity) - (aWeek ?? -Infinity);
+      }
+      // Fallback: cumulative season points
+      const aSeason = a.position === 'DST'
+        ? (seasonScores.dst?.[a.team?.toLowerCase()] ?? 0)
+        : (seasonScores.players?.[a.id] ?? 0);
+      const bSeason = b.position === 'DST'
+        ? (seasonScores.dst?.[b.team?.toLowerCase()] ?? 0)
+        : (seasonScores.players?.[b.id] ?? 0);
+      return bSeason - aSeason;
+    });
 
       faPage = 0;
       renderFAPage();
