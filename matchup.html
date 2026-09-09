@@ -327,8 +327,8 @@
       const homePicks = picks.filter(p => p.teamIndex === matchup.home);
       const awayPicks = picks.filter(p => p.teamIndex === matchup.away);
 
-      const homeLineup = buildLineup(homeTeam, picks, matchup.home, weekData);
-      const awayLineup = buildLineup(awayTeam, picks, matchup.away, weekData);
+      const homeLineup = buildLineup(homeTeam, homePicks, matchup.home, weekData);
+      const awayLineup = buildLineup(awayTeam, awayPicks, matchup.away, weekData);
 
       // Fetch live scores and attach weekPoints to each player
       await loadLivePoints(homeLineup);
