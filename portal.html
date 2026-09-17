@@ -934,7 +934,6 @@
       draftedPlayerIds.delete(`${dropPlayer.firstName}-${dropPlayer.lastName}-${dropPlayer.team}`);
 
       const portalData = window.portalData || {};
-      portalData.waivers = [...(portalData.waivers || []), { ...dropPlayer, droppedAt: timestamp, droppedBy: myTeamIndex }];
 
       const draftDoc = await getDoc(doc(db, "drafts", leagueId));
       const data = draftDoc.data();
