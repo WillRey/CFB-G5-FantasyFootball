@@ -738,9 +738,14 @@
             ? `<div class="player-card-sub" style="color:#ef4444;">🔒 Game in progress — waiver claim only</div>`
             : '';
 
+        const seasonPts = p.position === 'DST'
+          ? (seasonScores.dst?.[p.team?.toLowerCase()] ?? null)
+          : (seasonScores.players?.[p.id] ?? null);
         const weekPts = p.weekPoints != null
           ? `<div class="player-card-sub" style="color:#1a6dff;">Week: ${p.weekPoints.toFixed(1)} pts</div>`
-          : '';
+          : seasonPts != null
+            ? `<div class="player-card-sub" style="color:#6b7280;">Season: ${seasonPts.toFixed(1)} pts</div>`
+            : '';
 
         return `
           <div class="player-card">
