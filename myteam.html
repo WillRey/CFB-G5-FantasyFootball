@@ -789,6 +789,8 @@
         { week: 9,  start: new Date('2026-10-27T15:00:00Z') },
         { week: 10, start: new Date('2026-11-03T16:00:00Z') },
         { week: 11, start: new Date('2026-11-10T16:00:00Z') },
+        { week: 12, start: new Date('2026-11-17T16:00:00Z') }, // Semis
+        { week: 13, start: new Date('2026-11-24T16:00:00Z') }, // Champ
       ];
       const now = new Date();
       let currentWeek = 1;
@@ -957,29 +959,12 @@
       return lockedTeams.has(player.team?.toLowerCase());
     }
 
-    async function loadOpponents() {
+       async function loadOpponents() {
       try {
         const res = await fetch('g6_schedule_2026.json');
         const scheduleData = await res.json();
 
-        const weekBoundaries = [
-          { week: 1,  start: new Date('2026-09-01T15:00:00Z') },
-          { week: 2,  start: new Date('2026-09-08T15:00:00Z') },
-          { week: 3,  start: new Date('2026-09-15T15:00:00Z') },
-          { week: 4,  start: new Date('2026-09-22T15:00:00Z') },
-          { week: 5,  start: new Date('2026-09-29T15:00:00Z') },
-          { week: 6,  start: new Date('2026-10-06T15:00:00Z') },
-          { week: 7,  start: new Date('2026-10-13T15:00:00Z') },
-          { week: 8,  start: new Date('2026-10-20T15:00:00Z') },
-          { week: 9,  start: new Date('2026-10-27T15:00:00Z') },
-          { week: 10, start: new Date('2026-11-03T16:00:00Z') },
-          { week: 11, start: new Date('2026-11-10T16:00:00Z') },
-        ];
-        const now = new Date();
-        let weekNum = 1;
-        for (let i = weekBoundaries.length - 1; i >= 0; i--) {
-          if (now >= weekBoundaries[i].start) { weekNum = weekBoundaries[i].week; break; }
-        }
+        const weekNum = getCurrentWeek();
         const weekKey = String(weekNum);
 
         const weekSchedule = scheduleData[weekKey] || {};

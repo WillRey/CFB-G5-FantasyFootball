@@ -546,10 +546,12 @@ function getFantasyWeekNumber(now) {
     { week: 9,  start: new Date('2026-10-27T15:00:00Z') },
     { week: 10, start: new Date('2026-11-03T16:00:00Z') },
     { week: 11, start: new Date('2026-11-10T16:00:00Z') },
+    { week: 12, start: new Date('2026-11-17T16:00:00Z') }, // Semis
+    { week: 13, start: new Date('2026-11-24T16:00:00Z') }, // Champ
   ];
 
   if (now < weekBoundaries[0].start) return weekBoundaries[0].week;
-  if (now >= weekBoundaries[weekBoundaries.length - 1].start) return 11;
+  if (now >= weekBoundaries[weekBoundaries.length - 1].start) return weekBoundaries[weekBoundaries.length - 1].week;
 
   for (let i = weekBoundaries.length - 1; i >= 0; i--) {
     if (now >= weekBoundaries[i].start) return weekBoundaries[i].week;
